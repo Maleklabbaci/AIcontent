@@ -740,7 +740,7 @@ async function handleImage(apiKey: string, body: Record<string, unknown>): Promi
             })),
             { type: 'text', text: imagePrompt },
           ],
-          response_format: { type: 'image', mime_type: 'image/png', aspect_ratio: aspect, image_size: size },
+          response_format: { type: 'image', mime_type: 'image/jpeg', aspect_ratio: aspect, ...(modelId !== 'flash' ? { image_size: size } : {}) },
         }),
       },
       90000
@@ -767,7 +767,7 @@ async function handleImage(apiKey: string, body: Record<string, unknown>): Promi
         }
       }
       if (!b64) return json({ error: 'image_missing' }, 502);
-      return json({ configured: true, stage: 'image', model, image: `data:image/png;base64,${b64}` });
+      return json({ configured: true, stage: 'image', model, image: `data:image/jpeg;base64,${b64}` });
     }
 
     lastStatus = res.status;
