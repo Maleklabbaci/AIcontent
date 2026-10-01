@@ -368,6 +368,15 @@ const ensureFontLoaded = (family: string, weights: number[] = [400, 600, 700]): 
   return Promise.all(weights.map((w) => document.fonts.load(`${w} 32px "${family}"`).catch(() => null))).then(() => undefined);
 };
 
+// Direction artistique : tirage aléatoire (100 styles côté serveur), différent de la génération précédente
+let lastDesignVariant = -1;
+const pickDesignVariant = (): number => {
+  let v = Math.floor(Math.random() * 1000);
+  while (v % 100 === lastDesignVariant % 100 && lastDesignVariant >= 0) v = Math.floor(Math.random() * 1000);
+  lastDesignVariant = v;
+  return v;
+};
+
 const loadImage = (src: string) =>
   new Promise<HTMLImageElement | null>((resolve) => {
     const img = new Image();
@@ -2650,6 +2659,7 @@ export default function App() {
         effectiveEngineFonts = engineFonts;
         // Étape IMAGES : 1 appel par slide, séquentiel, progression live, STOP au 1er échec
         const received: { idx: number; dataUrl: string }[] = [];
+        const designVariant = pickDesignVariant();
         for (let i = 0; i < engineSlides.length; i++) {
           setGenProgress({ done: i, total: engineSlides.length });
           const sl = engineSlides[i];
@@ -2665,7 +2675,9 @@ export default function App() {
               productImages,
               profile: brandProfile,
               total: engineSlides.length,
-              fonts: { title: brandTitleFont || engineFonts.title, body: brandBodyFont || engineFonts.body },
+              variant: designVariant,
+              brief: promptText.slice(0, 400),
+              fonts: { title: brandTitleFont || '', body: brandBodyFont || '' },
               slide: {
                 slideNumber: sl.slideNumber,
                 tag: sl.tag,
