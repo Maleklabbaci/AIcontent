@@ -34,6 +34,7 @@ import {
   ShoppingBag,
   BadgePercent,
   Quote,
+  Instagram,
   Gift,
   Presentation,
   Languages,
@@ -55,7 +56,7 @@ import imgAbstract from './assets/images/social_abstract_accent_1790812839231.jp
 import imgMarketing from './assets/images/social_marketing_visual_1790812851560.jpg';
 
 // Format types
-type FormatType = 'scroller' | 'story' | 'square' | 'website' | 'product' | 'poster' | 'presentation';
+type FormatType = 'post' | 'scroller' | 'story' | 'square' | 'website' | 'product' | 'poster' | 'presentation';
 type Lang = 'fr' | 'en' | 'ar';
 type PlanId = 'free' | 'starter' | 'pro' | 'business';
 
@@ -110,6 +111,7 @@ const FORMATS: Record<
     sub: string;
   }
 > = {
+  post: { label: 'Post 4:5', short: '4:5', w: 1080, h: 1350, aspect: 'aspect-[4/5] max-w-md', kind: 'single', Icon: Instagram, tag: 'POST FEED', cta: 'Enregistrer ➔', sub: 'Un visuel unique au format du carrousel, pour occuper un maximum de place dans le feed.' },
   scroller: { label: 'Carrousel 4:5', short: '4:5', w: 1080, h: 1350, aspect: 'aspect-[4/5] max-w-md', kind: 'carousel', Icon: Layers, tag: 'CARROUSEL', cta: 'Enregistrer ➔', sub: '' },
   story: { label: 'Story 9:16', short: '9:16', w: 1080, h: 1920, aspect: 'aspect-[9/14] max-w-sm', kind: 'single', Icon: Smartphone, tag: 'STORY IMPACT', cta: 'Swipe up ➔', sub: 'Une stratégie claire et 3 principes immuables pour transformer votre visibilité.' },
   square: { label: 'Post carré 1:1', short: '1:1', w: 1080, h: 1080, aspect: 'aspect-square max-w-md', kind: 'single', Icon: Square, tag: 'POST CARRÉ', cta: 'Enregistrer ➔', sub: 'Une stratégie claire et 3 principes immuables pour transformer votre visibilité.' },
@@ -118,7 +120,7 @@ const FORMATS: Record<
   poster: { label: 'Affiche 2:3', short: '2:3', w: 1200, h: 1800, aspect: 'aspect-[2/3] max-w-sm', kind: 'single', Icon: FileImage, tag: 'AFFICHE · ÉVÉNEMENT', cta: 'Réservez votre place ➔', sub: 'Une accroche immédiate, une hiérarchie nette et une information clé lisible à distance.' },
   presentation: { label: 'Présentation 16:9', short: '16:9', w: 1920, h: 1080, aspect: 'aspect-video max-w-2xl', kind: 'carousel', Icon: Presentation, tag: 'PRÉSENTATION', cta: 'Suivant ➔', sub: '' },
 };
-const FORMAT_ORDER: FormatType[] = ['scroller', 'story', 'square', 'website', 'product', 'poster', 'presentation'];
+const FORMAT_ORDER: FormatType[] = ['post', 'scroller', 'story', 'square', 'website', 'product', 'poster', 'presentation'];
 
 const I18N: Record<Lang, Record<string, string>> = {
   fr: { newDesign: 'Nouveau design', search: 'Recherche', brandKit: 'Brand Kit', templates: 'Templates', recents: 'Récents', greeting: 'Bonjour', subtitle: "On travaille sur quoi aujourd'hui ?", placeholder: "Décrivez le design à créer...", share: 'Partager', settings: 'Paramètres', language: 'Langue', help: "Obtenir de l'aide", learnMore: 'En savoir plus', upgrade: 'Tarifs & Packs', logout: 'Se déconnecter', plan: 'Pack' },
@@ -537,7 +539,7 @@ function PricingPage({
 
       <div className="relative z-10 h-full overflow-y-auto">
         {/* --- Barre du haut --- */}
-        <header className="sticky top-0 z-20 backdrop-blur-md bg-white/60 border-b border-orange-200/40">
+        <header className="sticky top-0 z-20 backdrop-blur-md bg-white/75 border-b border-orange-200/40">
           <div className="max-w-6xl mx-auto px-4 sm:px-6 h-14 flex items-center justify-between">
             <button type="button" onClick={onBack} className="flex items-center gap-2.5 cursor-pointer">
               <div className="w-8 h-8 rounded-full bg-gradient-to-br from-amber-400 via-amber-500 to-orange-500 flex items-center justify-center shadow-sm">
@@ -737,6 +739,15 @@ function LandingPage({
   onPricing: () => void;
   onReferral: () => void;
 }) {
+  // Header transparent en haut, fond flouté dès qu'on scrolle
+  const [scrolled, setScrolled] = useState(false);
+  useEffect(() => {
+    const onScroll = () => setScrolled(window.scrollY > 8);
+    window.addEventListener('scroll', onScroll, { passive: true });
+    onScroll();
+    return () => window.removeEventListener('scroll', onScroll);
+  }, []);
+
   const steps = [
     { n: '1', title: 'Décrivez votre idée', text: "« Post de lancement pour ma boutique de bijoux » — une phrase suffit, l'IA fait le reste." },
     { n: '2', title: 'Choisissez modèle & format', text: 'Flash, Studio ou Pro Max — puis Story, Post carré, Carrousel, Affiche…' },
@@ -762,7 +773,13 @@ function LandingPage({
 
       <div className="relative z-10">
         {/* --- Header --- */}
-        <header className="sticky top-0 z-30 backdrop-blur-md bg-white/60 border-b border-orange-200/40">
+        <header
+          className={`sticky top-0 z-30 transition-all duration-300 ${
+            scrolled
+              ? 'backdrop-blur-md bg-white/75 border-b border-orange-200/40 shadow-sm'
+              : 'bg-transparent border-b border-transparent'
+          }`}
+        >
           <div className="max-w-6xl mx-auto px-4 sm:px-6 h-14 flex items-center justify-between">
             <div className="flex items-center gap-2.5">
               <div className="w-8 h-8 rounded-full bg-gradient-to-br from-amber-400 via-amber-500 to-orange-500 flex items-center justify-center shadow-sm">
@@ -978,7 +995,7 @@ function LandingPage({
         </section>
 
         {/* --- Footer --- */}
-        <footer className="border-t border-orange-200/40 bg-white/50 backdrop-blur">
+        <footer className="border-t border-orange-200/40 bg-white/65 backdrop-blur">
           <div className="max-w-6xl mx-auto px-4 sm:px-6 py-6 flex flex-col sm:flex-row items-center justify-between gap-3 text-[11px] text-gray-500">
             <span>© 2026 Aura Design — Créé en Algérie 🇩🇿</span>
             <div className="flex items-center gap-4 font-semibold">
@@ -1135,7 +1152,7 @@ export default function App() {
 
   // Chat & Input state
   const [inputPrompt, setInputPrompt] = useState('');
-  const [selectedFormat, setSelectedFormat] = useState<FormatType>('scroller');
+  const [selectedFormat, setSelectedFormat] = useState<FormatType>('post');
   const [isFormatDropdownOpen, setIsFormatDropdownOpen] = useState(false);
   const [isComposerModelOpen, setIsComposerModelOpen] = useState(false);
   const [resizeOpenId, setResizeOpenId] = useState<string | null>(null);
@@ -1204,6 +1221,7 @@ export default function App() {
   // Suggestions d'inspiration sur la page d'accueil style Gemini
   const welcomeSuggestions = [
     { title: 'Lancement de ma boutique', prompt: 'Crée un visuel de lancement percutant pour l\'ouverture de ma nouvelle boutique en ligne.', SIcon: ShoppingBag },
+    { title: 'Landing page e-commerce', prompt: 'Conçois la section hero d\'une landing page e-commerce moderne pour une boutique en ligne, avec mise en avant produit et bouton d\'achat.', SIcon: Globe },
     { title: 'Promotion -30%', prompt: 'Génère un visuel promotionnel pour une réduction de -30% valable ce week-end seulement.', SIcon: BadgePercent },
     { title: 'Conseils pour ma clientèle', prompt: 'Crée un contenu éducatif donnant 5 conseils pratiques à mes clients pour progresser rapidement.', SIcon: Lightbulb },
     { title: 'Citation inspirante', prompt: 'Crée un visuel avec une citation inspirante sur la réussite et la discipline pour LinkedIn.', SIcon: Quote },
@@ -1899,7 +1917,7 @@ export default function App() {
       <aside
         className={`${
           sidebarOpen ? 'w-64 sm:w-72' : 'w-0 -translate-x-full'
-        } transition-all duration-300 ease-in-out h-full bg-white/60 backdrop-blur-xl border-r border-orange-200/40 flex flex-col shrink-0 z-20 overflow-hidden max-md:absolute max-md:inset-y-0 max-md:left-0`}
+        } transition-all duration-300 ease-in-out h-full bg-white/75 backdrop-blur-xl border-r border-orange-200/40 flex flex-col shrink-0 z-20 overflow-hidden max-md:absolute max-md:inset-y-0 max-md:left-0`}
       >
         {/* En haut : Logo / Titre SaaS */}
         <div className="p-4 flex items-center justify-between">
@@ -2032,7 +2050,7 @@ export default function App() {
         </div>
 
         {/* En bas : Profil utilisateur "Labbaci Malek" avec avatar et réglages */}
-        <div ref={accountRef} className="relative p-3 border-t border-orange-200/40 bg-white/40">
+        <div ref={accountRef} className="relative p-3 border-t border-orange-200/40 bg-white/60">
           {accountMenuOpen && (
             <div className="absolute bottom-full left-3 right-3 mb-2 rounded-2xl bg-white border border-gray-200 shadow-xl p-1.5 z-40 animate-fade-in">
               {[
@@ -2180,7 +2198,7 @@ export default function App() {
             </div>
             <button
               onClick={handleShare}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/70 hover:bg-white text-gray-700 text-xs font-semibold transition-colors cursor-pointer"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/85 hover:bg-white text-gray-700 text-xs font-semibold transition-colors cursor-pointer"
             >
               <Share2 className="w-3.5 h-3.5 text-gray-600" />
               <span className="hidden sm:inline">{t('share')}</span>
@@ -2641,7 +2659,7 @@ export default function App() {
             />
 
             {/* Conteneur flottant avec grand rayon de bordure */}
-            <div className="relative flex flex-col bg-white/85 backdrop-blur-md rounded-[28px] px-3 py-2.5 border border-orange-200/60 shadow-md focus-within:shadow-lg focus-within:border-orange-300 focus-within:ring-2 focus-within:ring-orange-400/20 transition-all">
+            <div className="relative flex flex-col bg-white/90 backdrop-blur-md rounded-[28px] px-3 py-2.5 border border-orange-200/60 shadow-md focus-within:shadow-lg focus-within:border-orange-300 focus-within:ring-2 focus-within:ring-orange-400/20 transition-all">
               {/* Preview des photos attachées */}
               {attachedImages.length > 0 && (
                 <div className="flex items-center gap-2 px-2 pt-1 pb-2 border-b border-gray-200/70 mb-1 overflow-x-auto">
@@ -2819,7 +2837,7 @@ export default function App() {
                   </button>
 
                   {isComposerModelOpen && (
-                    <div className="absolute left-0 bottom-10 w-72 rounded-2xl bg-white border border-gray-200 shadow-xl p-1.5 z-30 space-y-0.5">
+                    <div className="absolute left-0 bottom-10 w-60 rounded-2xl bg-white border border-gray-200 shadow-xl p-1.5 z-30 space-y-0.5">
                       <div className="px-2.5 py-1 text-[11px] font-semibold text-gray-400 uppercase tracking-wider">
                         Modèle de génération
                       </div>
@@ -2836,16 +2854,13 @@ export default function App() {
                             activeModelId === m.id ? 'bg-amber-50 text-amber-900 font-bold' : 'text-gray-700 hover:bg-gray-100'
                           }`}
                         >
-                          <span className="min-w-0">
-                            <span className="flex items-center gap-1.5">
-                              {m.name}
-                              {m.badge && (
-                                <span className="text-[9px] font-bold text-amber-700 bg-amber-100 border border-amber-200 px-1.5 py-0.5 rounded-full">
-                                  {m.badge}
-                                </span>
-                              )}
-                            </span>
-                            <span className="block text-[10px] text-gray-400 font-normal truncate">{m.desc}</span>
+                          <span className="flex items-center gap-1.5 min-w-0">
+                            {m.name}
+                            {m.badge && (
+                              <span className="text-[9px] font-bold text-amber-700 bg-amber-100 border border-amber-200 px-1.5 py-0.5 rounded-full">
+                                {m.badge}
+                              </span>
+                            )}
                           </span>
                           <span className="flex items-center gap-1.5 shrink-0">
                             <span className="text-[10px] font-bold text-amber-600 bg-amber-100/80 px-1.5 py-0.5 rounded-full">{m.points} pts</span>
@@ -2871,17 +2886,19 @@ export default function App() {
                     </div>
                   )}
                 </div>
-                {credits < 5 ? (
+                <span className="flex items-center gap-1.5 text-[10px] text-gray-400 min-w-0">
+                  <Lightbulb className="w-3 h-3 text-amber-400 shrink-0" />
+                  <span className="truncate">{activeModel.desc}</span>
+                </span>
+                {credits < 5 && (
                   <button
                     type="button"
                     onClick={() => navigate('/pricing')}
-                    className="flex items-center gap-1 text-[10px] font-bold text-red-600 hover:text-red-700 bg-red-50 border border-red-200 px-2 py-0.5 rounded-full cursor-pointer transition-colors"
+                    className="flex items-center gap-1 text-[10px] font-bold text-red-600 hover:text-red-700 bg-red-50 border border-red-200 px-2 py-0.5 rounded-full cursor-pointer transition-colors shrink-0"
                   >
                     <Zap className="w-3 h-3" />
                     Solde faible — voir les packs
                   </button>
-                ) : (
-                  <span className="text-[10px] font-semibold text-gray-400">{credits} points disponibles</span>
                 )}
               </div>
             </div>
@@ -2893,7 +2910,7 @@ export default function App() {
                     key={idx}
                     type="button"
                     onClick={() => handleSendMessage(card.prompt)}
-                    className="flex items-center gap-2 px-4 py-2 rounded-full bg-white/75 hover:bg-white border border-orange-200/60 text-sm text-gray-700 hover:text-gray-900 shadow-2xs transition-all cursor-pointer"
+                    className="flex items-center gap-2 px-4 py-2 rounded-full bg-white/85 hover:bg-white border border-orange-200/60 text-sm text-gray-700 hover:text-gray-900 shadow-2xs transition-all cursor-pointer"
                   >
                     {card.icon}
                     <span>{card.title}</span>
