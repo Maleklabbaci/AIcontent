@@ -25,7 +25,7 @@ const JSON_HEADERS = { 'Content-Type': 'application/json' } as const;
 const MODEL_CANDIDATES: Record<string, string[]> = {
   flash: ['gemini-2.5-flash-image'],
   studio: ['gemini-3.1-flash-image'],
-  pro: ['gemini-3-pro-image', 'gemini-3-pro-image-preview'],
+  pro: ['gemini-3-pro-image'],
 };
 
 const IMAGE_SIZE: Record<string, string> = { flash: '1K', studio: '1K', pro: '2K' };
@@ -145,6 +145,36 @@ const asInt = (v: unknown, min: number, max: number): number | null => {
   return Number.isFinite(n) && n >= min && n <= max ? n : null;
 };
 
+/** Extrait un message court de l'API amont sans jamais journaliser les clés. */
+function summarizeUpstreamError(raw: string): string | undefined {
+  const safe = (value: string) =>
+    value
+      .replace(/AIza[0-9A-Za-z_-]{20,}/g, '[redacted]')
+      .replace(/Bearer\s+[^\s,;]+/gi, 'Bearer [redacted]')
+      .replace(/\s+/g, ' ')
+      .slice(0, 320);
+  const trimmed = raw.trim();
+  if (!trimmed) return undefined;
+
+  try {
+    const parsed = JSON.parse(trimmed) as Record<string, unknown>;
+    const error = parsed.error;
+    if (typeof error === 'string') return safe(error);
+    if (error && typeof error === 'object') {
+      const item = error as Record<string, unknown>;
+      const fields = [
+        typeof item.status === 'string' ? item.status : '',
+        typeof item.code === 'string' || typeof item.code === 'number' ? `code ${item.code}` : '',
+        typeof item.message === 'string' ? item.message : '',
+      ].filter(Boolean);
+      if (fields.length) return safe(fields.join(': '));
+    }
+    if (typeof parsed.message === 'string') return safe(parsed.message);
+  } catch {}
+
+  return safe(trimmed);
+}
+
 async function fetchWithTimeout(url: string, init: RequestInit, timeoutMs: number): Promise<Response> {
   const ctrl = new AbortController();
   const timer = setTimeout(() => ctrl.abort(), timeoutMs);
@@ -235,7 +265,9 @@ CONTRAINTES DE SORTIE
   );
 
   if (!res.ok) {
-    return json({ error: 'copy_upstream', status: res.status }, 502);
+    const detail = summarizeUpstreamError(await res.text().catch(() => ''));
+    console.error('[Aura] Gemini copy request failed', { upstreamStatus: res.status, detail });
+    return json({ error: 'copy_upstream', status: res.status, ...(detail ? { detail } : {}) }, 502);
   }
 
   const data = (await res.json()) as { candidates?: { content?: { parts?: { text?: string }[] } }[] };
@@ -689,7 +721,10 @@ async function handleImage(apiKey: string, body: Record<string, unknown>): Promi
   // permet de passer au candidat suivant — une requête 404 ne génère rien
   // et n'est pas facturée. Aucun autre retry.
   let lastStatus = 502;
+  let lastModel = '';
+  let lastDetail: string | undefined;
   for (const model of candidates) {
+    lastModel = model;
     const res = await fetchWithTimeout(
       'https://generativelanguage.googleapis.com/v1beta/interactions',
       {
@@ -737,11 +772,13 @@ async function handleImage(apiKey: string, body: Record<string, unknown>): Promi
 
     lastStatus = res.status;
     const errText = await res.text().catch(() => '');
+    lastDetail = summarizeUpstreamError(errText);
+    console.error('[Aura] Gemini image request failed', { model, upstreamStatus: res.status, detail: lastDetail });
     const notFound = res.status === 404 || /not found|not_found|unsupported/i.test(errText.slice(0, 500));
     if (!notFound) break; // vraie erreur (quota, safety, timeout) : on ne force pas
   }
 
-  return json({ error: 'image_upstream', status: lastStatus }, 502);
+  return json({ error: 'image_upstream', status: lastStatus, model: lastModel, ...(lastDetail ? { detail: lastDetail } : {}) }, 502);
 }
 
 // ============================================================
