@@ -457,26 +457,21 @@ const PRICING_TIPS: { icon: 'lightbulb' | 'rocket'; tone: 'eco' | 'pro'; title: 
 ];
 
 // ============================================================
-// PAGE /pricing — layout façon Manus :
-// à gauche les packs (ce que vous payez), à droite le panneau
-// Aura Pro, et en bas le box de choix du modèle (Flash / Studio / Pro Max).
+// PAGE /pricing — les packs à payer d'un côté, vos points de l'autre.
+// Le choix du modèle de génération se fait directement dans le box de texte de l'atelier.
 // ============================================================
 function PricingPage({
   currentPlan,
   credits,
-  activeModelId,
   onChoosePack,
-  onSelectModel,
   onBack,
 }: {
   currentPlan: PlanId;
   credits: number;
-  activeModelId: ModelId;
   onChoosePack: (packId: PlanId) => void;
-  onSelectModel: (id: ModelId) => void;
   onBack: () => void;
 }) {
-  const proPack = PRICING.find((p) => p.id === 'pro');
+  const currentPack = PRICING.find((p) => p.id === currentPlan);
 
   return (
     <div className="relative h-screen w-screen overflow-hidden font-sans text-gray-900 antialiased">
@@ -534,8 +529,8 @@ function PricingPage({
             </p>
           </section>
 
-          {/* --- Layout Manus : packs (gauche) · Aura Pro (droite) --- */}
-          <section className="grid grid-cols-1 lg:grid-cols-[1fr_360px] gap-5 items-start">
+          {/* --- Packs à gauche · Points à droite --- */}
+          <section className="grid grid-cols-1 lg:grid-cols-[1fr_340px] gap-5 items-start">
             <div className="space-y-3">
               <h2 className="text-xs font-bold text-gray-400 uppercase tracking-wider px-1">Choisissez votre pack</h2>
               {PRICING.map((pk) => {
@@ -628,124 +623,68 @@ function PricingPage({
               })}
             </div>
 
-            {/* --- Panneau Aura Pro (collant à droite) --- */}
-            <aside className="rounded-3xl bg-gradient-to-b from-zinc-900 to-black border border-zinc-800 p-6 text-white space-y-4 lg:sticky lg:top-20 shadow-xl">
+            {/* --- Panneau Vos Points (collant à droite) --- */}
+            <aside className="rounded-3xl border border-gray-200 bg-white/90 backdrop-blur p-6 space-y-5 lg:sticky lg:top-20 shadow-lg">
               <div className="flex items-center gap-2.5">
-                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center shrink-0">
-                  <Rocket className="w-5 h-5 text-black" />
+                <div className="w-10 h-10 rounded-full bg-amber-100 text-amber-600 flex items-center justify-center shrink-0">
+                  <Zap className="w-5 h-5" />
                 </div>
                 <div>
-                  <h3 className="font-semibold text-lg">Aura Pro</h3>
-                  <p className="text-[11px] text-zinc-400">L'expérience complète</p>
+                  <h3 className="font-semibold text-lg text-gray-900">Vos points</h3>
+                  <p className="text-[11px] text-gray-500">Pack {currentPack?.name || 'Gratuit'}</p>
                 </div>
               </div>
 
-              <p className="text-xs text-zinc-400 leading-relaxed">
-                Tout ce dont votre marque a besoin pour créer, exporter et publier sans limites.
-              </p>
-
-              <div className="flex items-end gap-1.5 pt-1">
-                <span className="text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-amber-400 to-orange-400">4 900 DA</span>
-                <span className="text-[11px] text-zinc-400 pb-1">/ mois · 450 points</span>
+              <div className="rounded-2xl border border-amber-200/80 bg-gradient-to-b from-amber-50/80 to-orange-50/40 p-4 text-center space-y-0.5">
+                <div className="text-4xl font-bold text-gray-900 tracking-tight">{credits}</div>
+                <div className="text-[10px] font-bold text-amber-700 uppercase tracking-wider">points disponibles</div>
               </div>
 
-              <ul className="space-y-2 pt-1">
-                {proPack?.features.map((f) => (
-                  <li key={f} className="flex items-start gap-2 text-xs text-zinc-300">
-                    <Check className="w-3.5 h-3.5 text-amber-400 shrink-0 mt-0.5 stroke-[2.5]" />
-                    {f}
-                  </li>
+              <div className="space-y-1.5">
+                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Coût par image générée</p>
+                {MODELS.map((m) => (
+                  <div key={m.id} className="flex items-center justify-between rounded-xl border border-gray-200 bg-white px-3 py-2">
+                    <span className="flex items-center gap-2 text-xs font-semibold text-gray-800">
+                      {m.name}
+                      {m.badge && (
+                        <span className="text-[9px] font-bold text-amber-700 bg-amber-100 border border-amber-200 px-1.5 py-0.5 rounded-full">
+                          {m.badge}
+                        </span>
+                      )}
+                    </span>
+                    <span className="text-[10px] font-bold text-amber-600 bg-amber-100/80 px-1.5 py-0.5 rounded-full">{m.points} pts</span>
+                  </div>
                 ))}
-              </ul>
+              </div>
 
-              <button
-                type="button"
-                disabled={currentPlan === 'pro'}
-                onClick={() => onChoosePack('pro')}
-                className={`w-full px-3 py-2.5 rounded-full text-xs font-bold transition-all ${
-                  currentPlan === 'pro'
-                    ? 'bg-zinc-800 text-zinc-500 cursor-default'
-                    : 'bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-black shadow-lg shadow-amber-500/20 cursor-pointer'
-                }`}
-              >
-                {currentPlan === 'pro' ? 'Pack actuel' : 'Activer Aura Pro'}
-              </button>
-              <p className="text-[10px] text-zinc-500 text-center leading-relaxed">
-                Points utilisables avec les 3 modèles · Export multi-calques Canva inclus
+              <p className="text-[11px] text-gray-500 leading-relaxed">
+                Pour obtenir plus de points, choisissez un pack dans la liste. Un point non utilisé reste dans votre solde.
               </p>
             </aside>
           </section>
 
-          {/* --- Box de choix du modèle (en bas) --- */}
-          <section className="mt-8 rounded-3xl border border-gray-200 bg-white/80 backdrop-blur p-6 space-y-5">
-            <div className="flex flex-wrap items-center justify-between gap-2">
-              <div className="flex items-center gap-2.5">
-                <div className="w-8 h-8 rounded-full bg-amber-100 text-amber-600 flex items-center justify-center shrink-0">
-                  <PencilRuler className="w-4 h-4" />
-                </div>
-                <h2 className="font-semibold text-gray-900">Choisissez votre modèle de génération</h2>
-              </div>
-              <span className="text-[11px] font-bold text-gray-500 bg-gray-100 px-2.5 py-1 rounded-full">
-                Actif : {MODELS.find((m) => m.id === activeModelId)?.name}
-              </span>
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-              {MODELS.map((m) => {
-                const isActive = m.id === activeModelId;
-                return (
-                  <button
-                    key={m.id}
-                    type="button"
-                    onClick={() => onSelectModel(m.id)}
-                    className={`relative text-left rounded-2xl border p-4 transition-all cursor-pointer ${
-                      isActive
-                        ? 'border-amber-400 bg-amber-50/70 shadow-md shadow-amber-100/50'
-                        : 'border-gray-200 bg-white hover:border-amber-300/70 hover:shadow-sm'
-                    }`}
-                  >
-                    {m.badge && (
-                      <span className="absolute -top-2 right-3 px-2 py-0.5 rounded-full bg-gradient-to-r from-amber-500 to-orange-500 text-white text-[9px] font-bold tracking-wider shadow-sm">
-                        {m.badge}
-                      </span>
-                    )}
-                    <div className="flex items-center justify-between gap-2">
-                      <h3 className="font-semibold text-sm text-gray-900">{m.name}</h3>
-                      {isActive && <Check className="w-4 h-4 text-amber-600 shrink-0 stroke-[2.5]" />}
-                    </div>
-                    <div className="mt-1.5 flex items-baseline gap-1">
-                      <span className="text-2xl font-bold text-gray-900">{m.points}</span>
-                      <span className="text-[11px] font-bold text-amber-600">pts / image</span>
-                    </div>
-                    <p className="text-[11px] text-gray-500 mt-1 leading-relaxed">{m.desc}</p>
-                  </button>
-                );
-              })}
-            </div>
-
-            {/* --- Remarques de consommation --- */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
-              {PRICING_TIPS.map((tip) => (
+          {/* --- Remarques de consommation --- */}
+          <section className="mt-8 grid grid-cols-1 sm:grid-cols-2 gap-3">
+            {PRICING_TIPS.map((tip) => (
+              <div
+                key={tip.title}
+                className={`flex items-start gap-3 rounded-2xl border p-4 ${
+                  tip.tone === 'eco' ? 'border-emerald-200/80 bg-emerald-50/40' : 'border-amber-200/80 bg-amber-50/50'
+                }`}
+              >
                 <div
-                  key={tip.title}
-                  className={`flex items-start gap-3 rounded-2xl border p-4 ${
-                    tip.tone === 'eco' ? 'border-emerald-200/80 bg-emerald-50/40' : 'border-amber-200/80 bg-amber-50/50'
+                  className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${
+                    tip.tone === 'eco' ? 'bg-emerald-100 text-emerald-600' : 'bg-amber-100 text-amber-600'
                   }`}
                 >
-                  <div
-                    className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${
-                      tip.tone === 'eco' ? 'bg-emerald-100 text-emerald-600' : 'bg-amber-100 text-amber-600'
-                    }`}
-                  >
-                    {tip.icon === 'lightbulb' ? <Lightbulb className="w-4 h-4" /> : <Rocket className="w-4 h-4" />}
-                  </div>
-                  <div className="space-y-0.5">
-                    <p className="text-xs font-bold text-gray-900">{tip.title}</p>
-                    <p className="text-[11px] text-gray-500 leading-relaxed">{tip.text}</p>
-                  </div>
+                  {tip.icon === 'lightbulb' ? <Lightbulb className="w-4 h-4" /> : <Rocket className="w-4 h-4" />}
                 </div>
-              ))}
-            </div>
+                <div className="space-y-0.5">
+                  <p className="text-xs font-bold text-gray-900">{tip.title}</p>
+                  <p className="text-[11px] text-gray-500 leading-relaxed">{tip.text}</p>
+                </div>
+              </div>
+            ))}
           </section>
 
           {/* --- Note de facturation --- */}
@@ -905,6 +844,7 @@ export default function App() {
   const [inputPrompt, setInputPrompt] = useState('');
   const [selectedFormat, setSelectedFormat] = useState<FormatType>('scroller');
   const [isFormatDropdownOpen, setIsFormatDropdownOpen] = useState(false);
+  const [isComposerModelOpen, setIsComposerModelOpen] = useState(false);
   const [carouselSlidesCount, setCarouselSlidesCount] = useState<number>(4);
   const [isSlidesDropdownOpen, setIsSlidesDropdownOpen] = useState(false);
   const [attachedImages, setAttachedImages] = useState<string[]>([]);
@@ -914,6 +854,7 @@ export default function App() {
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const composerModelRef = useRef<HTMLDivElement>(null);
   const slidesCountDropdownRef = useRef<HTMLDivElement>(null);
   const photoInputRef = useRef<HTMLInputElement>(null);
 
@@ -978,6 +919,9 @@ export default function App() {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
         setIsFormatDropdownOpen(false);
       }
+      if (composerModelRef.current && !composerModelRef.current.contains(event.target as Node)) {
+        setIsComposerModelOpen(false);
+      }
       if (slidesCountDropdownRef.current && !slidesCountDropdownRef.current.contains(event.target as Node)) {
         setIsSlidesDropdownOpen(false);
       }
@@ -993,6 +937,7 @@ export default function App() {
       if (event.key === 'Escape') {
         setIsBrandKitOpen(false);
         setIsFormatDropdownOpen(false);
+        setIsComposerModelOpen(false);
         setIsSlidesDropdownOpen(false);
         setIsModelOpen(false);
         setAccountMenuOpen(false);
@@ -1483,7 +1428,6 @@ export default function App() {
         <PricingPage
           currentPlan={plan}
           credits={credits}
-          activeModelId={activeModelId}
           onChoosePack={(packId) => {
             if (packId === plan) return;
             setPlan(packId);
@@ -1492,11 +1436,6 @@ export default function App() {
             if (packId === 'pro') setCredits(450);
             const pack = PRICING.find((pk) => pk.id === packId);
             showToast(`Pack ${pack?.name} activé · ${pack?.points} !`);
-          }}
-          onSelectModel={(id) => {
-            setActiveModelId(id);
-            const m = MODELS.find((x) => x.id === id);
-            showToast(`Modèle actif : ${m?.name} · ${m?.points} points / image`);
           }}
           onBack={() => navigate('/')}
         />
@@ -2338,6 +2277,74 @@ export default function App() {
 
                 {/* À droite : Sélecteur déroulant de format, Nombre de slides & bouton d'envoi */}
                 <div className="flex items-center gap-1.5 shrink-0">
+                  {/* Dropdown sélecteur de modèle (dans le box de texte) */}
+                  <div className="relative" ref={composerModelRef}>
+                    <button
+                      type="button"
+                      onClick={() => setIsComposerModelOpen((v) => !v)}
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-amber-50 hover:bg-amber-100/90 text-amber-900 text-xs font-bold border border-amber-200 shadow-2xs transition-colors cursor-pointer"
+                      title="Modèle de génération"
+                    >
+                      <Sparkles className="w-3.5 h-3.5 text-amber-600" />
+                      <span className="hidden md:inline">{activeModel.name}</span>
+                      <span className="text-[10px] font-bold text-amber-700 bg-white/80 px-1.5 py-0.5 rounded-full">{activeModel.points} pts</span>
+                      <ChevronDown className={`w-3 h-3 text-amber-600 transition-transform ${isComposerModelOpen ? 'rotate-180' : ''}`} />
+                    </button>
+
+                    {isComposerModelOpen && (
+                      <div className="absolute right-0 bottom-12 w-72 rounded-2xl bg-white border border-gray-200 shadow-xl p-1.5 z-30 space-y-0.5">
+                        <div className="px-2.5 py-1 text-[11px] font-semibold text-gray-400 uppercase tracking-wider">
+                          Modèle de génération
+                        </div>
+                        {MODELS.map((m) => (
+                          <button
+                            key={m.id}
+                            type="button"
+                            onClick={() => {
+                              setActiveModelId(m.id);
+                              setIsComposerModelOpen(false);
+                              showToast(`Modèle actif : ${m.name} · ${m.points} points / image`);
+                            }}
+                            className={`w-full flex items-center justify-between gap-2 px-2.5 py-2 rounded-xl text-xs cursor-pointer transition-colors ${
+                              activeModelId === m.id ? 'bg-amber-50 text-amber-900 font-bold' : 'text-gray-700 hover:bg-gray-100'
+                            }`}
+                          >
+                            <span className="min-w-0">
+                              <span className="flex items-center gap-1.5">
+                                {m.name}
+                                {m.badge && (
+                                  <span className="text-[9px] font-bold text-amber-700 bg-amber-100 border border-amber-200 px-1.5 py-0.5 rounded-full">
+                                    {m.badge}
+                                  </span>
+                                )}
+                              </span>
+                              <span className="block text-[10px] text-gray-400 font-normal truncate">{m.desc}</span>
+                            </span>
+                            <span className="flex items-center gap-1.5 shrink-0">
+                              <span className="text-[10px] font-bold text-amber-600 bg-amber-100/80 px-1.5 py-0.5 rounded-full">{m.points} pts</span>
+                              {activeModelId === m.id && <Check className="w-3.5 h-3.5 text-amber-600" />}
+                            </span>
+                          </button>
+                        ))}
+                        <div className="my-1 border-t border-gray-100" />
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setIsComposerModelOpen(false);
+                            navigate('/pricing');
+                          }}
+                          className="w-full flex items-center justify-between px-2.5 py-2 rounded-xl text-xs font-semibold text-amber-700 hover:bg-amber-50 cursor-pointer transition-colors"
+                        >
+                          <span className="flex items-center gap-2">
+                            <Zap className="w-3.5 h-3.5" />
+                            Voir les packs
+                          </span>
+                          <span className="text-[10px] font-bold text-gray-500">{credits} pts</span>
+                        </button>
+                      </div>
+                    )}
+                  </div>
+
                   {/* Dropdown sélecteur de format */}
                   <div className="relative" ref={dropdownRef}>
                     <button
