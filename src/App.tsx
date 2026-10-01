@@ -32,6 +32,9 @@ import {
   UploadCloud,
   Globe,
   ShoppingBag,
+  BadgePercent,
+  Quote,
+  Gift,
   Presentation,
   Languages,
   CircleHelp,
@@ -39,6 +42,7 @@ import {
   Zap,
   LogOut,
   FileImage,
+  FileText,
   ArrowLeft,
   Lightbulb,
   Rocket,
@@ -46,6 +50,7 @@ import {
   RefreshCw
 } from 'lucide-react';
 import { createEditableCanvaPptx } from './utils/canvaExport';
+import { createPdfFromJpegs, pxToPt } from './utils/pdfExport';
 import imgAbstract from './assets/images/social_abstract_accent_1790812839231.jpg';
 import imgMarketing from './assets/images/social_marketing_visual_1790812851560.jpg';
 
@@ -116,9 +121,9 @@ const FORMATS: Record<
 const FORMAT_ORDER: FormatType[] = ['scroller', 'story', 'square', 'website', 'product', 'poster', 'presentation'];
 
 const I18N: Record<Lang, Record<string, string>> = {
-  fr: { newDesign: 'Nouveau design', search: 'Recherche', brandKit: 'Brand Kit', templates: 'Templates', recents: 'Récents', greeting: 'Bonjour', subtitle: "On travaille sur quoi aujourd'hui ?", placeholder: "Décrivez le design à créer... (site web, produit, story, carrousel, affiche)", share: 'Partager', settings: 'Paramètres', language: 'Langue', help: "Obtenir de l'aide", learnMore: 'En savoir plus', upgrade: 'Tarifs & Packs', logout: 'Se déconnecter', plan: 'Pack' },
-  en: { newDesign: 'New design', search: 'Search', brandKit: 'Brand Kit', templates: 'Templates', recents: 'Recents', greeting: 'Hello', subtitle: 'What are we working on today?', placeholder: 'Describe the design to create... (website, product, story, carousel, poster)', share: 'Share', settings: 'Settings', language: 'Language', help: 'Get help', learnMore: 'Learn more', upgrade: 'Pricing & Packs', logout: 'Log out', plan: 'Pack' },
-  ar: { newDesign: 'تصميم جديد', search: 'بحث', brandKit: 'هوية العلامة', templates: 'قوالب', recents: 'الأخيرة', greeting: 'مرحباً', subtitle: 'على ماذا سنعمل اليوم؟', placeholder: 'صف التصميم المطلوب... (موقع، منتج، ستوري، كاروسيل، ملصق)', share: 'مشاركة', settings: 'الإعدادات', language: 'اللغة', help: 'احصل على مساعدة', learnMore: 'اعرف المزيد', upgrade: 'ترقية الباقة', logout: 'تسجيل الخروج', plan: 'الباقة' },
+  fr: { newDesign: 'Nouveau design', search: 'Recherche', brandKit: 'Brand Kit', templates: 'Templates', recents: 'Récents', greeting: 'Bonjour', subtitle: "On travaille sur quoi aujourd'hui ?", placeholder: "Décrivez le design à créer...", share: 'Partager', settings: 'Paramètres', language: 'Langue', help: "Obtenir de l'aide", learnMore: 'En savoir plus', upgrade: 'Tarifs & Packs', logout: 'Se déconnecter', plan: 'Pack' },
+  en: { newDesign: 'New design', search: 'Search', brandKit: 'Brand Kit', templates: 'Templates', recents: 'Recents', greeting: 'Hello', subtitle: 'What are we working on today?', placeholder: 'Describe the design to create...', share: 'Share', settings: 'Settings', language: 'Language', help: 'Get help', learnMore: 'Learn more', upgrade: 'Pricing & Packs', logout: 'Log out', plan: 'Pack' },
+  ar: { newDesign: 'تصميم جديد', search: 'بحث', brandKit: 'هوية العلامة', templates: 'قوالب', recents: 'الأخيرة', greeting: 'مرحباً', subtitle: 'على ماذا سنعمل اليوم؟', placeholder: 'صف التصميم المطلوب...', share: 'مشاركة', settings: 'الإعدادات', language: 'اللغة', help: 'احصل على مساعدة', learnMore: 'اعرف المزيد', upgrade: 'ترقية الباقة', logout: 'تسجيل الخروج', plan: 'الباقة' },
 };
 const LANGS: { id: Lang; label: string }[] = [
   { id: 'fr', label: 'Français' },
@@ -162,7 +167,8 @@ async function slideToPngBlob(
   slide: Slide,
   format: FormatType,
   total: number,
-  brand: { name: string; handle: string; color: string }
+  brand: { name: string; handle: string; color: string },
+  opts?: { watermark?: boolean; mime?: 'image/png' | 'image/jpeg' }
 ): Promise<Blob | null> {
   const { w, h } = FORMATS[format];
   const canvas = document.createElement('canvas');
@@ -290,7 +296,35 @@ async function slideToPngBlob(
     ctx.textAlign = 'left';
   }
 
-  return new Promise((resolve) => canvas.toBlob((b) => resolve(b), 'image/png'));
+  // Filigrane pack Gratuit
+  if (opts?.watermark) {
+    const wmText = 'Fait avec Aura Design';
+    ctx.font = F(600, 24);
+    const tw = ctx.measureText(wmText).width;
+    const pw = tw + 80;
+    const ph = 50;
+    const px0 = (w - pw) / 2;
+    const py0 = h - 74;
+    ctx.fillStyle = 'rgba(255,255,255,0.14)';
+    ctx.beginPath();
+    ctx.roundRect(px0, py0, pw, ph, 25);
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(255,255,255,0.28)';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+    ctx.fillStyle = 'rgba(255,255,255,0.85)';
+    ctx.beginPath();
+    ctx.arc(px0 + 30, py0 + ph / 2, 8, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = 'rgba(255,255,255,0.92)';
+    ctx.textAlign = 'left';
+    ctx.fillText(wmText, px0 + 50, py0 + ph / 2 + 8);
+    ctx.textAlign = 'left';
+  }
+
+  return new Promise((resolve) =>
+    canvas.toBlob((b) => resolve(b), opts?.mime || 'image/png', opts?.mime === 'image/jpeg' ? 0.92 : undefined)
+  );
 }
 
 const copyText = async (text: string) => {
@@ -353,7 +387,29 @@ try {
   }
 } catch {}
 
+const loadJson = <T,>(key: string, fallback: T): T => {
+  try {
+    const raw = localStorage.getItem(key);
+    return raw ? (JSON.parse(raw) as T) : fallback;
+  } catch {
+    return fallback;
+  }
+};
+
 export type ModelId = 'flash' | 'studio' | 'pro';
+
+const getReferralCode = (): string => {
+  try {
+    let code = localStorage.getItem('aura_ref_code');
+    if (!code) {
+      code = `AURA-${Math.random().toString(36).slice(2, 8).toUpperCase()}`;
+      localStorage.setItem('aura_ref_code', code);
+    }
+    return code;
+  } catch {
+    return 'AURA-DESIGN';
+  }
+};
 const MODELS: { id: ModelId; name: string; points: number; desc: string; badge?: string }[] = [
   { id: 'flash', name: 'Aura Flash', points: 5, desc: 'Rapide et économique — parfait pour les petits visuels et posts quotidiens.', badge: 'ÉCO' },
   { id: 'studio', name: 'Aura Studio', points: 10, desc: 'HD équilibré — le juste milieu qualité / points pour vos contenus réguliers.' },
@@ -457,22 +513,19 @@ const PRICING_TIPS: { icon: 'lightbulb' | 'rocket'; tone: 'eco' | 'pro'; title: 
 ];
 
 // ============================================================
-// PAGE /pricing — les packs à payer d'un côté, vos points de l'autre.
-// Le choix du modèle de génération se fait directement dans le box de texte de l'atelier.
+// PAGE /pricing — design d'origine (grille de packs) dans une page dédiée
 // ============================================================
 function PricingPage({
   currentPlan,
   credits,
-  onChoosePack,
+  onChoose,
   onBack,
 }: {
   currentPlan: PlanId;
   credits: number;
-  onChoosePack: (packId: PlanId) => void;
+  onChoose: (packId: PlanId) => void;
   onBack: () => void;
 }) {
-  const currentPack = PRICING.find((p) => p.id === currentPlan);
-
   return (
     <div className="relative h-screen w-screen overflow-hidden font-sans text-gray-900 antialiased">
       <div className="aurora" aria-hidden="true">
@@ -496,7 +549,7 @@ function PricingPage({
               </div>
             </button>
             <div className="flex items-center gap-2">
-              <span className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white border border-gray-200/80 text-xs font-bold text-gray-800">
+              <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white border border-gray-200/80 text-xs font-bold text-gray-800">
                 <Zap className="w-3.5 h-3.5 text-amber-500" />
                 {credits} points
               </span>
@@ -512,159 +565,131 @@ function PricingPage({
           </div>
         </header>
 
-        <main className="max-w-6xl mx-auto px-4 sm:px-6 pb-16">
-          {/* --- Hero --- */}
-          <section className="text-center space-y-3 pt-10 pb-8">
-            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/80 border border-amber-200/70 text-[11px] font-bold text-amber-700 shadow-xs">
-              <Zap className="w-3 h-3" />
-              TARIFS & PACKS
-            </span>
-            <h1 className="text-2xl sm:text-3xl font-semibold text-gray-900 tracking-tight">
-              Choisissez votre <span className="text-transparent bg-clip-text bg-gradient-to-r from-amber-500 to-orange-500">pack</span>, générez en liberté
-            </h1>
-            <p className="text-sm text-gray-500 max-w-xl mx-auto leading-relaxed">
-              1 image générée = <span className="font-bold text-gray-700">5 pts</span> avec <span className="font-semibold">Aura Flash</span> ·{' '}
-              <span className="font-bold text-gray-700">10 pts</span> avec <span className="font-semibold">Aura Studio</span> ·{' '}
-              <span className="font-bold text-gray-700">20 pts</span> avec <span className="font-semibold">Aura Pro Max</span>.
-            </p>
-          </section>
-
-          {/* --- Packs à gauche · Points à droite --- */}
-          <section className="grid grid-cols-1 lg:grid-cols-[1fr_340px] gap-5 items-start">
-            <div className="space-y-3">
-              <h2 className="text-xs font-bold text-gray-400 uppercase tracking-wider px-1">Choisissez votre pack</h2>
-              {PRICING.map((pk) => {
-                const isCurrent = pk.id === currentPlan && pk.price !== 'Sur devis';
-                const isDevis = pk.price === 'Sur devis';
-                return (
-                  <div
-                    key={pk.name}
-                    className={`relative rounded-3xl border p-5 transition-all ${
-                      pk.highlight
-                        ? 'border-amber-400 bg-gradient-to-b from-amber-50/90 to-white shadow-lg shadow-amber-100/60'
-                        : isCurrent
-                        ? 'border-orange-300 bg-orange-50/40'
-                        : 'border-gray-200 bg-white/80 hover:border-amber-300/70 hover:shadow-md'
-                    }`}
-                  >
-                    {pk.ribbon && (
-                      <span className="absolute -top-2.5 right-5 px-3 py-0.5 rounded-full bg-gradient-to-r from-amber-500 to-orange-500 text-white text-[9px] font-bold tracking-wider shadow-sm whitespace-nowrap">
-                        {pk.ribbon}
-                      </span>
-                    )}
-
-                    <div className="flex flex-wrap items-start justify-between gap-3">
-                      <div className="space-y-1 min-w-0">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <h3 className="font-semibold text-gray-900">{pk.name}</h3>
-                          {isCurrent && (
-                            <span className="text-[9px] font-bold text-orange-700 bg-orange-100 border border-orange-200 px-1.5 py-0.5 rounded-full">
-                              ACTUEL
-                            </span>
-                          )}
-                          {pk.points && (
-                            <span
-                              className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold border ${
-                                pk.highlight
-                                  ? 'bg-amber-100/80 text-amber-800 border-amber-200'
-                                  : 'bg-gray-100 text-gray-700 border-gray-200'
-                              }`}
-                            >
-                              <Zap className="w-3 h-3 text-amber-500" />
-                              {pk.points}
-                            </span>
-                          )}
-                        </div>
-                        <p className="text-[11px] text-gray-500">{pk.tagline}</p>
-                      </div>
-                      <div className="text-right shrink-0">
-                        <div
-                          className={`text-2xl font-bold tracking-tight ${
-                            pk.highlight ? 'text-transparent bg-clip-text bg-gradient-to-r from-amber-600 to-orange-500' : 'text-gray-900'
-                          }`}
-                        >
-                          {pk.price}
-                        </div>
-                        {pk.period && <div className="text-[11px] text-gray-400">{pk.period}</div>}
-                      </div>
-                    </div>
-
-                    <ul className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-1.5">
-                      {pk.features.map((f) => (
-                        <li key={f} className="flex items-start gap-2 text-xs text-gray-600">
-                          <Check className="w-3.5 h-3.5 text-amber-500 shrink-0 mt-0.5 stroke-[2.5]" />
-                          {f}
-                        </li>
-                      ))}
-                    </ul>
-
-                    <button
-                      type="button"
-                      disabled={isCurrent}
-                      onClick={() => {
-                        if (isDevis) {
-                          window.location.href = 'mailto:contact@auradesign.dz?subject=Pack%20Business%20%26%20Agences%20%E2%80%94%20Aura%20Design';
-                          return;
-                        }
-                        onChoosePack(pk.id);
-                      }}
-                      className={`mt-4 w-full px-3 py-2.5 rounded-full text-xs font-bold transition-all ${
-                        isCurrent
-                          ? 'bg-gray-100 text-gray-400 cursor-default'
-                          : pk.highlight
-                          ? 'bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-white shadow-md shadow-amber-200/60 cursor-pointer'
-                          : 'bg-gray-900 hover:bg-black text-white cursor-pointer'
-                      }`}
-                    >
-                      {isCurrent ? 'Pack actuel' : pk.cta}
-                    </button>
-                  </div>
-                );
-              })}
+        <main className="max-w-6xl mx-auto px-4 sm:px-6 pb-10 space-y-6">
+          {/* --- En-tête Hero (comme à l'origine) --- */}
+          <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-amber-50 via-orange-50/70 to-white px-6 sm:px-10 pt-10 pb-8 border border-orange-100 shadow-sm mt-6">
+            <div className="aurora opacity-40" aria-hidden="true">
+              <span className="blob blob-a" />
+              <span className="blob blob-b" />
             </div>
-
-            {/* --- Panneau Vos Points (collant à droite) --- */}
-            <aside className="rounded-3xl border border-gray-200 bg-white/90 backdrop-blur p-6 space-y-5 lg:sticky lg:top-20 shadow-lg">
-              <div className="flex items-center gap-2.5">
-                <div className="w-10 h-10 rounded-full bg-amber-100 text-amber-600 flex items-center justify-center shrink-0">
-                  <Zap className="w-5 h-5" />
-                </div>
-                <div>
-                  <h3 className="font-semibold text-lg text-gray-900">Vos points</h3>
-                  <p className="text-[11px] text-gray-500">Pack {currentPack?.name || 'Gratuit'}</p>
-                </div>
+            <div className="relative z-10 text-center space-y-3 max-w-2xl mx-auto">
+              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/80 border border-amber-200/70 text-[11px] font-bold text-amber-700 shadow-xs">
+                <Zap className="w-3 h-3" />
+                TARIFS & PACKS
+              </span>
+              <h2 className="text-2xl sm:text-3xl font-semibold text-gray-900 tracking-tight">
+                Choisissez votre <span className="text-transparent bg-clip-text bg-gradient-to-r from-amber-500 to-orange-500">pack</span>, générez en liberté
+              </h2>
+              <div className="flex flex-wrap items-center justify-center gap-2">
+                <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white border border-gray-200/80 shadow-xs text-xs font-semibold text-gray-700">
+                  Aura Flash
+                  <span className="font-bold text-amber-600 bg-amber-100/80 px-1.5 py-0.5 rounded-full">5 pts</span>
+                </span>
+                <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white border border-gray-200/80 shadow-xs text-xs font-semibold text-gray-700">
+                  Aura Studio
+                  <span className="font-bold text-amber-600 bg-amber-100/80 px-1.5 py-0.5 rounded-full">10 pts</span>
+                </span>
+                <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white border border-gray-200/80 shadow-xs text-xs font-semibold text-gray-700">
+                  Aura Pro Max
+                  <span className="font-bold text-amber-600 bg-amber-100/80 px-1.5 py-0.5 rounded-full">20 pts</span>
+                </span>
               </div>
-
-              <div className="rounded-2xl border border-amber-200/80 bg-gradient-to-b from-amber-50/80 to-orange-50/40 p-4 text-center space-y-0.5">
-                <div className="text-4xl font-bold text-gray-900 tracking-tight">{credits}</div>
-                <div className="text-[10px] font-bold text-amber-700 uppercase tracking-wider">points disponibles</div>
+              <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white border border-gray-200 shadow-xs text-xs font-semibold text-gray-700">
+                <Sparkles className="w-3.5 h-3.5 text-amber-500" />
+                Votre solde actuel :
+                <span className="font-bold text-amber-600">{credits} points</span>
               </div>
+            </div>
+          </div>
 
-              <div className="space-y-1.5">
-                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Coût par image générée</p>
-                {MODELS.map((m) => (
-                  <div key={m.id} className="flex items-center justify-between rounded-xl border border-gray-200 bg-white px-3 py-2">
-                    <span className="flex items-center gap-2 text-xs font-semibold text-gray-800">
-                      {m.name}
-                      {m.badge && (
-                        <span className="text-[9px] font-bold text-amber-700 bg-amber-100 border border-amber-200 px-1.5 py-0.5 rounded-full">
-                          {m.badge}
+          {/* --- Grille des packs (comme à l'origine) --- */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+            {PRICING.map((pk) => {
+              const isCurrent = pk.id === currentPlan && pk.price !== 'Sur devis';
+              const isDevis = pk.price === 'Sur devis';
+              return (
+                <div
+                  key={pk.name}
+                  className={`relative rounded-3xl border flex flex-col gap-4 p-5 transition-all ${
+                    pk.highlight
+                      ? 'border-amber-400 bg-gradient-to-b from-amber-50/80 to-white shadow-lg shadow-amber-100/60 xl:-translate-y-1'
+                      : isCurrent
+                      ? 'border-orange-300 bg-orange-50/40'
+                      : 'border-gray-200 bg-white/80 hover:border-amber-300/70 hover:shadow-md'
+                  }`}
+                >
+                  {pk.ribbon && (
+                    <span className="absolute -top-2.5 left-1/2 -translate-x-1/2 px-3 py-0.5 rounded-full bg-gradient-to-r from-amber-500 to-orange-500 text-white text-[9px] font-bold tracking-wider shadow-sm whitespace-nowrap">
+                      {pk.ribbon}
+                    </span>
+                  )}
+
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-2">
+                      <h4 className="font-semibold text-gray-900">{pk.name}</h4>
+                      {isCurrent && (
+                        <span className="text-[9px] font-bold text-orange-700 bg-orange-100 border border-orange-200 px-1.5 py-0.5 rounded-full">
+                          ACTUEL
                         </span>
                       )}
-                    </span>
-                    <span className="text-[10px] font-bold text-amber-600 bg-amber-100/80 px-1.5 py-0.5 rounded-full">{m.points} pts</span>
+                    </div>
+                    <p className="text-[11px] text-gray-500">{pk.tagline}</p>
                   </div>
-                ))}
-              </div>
 
-              <p className="text-[11px] text-gray-500 leading-relaxed">
-                Pour obtenir plus de points, choisissez un pack dans la liste. Un point non utilisé reste dans votre solde.
-              </p>
-            </aside>
-          </section>
+                  <div className="flex items-end gap-1.5">
+                    <span className={`text-2xl font-bold tracking-tight ${pk.highlight ? 'text-transparent bg-clip-text bg-gradient-to-r from-amber-600 to-orange-500' : 'text-gray-900'}`}>
+                      {pk.price}
+                    </span>
+                    {pk.period && <span className="text-[11px] text-gray-400 pb-1">{pk.period}</span>}
+                  </div>
+
+                  {pk.points && (
+                    <div className={`flex items-center gap-1.5 w-fit px-3 py-1 rounded-full text-[11px] font-bold border ${
+                      pk.highlight
+                        ? 'bg-amber-100/80 text-amber-800 border-amber-200'
+                        : 'bg-gray-100 text-gray-700 border-gray-200'
+                    }`}>
+                      <Zap className="w-3 h-3 text-amber-500" />
+                      {pk.points}
+                    </div>
+                  )}
+
+                  <ul className="space-y-2 flex-1 pt-1">
+                    {pk.features.map((f) => (
+                      <li key={f} className="flex items-start gap-2 text-xs text-gray-600">
+                        <Check className="w-3.5 h-3.5 text-amber-500 shrink-0 mt-0.5 stroke-[2.5]" />
+                        {f}
+                      </li>
+                    ))}
+                  </ul>
+
+                  <button
+                    type="button"
+                    disabled={isCurrent}
+                    onClick={() => {
+                      if (isDevis) {
+                        window.location.href = 'mailto:contact@auradesign.dz?subject=Pack%20Business%20%26%20Agences%20%E2%80%94%20Aura%20Design';
+                        return;
+                      }
+                      onChoose(pk.id);
+                    }}
+                    className={`w-full px-3 py-2.5 rounded-full text-xs font-bold transition-all ${
+                      isCurrent
+                        ? 'bg-gray-100 text-gray-400 cursor-default'
+                        : pk.highlight
+                        ? 'bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-white shadow-md shadow-amber-200/60 cursor-pointer'
+                        : 'bg-gray-900 hover:bg-black text-white cursor-pointer'
+                    }`}
+                  >
+                    {isCurrent ? 'Pack actuel' : pk.cta}
+                  </button>
+                </div>
+              );
+            })}
+          </div>
 
           {/* --- Remarques de consommation --- */}
-          <section className="mt-8 grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             {PRICING_TIPS.map((tip) => (
               <div
                 key={tip.title}
@@ -685,14 +710,284 @@ function PricingPage({
                 </div>
               </div>
             ))}
-          </section>
+          </div>
 
           {/* --- Note de facturation --- */}
-          <p className="text-[11px] text-gray-400 text-center pt-6 leading-relaxed max-w-xl mx-auto">
+          <p className="text-[11px] text-gray-400 text-center leading-relaxed max-w-xl mx-auto">
             Les points sont déduits uniquement lorsque vous générez un visuel — un point non utilisé reste dans votre solde.
             L'export PNG HD, l'export multi-calques Canva et l'envoi vers votre compte Canva sont toujours inclus gratuitement.
           </p>
         </main>
+      </div>
+    </div>
+  );
+}
+
+// ============================================================
+// PAGE /home — LANDING PUBLIQUE (page de vente)
+// ============================================================
+function LandingPage({
+  credits,
+  onEnter,
+  onPricing,
+  onReferral,
+}: {
+  credits: number;
+  onEnter: () => void;
+  onPricing: () => void;
+  onReferral: () => void;
+}) {
+  const steps = [
+    { n: '1', title: 'Décrivez votre idée', text: "« Post de lancement pour ma boutique de bijoux » — une phrase suffit, l'IA fait le reste." },
+    { n: '2', title: 'Choisissez modèle & format', text: 'Flash, Studio ou Pro Max — puis Story, Post carré, Carrousel, Affiche…' },
+    { n: '3', title: 'Exportez partout', text: 'PNG HD, PDF multi-pages ou envoi direct dans votre compte Canva, calques éditables inclus.' },
+  ];
+  const features = [
+    { icon: Sparkles, title: '3 modèles IA', text: 'Aura Flash pour la vitesse, Studio pour le HD, Pro Max pour vos plus gros projets.' },
+    { icon: PencilRuler, title: 'Export Canva multi-calques', text: 'Vos textes et éléments restent modifiables calque par calque dans Canva.' },
+    { icon: Maximize2, title: 'Magic Resize gratuit', text: 'Déclinez un design en Story, Post, Affiche ou 16:9 sans dépenser un point.' },
+    { icon: FileText, title: 'PNG HD & PDF', text: 'Exportez un slide ou tout le carrousel, qualité maximale pour l’impression et le web.' },
+    { icon: Palette, title: 'Brand Kit intégré', text: 'Logo, nom, @handle et couleur d’accent appliqués automatiquement à chaque design.' },
+    { icon: Smartphone, title: 'Installable comme une app', text: 'Aura Design s’installe sur votre téléphone — crénez où que vous soyez, même hors ligne.' },
+  ];
+
+  return (
+    <div className="relative min-h-screen w-full overflow-x-hidden font-sans text-gray-900 antialiased">
+      <div className="aurora fixed" aria-hidden="true">
+        <span className="blob blob-a" />
+        <span className="blob blob-b" />
+        <span className="blob blob-c" />
+        <span className="blob blob-d" />
+      </div>
+
+      <div className="relative z-10">
+        {/* --- Header --- */}
+        <header className="sticky top-0 z-30 backdrop-blur-md bg-white/60 border-b border-orange-200/40">
+          <div className="max-w-6xl mx-auto px-4 sm:px-6 h-14 flex items-center justify-between">
+            <div className="flex items-center gap-2.5">
+              <div className="w-8 h-8 rounded-full bg-gradient-to-br from-amber-400 via-amber-500 to-orange-500 flex items-center justify-center shadow-sm">
+                <Sparkles className="w-4 h-4 text-white stroke-[2.5]" />
+              </div>
+              <div className="flex items-center gap-1.5">
+                <span className="font-semibold text-gray-900 text-lg tracking-tight">Aura</span>
+                <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-gray-200/80 text-gray-700">Design</span>
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={onPricing}
+                className="px-3.5 py-1.5 rounded-full text-xs font-bold text-gray-700 hover:bg-white/80 transition-colors cursor-pointer"
+              >
+                Tarifs
+              </button>
+              <button
+                type="button"
+                onClick={onEnter}
+                className="px-4 py-1.5 rounded-full bg-gray-900 hover:bg-black text-white text-xs font-bold transition-colors cursor-pointer shadow-sm"
+              >
+                Ouvrir l'atelier
+              </button>
+            </div>
+          </div>
+        </header>
+
+        {/* --- Hero --- */}
+        <section className="max-w-6xl mx-auto px-4 sm:px-6 pt-14 pb-10 text-center space-y-6">
+          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/80 border border-amber-200/70 text-[11px] font-bold text-amber-700 shadow-xs">
+            <Zap className="w-3 h-3" />
+            NOUVEAU · 20 POINTS OFFERTS À L'INSCRIPTION
+          </span>
+          <h1 className="text-3xl sm:text-5xl font-semibold tracking-tight leading-[1.08] max-w-3xl mx-auto">
+            Des designs qui <span className="text-transparent bg-clip-text bg-gradient-to-r from-amber-500 to-orange-500">vendent</span>,
+            <br className="hidden sm:block" /> générés en seconde.
+          </h1>
+          <p className="text-sm sm:text-base text-gray-600 max-w-xl mx-auto leading-relaxed">
+            Posts, stories, carrousels, affiches et fiches produit pour vos réseaux sociaux.
+            Décrivez votre idée — l'IA s'occupe du reste, avec votre logo et vos couleurs.
+          </p>
+          <div className="flex flex-wrap items-center justify-center gap-3">
+            <button
+              type="button"
+              onClick={onEnter}
+              className="px-6 py-3 rounded-full bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-white text-sm font-bold shadow-lg shadow-amber-200/70 transition-all cursor-pointer"
+            >
+              Commencer gratuitement
+            </button>
+            <button
+              type="button"
+              onClick={onPricing}
+              className="px-6 py-3 rounded-full bg-white border border-gray-200 hover:border-amber-300 text-gray-800 text-sm font-bold transition-all cursor-pointer"
+            >
+              Voir les packs
+            </button>
+          </div>
+          <div className="flex flex-wrap items-center justify-center gap-x-5 gap-y-1.5 text-[11px] font-semibold text-gray-500">
+            <span className="flex items-center gap-1.5">
+              <Check className="w-3.5 h-3.5 text-emerald-500" /> Sans carte bancaire
+            </span>
+            <span className="flex items-center gap-1.5">
+              <Check className="w-3.5 h-3.5 text-emerald-500" /> Prêt en 10 secondes
+            </span>
+            <span className="flex items-center gap-1.5">
+              <Check className="w-3.5 h-3.5 text-emerald-500" /> {credits > 0 ? `${credits} points sur votre compte` : '20 points de bienvenue'}
+            </span>
+          </div>
+
+          {/* --- Aperçu des designs (mockups CSS dans le style de l'atelier) --- */}
+          <div className="relative max-w-3xl mx-auto mt-12">
+            <div className="flex items-end justify-center gap-4 sm:gap-6">
+              {/* Story 4:5 */}
+              <div className="hidden sm:block w-52 rotate-[-4deg] translate-y-2 hover:rotate-[-2deg] transition-transform duration-300">
+                <div className="rounded-2xl bg-zinc-900 border border-zinc-800 shadow-xl p-4 aspect-[4/5] flex flex-col justify-between text-left overflow-hidden">
+                  <div className="flex items-center gap-1.5">
+                    <div className="w-4 h-4 rounded bg-amber-500 flex items-center justify-center text-[7px] font-bold text-black">A</div>
+                    <span className="text-[8px] font-bold tracking-wider text-white uppercase">Aura Studio</span>
+                  </div>
+                  <div className="space-y-1.5">
+                    <span className="text-[8px] font-bold uppercase tracking-wider text-amber-400">Lancement</span>
+                    <h3 className="text-sm font-semibold text-white leading-snug">Votre marque mérite d'être vue.</h3>
+                    <p className="text-[9px] text-zinc-400 leading-relaxed">Des visuels pro, générés par l'IA en quelques secondes.</p>
+                  </div>
+                  <div className="flex items-center justify-between text-[8px] text-zinc-500 border-t border-zinc-800 pt-2">
+                    <span className="text-white font-semibold">@aura.design</span>
+                    <span className="text-amber-400 font-bold">Découvrir ➔</span>
+                  </div>
+                </div>
+              </div>
+              {/* Carré 1:1 (central) */}
+              <div className="w-60 sm:w-72 hover:-translate-y-1 transition-transform duration-300">
+                <div className="rounded-2xl bg-zinc-900 border border-zinc-800 shadow-2xl p-5 aspect-square flex flex-col justify-between text-left overflow-hidden relative">
+                  <div className="absolute -top-8 -right-8 w-28 h-28 rounded-full bg-amber-500/20 blur-2xl" />
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-1.5">
+                      <div className="w-5 h-5 rounded bg-amber-500 flex items-center justify-center text-[9px] font-bold text-black">A</div>
+                      <span className="text-[9px] font-bold tracking-wider text-white uppercase">Aura Studio</span>
+                    </div>
+                    <span className="text-[8px] font-bold text-amber-400 bg-amber-500/10 border border-amber-500/20 px-1.5 py-0.5 rounded-full">01 / 05</span>
+                  </div>
+                  <div className="space-y-2">
+                    <span className="text-[9px] font-bold uppercase tracking-wider text-amber-400">Conseil #1</span>
+                    <h3 className="text-lg font-semibold text-white leading-snug">Publiez tous les jours sans y passer vos soirées.</h3>
+                    <div className="space-y-1 pt-1">
+                      {['Un visuel par jour, généré en 10s', 'Votre logo et vos couleurs', 'Export direct vers Canva'].map((b) => (
+                        <div key={b} className="flex items-center gap-1.5 text-[9px] text-zinc-300">
+                          <span className="w-3 h-3 rounded-full bg-amber-500/20 text-amber-400 flex items-center justify-center text-[7px]">✓</span>
+                          {b}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                  <div className="flex items-center justify-between text-[9px] text-zinc-500 border-t border-zinc-800 pt-2.5">
+                    <span className="text-white font-semibold">@aura.design</span>
+                    <span className="text-amber-400 font-bold bg-amber-500/10 px-2 py-0.5 rounded-md border border-amber-500/20">Enregistrer ➔</span>
+                  </div>
+                </div>
+              </div>
+              {/* Affiche 2:3 */}
+              <div className="hidden sm:block w-48 rotate-[4deg] translate-y-2 hover:rotate-[2deg] transition-transform duration-300">
+                <div className="rounded-2xl bg-zinc-900 border border-zinc-800 shadow-xl p-4 aspect-[2/3] flex flex-col justify-between text-left overflow-hidden">
+                  <div className="flex items-center gap-1.5">
+                    <div className="w-4 h-4 rounded bg-amber-500 flex items-center justify-center text-[7px] font-bold text-black">A</div>
+                    <span className="text-[8px] font-bold tracking-wider text-white uppercase">Aura Studio</span>
+                  </div>
+                  <div className="space-y-1.5">
+                    <span className="text-[8px] font-bold uppercase tracking-wider text-amber-400">Événement</span>
+                    <h3 className="text-sm font-semibold text-white leading-snug">Vente flash ce week-end.</h3>
+                    <div className="text-xl font-bold text-amber-400">-30%</div>
+                    <p className="text-[9px] text-zinc-400">Sur toute la boutique, samedi & dimanche seulement.</p>
+                  </div>
+                  <div className="text-center text-[8px] font-bold text-black bg-amber-400 rounded-full py-1.5">Réserver ma place ➔</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* --- Comment ça marche --- */}
+        <section className="max-w-6xl mx-auto px-4 sm:px-6 py-12">
+          <h2 className="text-xl sm:text-2xl font-semibold text-center tracking-tight">Comment ça marche ?</h2>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-7">
+            {steps.map((st) => (
+              <div key={st.n} className="rounded-3xl border border-gray-200 bg-white/80 backdrop-blur p-5 space-y-2">
+                <div className="w-9 h-9 rounded-full bg-gradient-to-br from-amber-400 to-orange-500 text-white font-bold text-sm flex items-center justify-center shadow-sm">
+                  {st.n}
+                </div>
+                <h3 className="font-semibold text-gray-900 text-sm">{st.title}</h3>
+                <p className="text-xs text-gray-500 leading-relaxed">{st.text}</p>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        {/* --- Fonctionnalités --- */}
+        <section className="max-w-6xl mx-auto px-4 sm:px-6 py-12">
+          <h2 className="text-xl sm:text-2xl font-semibold text-center tracking-tight">
+            Tout ce qu'il faut pour <span className="text-transparent bg-clip-text bg-gradient-to-r from-amber-500 to-orange-500">briller</span> sur les réseaux
+          </h2>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mt-7">
+            {features.map((f) => (
+              <div key={f.title} className="rounded-3xl border border-gray-200 bg-white/80 backdrop-blur p-5 space-y-2 hover:border-amber-300/70 hover:shadow-md transition-all">
+                <div className="w-9 h-9 rounded-2xl bg-amber-100 text-amber-600 flex items-center justify-center">
+                  <f.icon className="w-[18px] h-[18px]" />
+                </div>
+                <h3 className="font-semibold text-gray-900 text-sm">{f.title}</h3>
+                <p className="text-xs text-gray-500 leading-relaxed">{f.text}</p>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        {/* --- Parrainage --- */}
+        <section className="max-w-6xl mx-auto px-4 sm:px-6 py-12">
+          <div className="rounded-3xl border border-amber-200/80 bg-gradient-to-br from-amber-50 via-orange-50/60 to-white p-6 sm:p-8 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-5">
+            <div className="space-y-1.5">
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-white border border-amber-200 text-[10px] font-bold text-amber-700">
+                <Gift className="w-3 h-3" />
+                PARRAINAGE
+              </span>
+              <h2 className="text-lg sm:text-xl font-semibold tracking-tight text-gray-900">
+                Gagnez <span className="text-transparent bg-clip-text bg-gradient-to-r from-amber-500 to-orange-500">50 points</span> quand votre pote souscrit un pack
+              </h2>
+              <p className="text-xs text-gray-600 max-w-lg leading-relaxed">
+                Partagez votre lien d'invitation : votre ami démarre avec 20 points de bienvenue, et vous recevez
+                50 points dès qu'il active son premier pack payant.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={onReferral}
+              className="shrink-0 px-5 py-2.5 rounded-full bg-gray-900 hover:bg-black text-white text-xs font-bold transition-colors cursor-pointer shadow-md"
+            >
+              Obtenir mon lien d'invitation
+            </button>
+          </div>
+        </section>
+
+        {/* --- CTA final --- */}
+        <section className="max-w-6xl mx-auto px-4 sm:px-6 py-14 text-center space-y-4">
+          <h2 className="text-xl sm:text-2xl font-semibold tracking-tight">Prêt à créer votre premier design ?</h2>
+          <p className="text-sm text-gray-500">20 points offerts — de quoi générer vos 4 premiers visuels, sans payer.</p>
+          <button
+            type="button"
+            onClick={onEnter}
+            className="px-7 py-3 rounded-full bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-white text-sm font-bold shadow-lg shadow-amber-200/70 transition-all cursor-pointer"
+          >
+            Commencer gratuitement
+          </button>
+        </section>
+
+        {/* --- Footer --- */}
+        <footer className="border-t border-orange-200/40 bg-white/50 backdrop-blur">
+          <div className="max-w-6xl mx-auto px-4 sm:px-6 py-6 flex flex-col sm:flex-row items-center justify-between gap-3 text-[11px] text-gray-500">
+            <span>© 2026 Aura Design — Créé en Algérie 🇩🇿</span>
+            <div className="flex items-center gap-4 font-semibold">
+              <button type="button" onClick={onEnter} className="hover:text-gray-900 cursor-pointer transition-colors">Atelier</button>
+              <button type="button" onClick={onPricing} className="hover:text-gray-900 cursor-pointer transition-colors">Tarifs & Packs</button>
+              <button type="button" onClick={onReferral} className="hover:text-gray-900 cursor-pointer transition-colors">Parrainage</button>
+            </div>
+          </div>
+        </footer>
       </div>
     </div>
   );
@@ -800,8 +1095,6 @@ export default function App() {
   }, [plan]);
   const [searchOpen, setSearchOpen] = useState(false);
   const [sessionSearch, setSessionSearch] = useState('');
-  const [isModelOpen, setIsModelOpen] = useState(false);
-  const modelRef = useRef<HTMLDivElement>(null);
   const [feedback, setFeedback] = useState<Record<string, 'up' | 'down'>>({});
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -845,6 +1138,8 @@ export default function App() {
   const [selectedFormat, setSelectedFormat] = useState<FormatType>('scroller');
   const [isFormatDropdownOpen, setIsFormatDropdownOpen] = useState(false);
   const [isComposerModelOpen, setIsComposerModelOpen] = useState(false);
+  const [resizeOpenId, setResizeOpenId] = useState<string | null>(null);
+  const [referralOpen, setReferralOpen] = useState(false);
   const [carouselSlidesCount, setCarouselSlidesCount] = useState<number>(4);
   const [isSlidesDropdownOpen, setIsSlidesDropdownOpen] = useState(false);
   const [attachedImages, setAttachedImages] = useState<string[]>([]);
@@ -878,32 +1173,58 @@ export default function App() {
   };
 
   // Sessions list
-  const [recentSessions, setRecentSessions] = useState<RecentSession[]>([]);
+  const [recentSessions, setRecentSessions] = useState<RecentSession[]>(() => loadJson<RecentSession[]>('aura_sessions_v1', []));
 
   // Messages list - starts empty so user immediately lands on the Gemini greeting screen!
   const [messages, setMessages] = useState<Message[]>([]);
-  const [sessionMessagesMap, setSessionMessagesMap] = useState<Record<string, Message[]>>({});
+  const [sessionMessagesMap, setSessionMessagesMap] = useState<Record<string, Message[]>>(() => loadJson<Record<string, Message[]>>('aura_session_messages_v1', {}));
+  // Persistance de l'historique (survit au rafraîchissement)
+  useEffect(() => {
+    try {
+      localStorage.setItem('aura_sessions_v1', JSON.stringify(recentSessions));
+    } catch {}
+  }, [recentSessions]);
+  useEffect(() => {
+    try {
+      localStorage.setItem('aura_session_messages_v1', JSON.stringify(sessionMessagesMap));
+    } catch {
+      // Quota dépassé (photos volumineuses) : on retire les images base64
+      try {
+        const stripped = JSON.stringify(sessionMessagesMap, (_k, v) =>
+          typeof v === 'string' && v.startsWith('data:') ? undefined : v
+        );
+        localStorage.setItem('aura_session_messages_v1', stripped);
+      } catch {}
+    }
+  }, [sessionMessagesMap]);
 
   // Salutation dynamique Gemini
   const greetingSalutation = t('greeting');
 
   // Suggestions d'inspiration sur la page d'accueil style Gemini
   const welcomeSuggestions = [
-    { title: 'Lancement de ma boutique', prompt: 'Crée un visuel de lancement percutant pour l\'ouverture de ma nouvelle boutique en ligne.' },
-    { title: 'Promotion -30%', prompt: 'Génère un visuel promotionnel pour une réduction de -30% valable ce week-end seulement.' },
-    { title: 'Conseils pour ma clientèle', prompt: 'Crée un contenu éducatif donnant 5 conseils pratiques à mes clients pour progresser rapidement.' },
-    { title: 'Citation inspirante', prompt: 'Crée un visuel avec une citation inspirante sur la réussite et la discipline pour LinkedIn.' },
-  ].map((c) => {
-    const inferred = inferOpts(c.prompt);
-    const F = FORMATS[inferred.format || 'square'].Icon;
-    return { ...c, icon: <F className="w-4 h-4 text-orange-600" /> };
-  });
+    { title: 'Lancement de ma boutique', prompt: 'Crée un visuel de lancement percutant pour l\'ouverture de ma nouvelle boutique en ligne.', SIcon: ShoppingBag },
+    { title: 'Promotion -30%', prompt: 'Génère un visuel promotionnel pour une réduction de -30% valable ce week-end seulement.', SIcon: BadgePercent },
+    { title: 'Conseils pour ma clientèle', prompt: 'Crée un contenu éducatif donnant 5 conseils pratiques à mes clients pour progresser rapidement.', SIcon: Lightbulb },
+    { title: 'Citation inspirante', prompt: 'Crée un visuel avec une citation inspirante sur la réussite et la discipline pour LinkedIn.', SIcon: Quote },
+  ].map((c) => ({ ...c, icon: <c.SIcon className="w-4 h-4 text-orange-600" /> }));
 
   const showToast = (msg: string) => {
     setToastMessage(msg);
     if (toastTimer.current) clearTimeout(toastTimer.current);
     toastTimer.current = setTimeout(() => setToastMessage(null), 2800);
   };
+  // Détection d'un lien de parrainage (?ref=CODE)
+  useEffect(() => {
+    try {
+      const ref = new URLSearchParams(window.location.search).get('ref');
+      if (ref) {
+        localStorage.setItem('aura_ref_applied', ref);
+        showToast(`Code d'invitation ${ref} détecté — vos 20 points de bienvenue vous attendent !`);
+      }
+    } catch {}
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
     setSessionMessagesMap((prev) => (prev[activeSessionId] === messages ? prev : { ...prev, [activeSessionId]: messages }));
@@ -925,9 +1246,6 @@ export default function App() {
       if (slidesCountDropdownRef.current && !slidesCountDropdownRef.current.contains(event.target as Node)) {
         setIsSlidesDropdownOpen(false);
       }
-      if (modelRef.current && !modelRef.current.contains(event.target as Node)) {
-        setIsModelOpen(false);
-      }
       if (accountRef.current && !accountRef.current.contains(event.target as Node)) {
         setAccountMenuOpen(false);
         setLangMenuOpen(false);
@@ -939,7 +1257,6 @@ export default function App() {
         setIsFormatDropdownOpen(false);
         setIsComposerModelOpen(false);
         setIsSlidesDropdownOpen(false);
-        setIsModelOpen(false);
         setAccountMenuOpen(false);
         setModal(null);
       }
@@ -983,11 +1300,17 @@ export default function App() {
   // Export slide as real PNG
   const downloadSlide = async (design: DesignContent, index: number) => {
     const slide = design.slides[index];
-    const blob = await slideToPngBlob(slide, design.format, design.slides.length, {
-      name: brandName,
-      handle: brandHandle,
-      color: brandColor,
-    });
+    const blob = await slideToPngBlob(
+      slide,
+      design.format,
+      design.slides.length,
+      {
+        name: brandName,
+        handle: brandHandle,
+        color: brandColor,
+      },
+      { watermark: plan === 'free' }
+    );
     if (!blob) {
       showToast("Export impossible sur ce navigateur.");
       return false;
@@ -1091,6 +1414,67 @@ export default function App() {
     setCanvaExporting(false);
   };
 
+  // ===== EXPORT PDF (tous les slides en un seul fichier) =====
+  const handleExportPdf = async (design: DesignContent) => {
+    showToast(`Export PDF de ${design.slides.length} slide(s) en cours...`);
+    try {
+      const fmt = FORMATS[design.format];
+      const pages = [];
+      for (const slide of design.slides) {
+        const blob = await slideToPngBlob(
+          slide,
+          design.format,
+          design.slides.length,
+          { name: brandName, handle: brandHandle, color: brandColor },
+          { mime: 'image/jpeg', watermark: plan === 'free' }
+        );
+        if (!blob) {
+          showToast('Export PDF impossible sur ce navigateur.');
+          return;
+        }
+        pages.push({
+          jpegBytes: new Uint8Array(await blob.arrayBuffer()),
+          widthPt: pxToPt(fmt.w),
+          heightPt: pxToPt(fmt.h),
+          widthPx: fmt.w,
+          heightPx: fmt.h,
+        });
+      }
+      const pdfBlob = createPdfFromJpegs(pages);
+      const url = URL.createObjectURL(pdfBlob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `${design.title.replace(/[^\w\-]+/g, '_')}.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      setTimeout(() => URL.revokeObjectURL(url), 1500);
+      showToast('PDF téléchargé !');
+    } catch {
+      showToast('Export PDF impossible.');
+    }
+  };
+
+  // ===== MAGIC RESIZE : décliner le design dans un autre format (gratuit) =====
+  const handleResizeDesign = (design: DesignContent, newFormat: FormatType) => {
+    const resized: DesignContent = {
+      format: newFormat,
+      title: design.title,
+      activeSlideIndex: 0,
+      slides: design.slides.map((sl, i) => ({ ...sl, id: `rsz_${i}_${Date.now()}` })),
+    };
+    const resizeMsg: Message = {
+      id: `ast_${Date.now()}`,
+      sender: 'assistant',
+      text: `Voici votre design **décliné au format ${FORMATS[newFormat].label}** — même contenu, nouvelles proportions. Le recyclage entre formats est **gratuit** !`,
+      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      design: resized,
+      suggestions: ['Exporter en PDF', 'Exporter tout le carrousel en PNG HD'],
+    };
+    setMessages((prev) => [...prev, resizeMsg]);
+    showToast(`Design décliné en ${FORMATS[newFormat].label} — gratuit !`);
+  };
+
   const handleCanvaConnect = () => {
     const tok = canvaTokenInput.trim();
     if (!tok) {
@@ -1132,6 +1516,10 @@ export default function App() {
     const lastUser = [...messages].reverse().find((m) => m.sender === 'user')?.text;
     if (lower.includes('png') && msg.design) {
       handleExportAll(msg.design);
+      return;
+    }
+    if (lower.includes('pdf') && msg.design) {
+      handleExportPdf(msg.design);
       return;
     }
     const opts = inferOpts(sug);
@@ -1354,6 +1742,7 @@ export default function App() {
           'Affiner le texte du Slide 1',
           isCarousel ? `Régénérer avec ${resolvedCount === 5 ? 7 : 5} slides` : 'Passer en format Carrousel 4:5',
           'Exporter tout le carrousel en PNG HD',
+          'Exporter en PDF',
         ],
       };
 
@@ -1421,6 +1810,24 @@ export default function App() {
     </div>
   ) : null;
 
+  // ===== PAGE /home — LANDING PUBLIQUE =====
+  if (route === '/' || route === '/home') {
+    return (
+      <div dir={lang === 'ar' ? 'rtl' : 'ltr'}>
+        <LandingPage
+          credits={credits}
+          onEnter={() => navigate('/app')}
+          onPricing={() => navigate('/pricing')}
+          onReferral={() => {
+            navigate('/app');
+            setReferralOpen(true);
+          }}
+        />
+        {toastEl}
+      </div>
+    );
+  }
+
   // ===== PAGE /pricing DÉDIÉE =====
   if (route === '/pricing') {
     return (
@@ -1428,7 +1835,7 @@ export default function App() {
         <PricingPage
           currentPlan={plan}
           credits={credits}
-          onChoosePack={(packId) => {
+          onChoose={(packId) => {
             if (packId === plan) return;
             setPlan(packId);
             if (packId === 'free') setCredits(20);
@@ -1571,6 +1978,18 @@ export default function App() {
               {credits} pts
             </span>
           </button>
+
+          {/* Parrainage */}
+          <button
+            onClick={() => setReferralOpen(true)}
+            className="w-full flex items-center gap-3 px-4 py-2 rounded-full hover:bg-gray-200/60 text-gray-600 hover:text-gray-900 text-sm font-medium transition-colors"
+          >
+            <Gift className="w-4 h-4 text-orange-500" />
+            <span>Parrainer un ami</span>
+            <span className="ml-auto text-[10px] font-bold text-emerald-700 bg-emerald-100/80 px-1.5 py-0.5 rounded-full">
+              +50 pts
+            </span>
+          </button>
         </div>
 
         {/* Section "Récents" (Historique avec pills arrondis) */}
@@ -1656,6 +2075,7 @@ export default function App() {
                 </div>
               ))}
               {[
+                { key: 'referral', Icon: Gift, label: 'Parrainer un ami', action: () => setReferralOpen(true) },
                 { key: 'help', Icon: CircleHelp, label: t('help'), action: () => setModal('help') },
                 { key: 'about', Icon: Info, label: t('learnMore'), action: () => setModal('about') },
                 { key: 'upgrade', Icon: Zap, label: t('upgrade'), action: () => navigate('/pricing') },
@@ -1729,89 +2149,35 @@ export default function App() {
               </button>
             )}
 
-            {/* Sélecteur de modèle style Gemini */}
-            <div className="relative" ref={modelRef}>
-              <button
-                type="button"
-                onClick={() => setIsModelOpen((v) => !v)}
-                className="flex items-center gap-1.5 px-3 py-1 rounded-full hover:bg-white/70 text-gray-900 font-semibold text-sm cursor-pointer transition-colors"
-              >
-                <span className="tracking-tight">{activeModel.name}</span>
-                <span className="text-[10px] font-bold text-amber-600 bg-amber-100/80 px-1.5 py-0.5 rounded-full">
-                  {activeModel.points} pts
-                </span>
-                <ChevronDown className={`w-3.5 h-3.5 text-gray-500 transition-transform ${isModelOpen ? 'rotate-180' : ''}`} />
-              </button>
-              {isModelOpen && (
-                <div className="absolute left-0 top-10 w-64 rounded-2xl bg-white border border-gray-200 shadow-xl p-1.5 z-30 space-y-0.5">
-                  <div className="px-3 pt-1.5 pb-1 text-[10px] font-bold text-gray-400 uppercase tracking-wider">
-                    Modèle de génération
-                  </div>
-                  {MODELS.map((m) => (
-                    <button
-                      key={m.id}
-                      type="button"
-                      onClick={() => {
-                        setActiveModelId(m.id);
-                        setIsModelOpen(false);
-                        showToast(`Modèle actif : ${m.name} · ${m.points} points / image`);
-                      }}
-                      className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-sm cursor-pointer transition-colors ${
-                        activeModelId === m.id ? 'bg-orange-50 text-orange-800 font-semibold' : 'text-gray-700 hover:bg-gray-100'
-                      }`}
-                    >
-                      <span className="flex items-center gap-2">
-                        {m.name}
-                        {m.badge && (
-                          <span className="text-[9px] font-bold text-amber-700 bg-amber-100 border border-amber-200 px-1.5 py-0.5 rounded-full">
-                            {m.badge}
-                          </span>
-                        )}
-                      </span>
-                      <span className="flex items-center gap-1.5">
-                        <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${activeModelId === m.id ? 'bg-amber-100 text-amber-700' : 'bg-gray-100 text-gray-500'}`}>
-                          {m.points} pts
-                        </span>
-                        {activeModelId === m.id && <Check className="w-3.5 h-3.5 text-orange-600" />}
-                      </span>
-                    </button>
-                  ))}
-                  <div className="my-1 border-t border-gray-100" />
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setIsModelOpen(false);
-                      navigate('/pricing');
-                    }}
-                    className="w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-semibold text-amber-700 hover:bg-amber-50 cursor-pointer transition-colors"
-                  >
-                    <span className="flex items-center gap-2">
-                      <Zap className="w-3.5 h-3.5" />
-                      Voir les packs
-                    </span>
-                    <span className="text-[10px] bg-gray-900 text-white px-1.5 py-0.5 rounded-full">{credits} pts</span>
-                  </button>
-                </div>
-              )}
-            </div>
-          </div>
-
-          <div className="flex items-center gap-2">
-            {/* Solde de points (clique = page tarifs) */}
+            {/* Pack choisi (clique = page tarifs) */}
             <button
               type="button"
               onClick={() => navigate('/pricing')}
-              title="Voir les packs de points"
-              className={`hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold transition-colors cursor-pointer border ${
-                credits < 20
-                  ? 'bg-red-50 hover:bg-red-100 text-red-700 border-red-200'
-                  : 'bg-white/70 hover:bg-white text-gray-800 border-gray-200/80'
-              }`}
+              title="Votre pack"
+              className="flex items-center gap-1.5 px-3 py-1 rounded-full hover:bg-white/70 text-gray-900 font-semibold text-sm cursor-pointer transition-colors"
             >
-              <Zap className={`w-3.5 h-3.5 ${credits < 20 ? 'text-red-500' : 'text-amber-500'}`} />
-              <span>{credits} points</span>
-              <span className="text-gray-400 font-semibold">Packs</span>
+              <Zap className="w-3.5 h-3.5 text-amber-500" />
+              <span className="tracking-tight">Pack {PRICING.find((pk) => pk.id === plan)?.name || 'Gratuit'}</span>
+              <ChevronDown className="w-3.5 h-3.5 text-gray-500" />
             </button>
+          </div>
+
+          <div className="flex items-center gap-2">
+            {/* Points façon Manus : Packs | points */}
+            <div className="flex items-center gap-2.5 px-3.5 py-1.5 rounded-full bg-white border border-gray-200/80 text-xs font-semibold shadow-2xs">
+              <button
+                type="button"
+                onClick={() => navigate('/pricing')}
+                className="hidden md:inline text-amber-600 font-bold cursor-pointer hover:text-amber-700 transition-colors"
+              >
+                Packs
+              </button>
+              <span className="w-px h-3.5 bg-gray-200" />
+              <span className={`flex items-center gap-1 font-bold ${credits < 5 ? 'text-red-600' : 'text-gray-900'}`}>
+                <Zap className={`w-3.5 h-3.5 ${credits < 5 ? 'text-red-500' : 'text-amber-500'}`} />
+                {credits}
+              </span>
+            </div>
             <button
               onClick={handleShare}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/70 hover:bg-white text-gray-700 text-xs font-semibold transition-colors cursor-pointer"
@@ -1823,7 +2189,7 @@ export default function App() {
         </header>
 
         {/* Flux de discussion (Au centre) */}
-        <div className={`flex-1 overflow-y-auto px-4 sm:px-6 pt-4 flex flex-col ${messages.length === 0 ? 'pb-[calc(54vh+1rem)]' : 'pb-36'}`}>
+        <div className={`flex-1 overflow-y-auto px-4 sm:px-6 pt-4 flex flex-col ${messages.length === 0 ? 'pb-[calc(56vh+1rem)]' : 'pb-36'}`}>
           {messages.length === 0 ? (
             /* ========================================================= */
             /* PAGE D'ACCUEIL NOUVEAU DESIGN STYLE GEMINI */
@@ -1914,7 +2280,7 @@ export default function App() {
                                 </div>
 
                                 {/* Actions d'export & copie */}
-                                <div className="flex items-center gap-1.5">
+                                <div className="flex flex-wrap items-center justify-end gap-1.5">
                                   <button
                                     onClick={() =>
                                       handleCopySlideText(msg.design!.slides[msg.design!.activeSlideIndex || 0])
@@ -1927,6 +2293,54 @@ export default function App() {
                                     ) : (
                                       <Copy className="w-3.5 h-3.5" />
                                     )}
+                                  </button>
+
+                                  <div className="relative">
+                                    <button
+                                      onClick={() => setResizeOpenId(resizeOpenId === msg.id ? null : msg.id)}
+                                      title="Décliner ce design dans un autre format (gratuit)"
+                                      className="p-1.5 rounded-full hover:bg-zinc-800 text-zinc-400 hover:text-white transition-colors cursor-pointer"
+                                    >
+                                      <Maximize2 className="w-3.5 h-3.5" />
+                                    </button>
+                                    {resizeOpenId === msg.id && (
+                                      <div className="absolute right-0 bottom-10 w-56 rounded-2xl bg-white border border-gray-200 shadow-xl p-1.5 z-30 space-y-0.5">
+                                        <div className="px-2.5 py-1 text-[10px] font-bold text-gray-400 uppercase tracking-wider">
+                                          Décliner en
+                                        </div>
+                                        {FORMAT_ORDER.filter((f) => f !== msg.design!.format).map((f) => {
+                                          const F = FORMATS[f];
+                                          return (
+                                            <button
+                                              key={f}
+                                              type="button"
+                                              onClick={() => {
+                                                setResizeOpenId(null);
+                                                handleResizeDesign(msg.design!, f);
+                                              }}
+                                              className="w-full flex items-center justify-between px-2.5 py-1.5 rounded-xl text-xs font-semibold text-gray-700 hover:bg-gray-100 cursor-pointer transition-colors"
+                                            >
+                                              <span className="flex items-center gap-2">
+                                                <F.Icon className="w-3.5 h-3.5 text-gray-500" />
+                                                {F.label}
+                                              </span>
+                                              <span className="text-[9px] font-bold text-emerald-600 bg-emerald-50 border border-emerald-200 px-1.5 py-0.5 rounded-full">
+                                                GRATUIT
+                                              </span>
+                                            </button>
+                                          );
+                                        })}
+                                      </div>
+                                    )}
+                                  </div>
+
+                                  <button
+                                    onClick={() => handleExportPdf(msg.design!)}
+                                    title="Exporter tous les slides en un seul PDF"
+                                    className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-white border border-gray-200 hover:border-amber-400 hover:bg-amber-50/60 text-gray-800 font-semibold text-xs tracking-wide transition-all cursor-pointer"
+                                  >
+                                    <FileText className="w-3.5 h-3.5 text-gray-600" />
+                                    <span>PDF</span>
                                   </button>
 
                                   <button
@@ -2193,9 +2607,13 @@ export default function App() {
                   </div>
                   <div className="space-y-2">
                     <p className="text-xs font-bold text-gray-900">Aura Design AI</p>
-                    <div className="flex items-center gap-2 text-sm text-gray-500">
-                      <span className="w-2 h-2 rounded-full bg-amber-500 animate-ping" />
-                      <span>Génération et mise en page du visuel dans le Canvas...</span>
+                    <div className="flex items-center gap-2.5 text-sm text-gray-500">
+                      <span className="flex items-center gap-1">
+                        <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-bounce" style={{ animationDelay: '0ms' }} />
+                        <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-bounce" style={{ animationDelay: '150ms' }} />
+                        <span className="w-1.5 h-1.5 rounded-full bg-orange-500 animate-bounce" style={{ animationDelay: '300ms' }} />
+                      </span>
+                      <span>Génération de votre design en cours...</span>
                     </div>
                   </div>
                 </motion.div>
@@ -2277,74 +2695,6 @@ export default function App() {
 
                 {/* À droite : Sélecteur déroulant de format, Nombre de slides & bouton d'envoi */}
                 <div className="flex items-center gap-1.5 shrink-0">
-                  {/* Dropdown sélecteur de modèle (dans le box de texte) */}
-                  <div className="relative" ref={composerModelRef}>
-                    <button
-                      type="button"
-                      onClick={() => setIsComposerModelOpen((v) => !v)}
-                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-amber-50 hover:bg-amber-100/90 text-amber-900 text-xs font-bold border border-amber-200 shadow-2xs transition-colors cursor-pointer"
-                      title="Modèle de génération"
-                    >
-                      <Sparkles className="w-3.5 h-3.5 text-amber-600" />
-                      <span className="hidden md:inline">{activeModel.name}</span>
-                      <span className="text-[10px] font-bold text-amber-700 bg-white/80 px-1.5 py-0.5 rounded-full">{activeModel.points} pts</span>
-                      <ChevronDown className={`w-3 h-3 text-amber-600 transition-transform ${isComposerModelOpen ? 'rotate-180' : ''}`} />
-                    </button>
-
-                    {isComposerModelOpen && (
-                      <div className="absolute right-0 bottom-12 w-72 rounded-2xl bg-white border border-gray-200 shadow-xl p-1.5 z-30 space-y-0.5">
-                        <div className="px-2.5 py-1 text-[11px] font-semibold text-gray-400 uppercase tracking-wider">
-                          Modèle de génération
-                        </div>
-                        {MODELS.map((m) => (
-                          <button
-                            key={m.id}
-                            type="button"
-                            onClick={() => {
-                              setActiveModelId(m.id);
-                              setIsComposerModelOpen(false);
-                              showToast(`Modèle actif : ${m.name} · ${m.points} points / image`);
-                            }}
-                            className={`w-full flex items-center justify-between gap-2 px-2.5 py-2 rounded-xl text-xs cursor-pointer transition-colors ${
-                              activeModelId === m.id ? 'bg-amber-50 text-amber-900 font-bold' : 'text-gray-700 hover:bg-gray-100'
-                            }`}
-                          >
-                            <span className="min-w-0">
-                              <span className="flex items-center gap-1.5">
-                                {m.name}
-                                {m.badge && (
-                                  <span className="text-[9px] font-bold text-amber-700 bg-amber-100 border border-amber-200 px-1.5 py-0.5 rounded-full">
-                                    {m.badge}
-                                  </span>
-                                )}
-                              </span>
-                              <span className="block text-[10px] text-gray-400 font-normal truncate">{m.desc}</span>
-                            </span>
-                            <span className="flex items-center gap-1.5 shrink-0">
-                              <span className="text-[10px] font-bold text-amber-600 bg-amber-100/80 px-1.5 py-0.5 rounded-full">{m.points} pts</span>
-                              {activeModelId === m.id && <Check className="w-3.5 h-3.5 text-amber-600" />}
-                            </span>
-                          </button>
-                        ))}
-                        <div className="my-1 border-t border-gray-100" />
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setIsComposerModelOpen(false);
-                            navigate('/pricing');
-                          }}
-                          className="w-full flex items-center justify-between px-2.5 py-2 rounded-xl text-xs font-semibold text-amber-700 hover:bg-amber-50 cursor-pointer transition-colors"
-                        >
-                          <span className="flex items-center gap-2">
-                            <Zap className="w-3.5 h-3.5" />
-                            Voir les packs
-                          </span>
-                          <span className="text-[10px] font-bold text-gray-500">{credits} pts</span>
-                        </button>
-                      </div>
-                    )}
-                  </div>
-
                   {/* Dropdown sélecteur de format */}
                   <div className="relative" ref={dropdownRef}>
                     <button
@@ -2451,6 +2801,88 @@ export default function App() {
                     <ArrowUp className="w-4 h-4 stroke-[2.5]" />
                   </button>
                 </div>
+              </div>
+
+              {/* Barre d'outils sous le champ de texte (façon Claude) */}
+              <div className="flex items-center justify-between px-1.5 pt-1.5 pb-0.5">
+                <div className="relative" ref={composerModelRef}>
+                  <button
+                    type="button"
+                    onClick={() => setIsComposerModelOpen((v) => !v)}
+                    className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-amber-50 hover:bg-amber-100/90 text-amber-900 text-[11px] font-bold border border-amber-200/80 transition-colors cursor-pointer"
+                    title="Modèle de génération"
+                  >
+                    <Sparkles className="w-3 h-3 text-amber-600" />
+                    <span>{activeModel.name}</span>
+                    <span className="text-[9px] font-bold text-amber-700 bg-white/80 px-1 py-0.5 rounded-full">{activeModel.points} pts</span>
+                    <ChevronDown className={`w-2.5 h-2.5 text-amber-600 transition-transform ${isComposerModelOpen ? 'rotate-180' : ''}`} />
+                  </button>
+
+                  {isComposerModelOpen && (
+                    <div className="absolute left-0 bottom-10 w-72 rounded-2xl bg-white border border-gray-200 shadow-xl p-1.5 z-30 space-y-0.5">
+                      <div className="px-2.5 py-1 text-[11px] font-semibold text-gray-400 uppercase tracking-wider">
+                        Modèle de génération
+                      </div>
+                      {MODELS.map((m) => (
+                        <button
+                          key={m.id}
+                          type="button"
+                          onClick={() => {
+                            setActiveModelId(m.id);
+                            setIsComposerModelOpen(false);
+                            showToast(`Modèle actif : ${m.name} · ${m.points} points / image`);
+                          }}
+                          className={`w-full flex items-center justify-between gap-2 px-2.5 py-2 rounded-xl text-xs cursor-pointer transition-colors ${
+                            activeModelId === m.id ? 'bg-amber-50 text-amber-900 font-bold' : 'text-gray-700 hover:bg-gray-100'
+                          }`}
+                        >
+                          <span className="min-w-0">
+                            <span className="flex items-center gap-1.5">
+                              {m.name}
+                              {m.badge && (
+                                <span className="text-[9px] font-bold text-amber-700 bg-amber-100 border border-amber-200 px-1.5 py-0.5 rounded-full">
+                                  {m.badge}
+                                </span>
+                              )}
+                            </span>
+                            <span className="block text-[10px] text-gray-400 font-normal truncate">{m.desc}</span>
+                          </span>
+                          <span className="flex items-center gap-1.5 shrink-0">
+                            <span className="text-[10px] font-bold text-amber-600 bg-amber-100/80 px-1.5 py-0.5 rounded-full">{m.points} pts</span>
+                            {activeModelId === m.id && <Check className="w-3.5 h-3.5 text-amber-600" />}
+                          </span>
+                        </button>
+                      ))}
+                      <div className="my-1 border-t border-gray-100" />
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setIsComposerModelOpen(false);
+                          navigate('/pricing');
+                        }}
+                        className="w-full flex items-center justify-between px-2.5 py-2 rounded-xl text-xs font-semibold text-amber-700 hover:bg-amber-50 cursor-pointer transition-colors"
+                      >
+                        <span className="flex items-center gap-2">
+                          <Zap className="w-3.5 h-3.5" />
+                          Voir les packs
+                        </span>
+                        <span className="text-[10px] font-bold text-gray-500">{credits} pts</span>
+                      </button>
+                    </div>
+                  )}
+                </div>
+                {credits < 5 ? (
+                  <button
+                    type="button"
+                    onClick={() => navigate('/pricing')}
+                    className="flex items-center gap-1 text-[10px] font-bold text-red-600 hover:text-red-700 bg-red-50 border border-red-200 px-2 py-0.5 rounded-full cursor-pointer transition-colors"
+                  >
+                    <Zap className="w-3 h-3" />
+                    Solde faible — voir les packs
+                  </button>
+                ) : (
+                  <span className="text-[10px] font-semibold text-gray-400">{credits} points disponibles</span>
+                )}
               </div>
             </div>
 
@@ -2630,7 +3062,7 @@ export default function App() {
                     Couleur d'accentuation
                   </label>
                   <div className="flex items-center gap-2">
-                    {['#F59E0B', '#EA580C', '#EAB308', '#F97316'].map((color) => (
+                    {['#F59E0B', '#EA580C', '#EAB308', '#F97316', '#2563EB', '#059669', '#7C3AED', '#DC2626'].map((color) => (
                       <button
                         key={color}
                         onClick={() => setBrandColor(color)}
@@ -2884,6 +3316,91 @@ export default function App() {
                   {canvaConnected ? 'Mettre à jour le jeton' : 'Connecter Canva'}
                 </button>
               </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* ========================================================= */}
+      {/* MODAL PARRAINAGE */}
+      {/* ========================================================= */}
+      <AnimatePresence>
+        {referralOpen && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            onMouseDown={(e) => e.target === e.currentTarget && setReferralOpen(false)}
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-2xs p-4"
+          >
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 10 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 10 }}
+              transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
+              className="bg-white rounded-3xl border border-gray-200 shadow-2xl w-full max-w-md p-6 space-y-5"
+            >
+              <div className="flex items-center justify-between pb-3 border-b border-gray-100">
+                <div className="flex items-center gap-2">
+                  <Gift className="w-5 h-5 text-orange-500" />
+                  <h3 className="font-semibold text-gray-900 text-base">Parrainez vos amis</h3>
+                </div>
+                <button onClick={() => setReferralOpen(false)} className="p-1 rounded-full hover:bg-gray-100 text-gray-400 hover:text-gray-700 transition-colors cursor-pointer">
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+
+              <div className="grid grid-cols-3 gap-2 text-center">
+                {[
+                  { n: '1', txt: 'Partagez votre lien' },
+                  { n: '2', txt: 'Votre pote reçoit 20 pts' },
+                  { n: '3', txt: 'Il paye un pack → vous gagnez 50 pts' },
+                ].map((st) => (
+                  <div key={st.n} className="rounded-2xl border border-gray-200 bg-gray-50 p-2.5 space-y-1">
+                    <div className="w-6 h-6 mx-auto rounded-full bg-gradient-to-br from-amber-400 to-orange-500 text-white text-[10px] font-bold flex items-center justify-center">
+                      {st.n}
+                    </div>
+                    <p className="text-[10px] font-semibold text-gray-600 leading-tight">{st.txt}</p>
+                  </div>
+                ))}
+              </div>
+
+              <div>
+                <label className="text-xs font-semibold text-gray-700 block mb-1.5">Votre code d'invitation</label>
+                <div className="flex items-center gap-2">
+                  <div className="flex-1 rounded-xl border border-dashed border-amber-300 bg-amber-50/60 px-3 py-2 text-sm font-bold tracking-wider text-amber-800 text-center">
+                    {getReferralCode()}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      const ok = await copyText(`https://${window.location.host}/?ref=${getReferralCode()}`);
+                      showToast(ok ? 'Lien de parrainage copié !' : 'Copie impossible.');
+                    }}
+                    className="px-3.5 py-2 rounded-xl bg-gray-900 hover:bg-black text-white text-xs font-bold transition-colors cursor-pointer shrink-0"
+                  >
+                    Copier le lien
+                  </button>
+                </div>
+              </div>
+
+              <a
+                href={`https://wa.me/?text=${encodeURIComponent(
+                  `Crée des designs de fou avec l'IA sur Aura Design 🎨 — 20 points offerts avec mon lien : https://${window.location.host}/?ref=${getReferralCode()}`
+                )}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-full bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-bold transition-colors cursor-pointer"
+              >
+                <Gift className="w-3.5 h-3.5" />
+                Partager sur WhatsApp
+              </a>
+
+              <p className="text-[10px] text-gray-400 text-center leading-relaxed">
+                Les 50 points sont crédités automatiquement sur votre solde dès que votre filleul active son premier pack payant.
+                Pas de limite : 3 filleuls = 150 points !
+              </p>
             </motion.div>
           </motion.div>
         )}

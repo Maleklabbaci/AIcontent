@@ -1,0 +1,49 @@
+{
+  "name": "Aura Design — Créateur de designs IA",
+  "short_name": "Aura Design",
+  "description": "Générez des designs pour réseaux sociaux en seconde : posts, stories, carrousels, affiches. Export PNG HD, PDF et envoi direct vers Canva.",
+  "start_url": "/app",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#FFF7EC",
+  "theme_color": "#F59E0B",
+  "lang": "fr",
+  "categories": ["design", "productivity", "business"],
+  "icons": [
+    {
+      "src": "/icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Nouveau design",
+      "short_name": "Créer",
+      "description": "Créer un nouveau design",
+      "url": "/?action=new",
+      "icons": [{ "src": "/icons/icon-96.png", "sizes": "96x96" }]
+    },
+    {
+      "name": "Tarifs & Packs",
+      "short_name": "Packs",
+      "description": "Voir les packs de points",
+      "url": "/pricing",
+      "icons": [{ "src": "/icons/icon-96.png", "sizes": "96x96" }]
+    }
+  ]
+}
