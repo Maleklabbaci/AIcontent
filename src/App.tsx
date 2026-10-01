@@ -143,27 +143,27 @@ const FORMAT_SLASH: { id: FormatType; keys: string[] }[] = [
 ];
 
 // ===== CHIPS D'AMBIANCE (dizaines de styles pour différencier les prompts) =====
-const STYLE_CHIPS: { cmd: string; label: string }[] = [
-  { cmd: 'minimaliste', label: 'Minimaliste' },
-  { cmd: 'luxe', label: 'Luxe & premium' },
-  { cmd: 'vintage', label: 'Vintage rétro' },
-  { cmd: 'neon', label: 'Néon cyberpunk' },
-  { cmd: 'pastel', label: 'Pastel doux' },
-  { cmd: 'corporate', label: 'Corporate pro' },
-  { cmd: 'fun', label: 'Fun & coloré' },
-  { cmd: 'elegant', label: 'Élégant' },
-  { cmd: 'audacieux', label: 'Audacieux' },
-  { cmd: 'dramatique', label: 'Dramatique' },
-  { cmd: 'dore', label: 'Doré scintillant' },
-  { cmd: 'naturel', label: 'Naturel organique' },
-  { cmd: 'tech', label: 'Tech futuriste' },
-  { cmd: 'romantique', label: 'Romantique' },
-  { cmd: 'sportif', label: 'Sportif énergique' },
-  { cmd: 'food', label: 'Food appétissant' },
-  { cmd: 'boho', label: 'Boho chic' },
-  { cmd: 'gradient', label: 'Dégradés vifs' },
-  { cmd: 'monochrome', label: 'Monochrome' },
-  { cmd: 'collage', label: 'Collage magazine' },
+const STYLE_CHIPS: { cmd: string; label: { fr: string; en: string; ar: string } }[] = [
+  { cmd: 'minimaliste', label: { fr: 'Minimaliste', en: 'Minimalist', ar: 'بسيط' } },
+  { cmd: 'luxe', label: { fr: 'Luxe & premium', en: 'Luxury & premium', ar: 'فاخر وراقٍ' } },
+  { cmd: 'vintage', label: { fr: 'Vintage rétro', en: 'Vintage retro', ar: 'كلاسيكي قديم' } },
+  { cmd: 'neon', label: { fr: 'Néon cyberpunk', en: 'Cyberpunk neon', ar: 'نيون مستقبلي' } },
+  { cmd: 'pastel', label: { fr: 'Pastel doux', en: 'Soft pastel', ar: 'باستيل ناعم' } },
+  { cmd: 'corporate', label: { fr: 'Corporate pro', en: 'Corporate pro', ar: 'مهني رسمي' } },
+  { cmd: 'fun', label: { fr: 'Fun & coloré', en: 'Fun & colorful', ar: 'ممتع وملون' } },
+  { cmd: 'elegant', label: { fr: 'Élégant', en: 'Elegant', ar: 'أنيق' } },
+  { cmd: 'audacieux', label: { fr: 'Audacieux', en: 'Bold', ar: 'جريء' } },
+  { cmd: 'dramatique', label: { fr: 'Dramatique', en: 'Dramatic', ar: 'درامي' } },
+  { cmd: 'dore', label: { fr: 'Doré scintillant', en: 'Golden shimmer', ar: 'ذهبي لامع' } },
+  { cmd: 'naturel', label: { fr: 'Naturel organique', en: 'Natural organic', ar: 'طبيعي عضوي' } },
+  { cmd: 'tech', label: { fr: 'Tech futuriste', en: 'Futuristic tech', ar: 'تقني مستقبلي' } },
+  { cmd: 'romantique', label: { fr: 'Romantique', en: 'Romantic', ar: 'رومانسي' } },
+  { cmd: 'sportif', label: { fr: 'Sportif énergique', en: 'Energetic sporty', ar: 'رياضي حيوي' } },
+  { cmd: 'food', label: { fr: 'Food appétissant', en: 'Appetizing food', ar: 'طعام شهي' } },
+  { cmd: 'boho', label: { fr: 'Boho chic', en: 'Boho chic', ar: 'بوهو شيك' } },
+  { cmd: 'gradient', label: { fr: 'Dégradés vifs', en: 'Vivid gradients', ar: 'تدرجات نابضة' } },
+  { cmd: 'monochrome', label: { fr: 'Monochrome', en: 'Monochrome', ar: 'أحادي اللون' } },
+  { cmd: 'collage', label: { fr: 'Collage magazine', en: 'Magazine collage', ar: 'كولاج مجلة' } },
 ];
 
 // Nombre de projets autorisés par pack
@@ -196,9 +196,9 @@ const FORMATS: Record<
 const FORMAT_ORDER: FormatType[] = ['post', 'scroller', 'story', 'square', 'website', 'product', 'poster', 'presentation'];
 
 const I18N: Record<Lang, Record<string, string>> = {
-  fr: { newDesign: 'Nouveau design', search: 'Recherche', brandKit: 'Brand Kit', templates: 'Templates', recents: 'Récents', greeting: 'Bonjour', subtitle: "On travaille sur quoi aujourd'hui ?", placeholder: "Décrivez le design à créer...", share: 'Partager', settings: 'Paramètres', language: 'Langue', help: "Obtenir de l'aide", learnMore: 'En savoir plus', upgrade: 'Tarifs & Packs', logout: 'Se déconnecter', plan: 'Pack' },
-  en: { newDesign: 'New design', search: 'Search', brandKit: 'Brand Kit', templates: 'Templates', recents: 'Recents', greeting: 'Hello', subtitle: 'What are we working on today?', placeholder: 'Describe the design to create...', share: 'Share', settings: 'Settings', language: 'Language', help: 'Get help', learnMore: 'Learn more', upgrade: 'Pricing & Packs', logout: 'Log out', plan: 'Pack' },
-  ar: { newDesign: 'تصميم جديد', search: 'بحث', brandKit: 'هوية العلامة', templates: 'قوالب', recents: 'الأخيرة', greeting: 'مرحباً', subtitle: 'على ماذا سنعمل اليوم؟', placeholder: 'صف التصميم المطلوب...', share: 'مشاركة', settings: 'الإعدادات', language: 'اللغة', help: 'احصل على مساعدة', learnMore: 'اعرف المزيد', upgrade: 'ترقية الباقة', logout: 'تسجيل الخروج', plan: 'الباقة' },
+  fr: { newDesign: 'Nouveau design', search: 'Recherche', brandKit: 'Brand Kit', templates: 'Templates', recents: 'Récents', greeting: 'Bonjour', subtitle: "On travaille sur quoi aujourd'hui ?", placeholder: "Décrivez le design à créer...", share: 'Partager', settings: 'Paramètres', language: 'Langue', help: "Obtenir de l'aide", learnMore: 'En savoir plus', upgrade: 'Tarifs & Packs', logout: 'Se déconnecter', plan: 'Pack', commands: 'Commandes', styleGrp: 'Style', ambianceGrp: 'Ambiance', spacesGrp: 'Espaces', appliedToSend: "Appliqué à l'envoi", addToDesign: 'Ajouter au design', uploadPhoto: 'Uploader une photo', addAmbiance: 'Ajouter une ambiance', slashTip: 'Astuce : tapez « / » pour les commandes rapides.', ambianceAdded: 'Ambiance ajoutée', ambianceReplaced: 'Ambiance remplacée', ambianceRemoved: 'Ambiance retirée', maxChips: 'Maximum 3 ambiances par design.', appliedNext: 'appliqué à la prochaine génération', styleDark: 'Design sombre', styleLight: 'Design clair', remove: 'Retirer', chooseAmbiance: 'Choisir une ambiance' },
+  en: { newDesign: 'New design', search: 'Search', brandKit: 'Brand Kit', templates: 'Templates', recents: 'Recents', greeting: 'Hello', subtitle: 'What are we working on today?', placeholder: 'Describe the design to create...', share: 'Share', settings: 'Settings', language: 'Language', help: 'Get help', learnMore: 'Learn more', upgrade: 'Pricing & Packs', logout: 'Log out', plan: 'Pack', commands: 'Commands', styleGrp: 'Style', ambianceGrp: 'Vibe', spacesGrp: 'Spaces', appliedToSend: 'Applied to next send', addToDesign: 'Add to design', uploadPhoto: 'Upload a photo', addAmbiance: 'Add a vibe', slashTip: 'Tip: type "/" for quick commands.', ambianceAdded: 'Vibe added', ambianceReplaced: 'Vibe replaced', ambianceRemoved: 'Vibe removed', maxChips: 'Up to 3 vibes per design.', appliedNext: 'applied to the next generation', styleDark: 'Dark design', styleLight: 'Light design', remove: 'Remove', chooseAmbiance: 'Choose a vibe' },
+  ar: { newDesign: 'تصميم جديد', search: 'بحث', brandKit: 'هوية العلامة', templates: 'قوالب', recents: 'الأخيرة', greeting: 'مرحباً', subtitle: 'على ماذا سنعمل اليوم؟', placeholder: 'صف التصميم المطلوب...', share: 'مشاركة', settings: 'الإعدادات', language: 'اللغة', help: 'احصل على مساعدة', learnMore: 'اعرف المزيد', upgrade: 'ترقية الباقة', logout: 'تسجيل الخروج', plan: 'الباقة', commands: 'الأوامر', styleGrp: 'النمط', ambianceGrp: 'الأجواء', spacesGrp: 'المساحات', appliedToSend: 'يُطبق عند الإرسال', addToDesign: 'أضف إلى التصميم', uploadPhoto: 'تحميل صورة', addAmbiance: 'أضف أجواءً', slashTip: 'نصيحة: اكتب "/" للأوامر السريعة.', ambianceAdded: 'تمت إضافة الأجواء', ambianceReplaced: 'تم استبدال الأجواء', ambianceRemoved: 'تمت إزالة الأجواء', maxChips: 'الحد الأقصى 3 أجواء لكل تصميم.', appliedNext: 'سيُطبق على التوليد التالي', styleDark: 'تصميم داكن', styleLight: 'تصميم فاتح', remove: 'إزالة', chooseAmbiance: 'اختر أجواءً' },
 };
 const LANGS: { id: Lang; label: string }[] = [
   { id: 'fr', label: 'Français' },
@@ -1669,6 +1669,8 @@ export default function App() {
   const [slashIndex, setSlashIndex] = useState(0);
   // Options ponctuelles posées par les commandes « / » (chips visibles, valables pour le prochain envoi uniquement)
   const [pendingStyle, setPendingStyle] = useState<'dark' | 'light' | null>(null);
+  const [pendingChips, setPendingChips] = useState<string[]>([]);
+  const [chipSwapIndex, setChipSwapIndex] = useState<number | null>(null);
   const [pendingProjectId, setPendingProjectId] = useState<string | null>(null);
   const composerInputRef = useRef<HTMLTextAreaElement>(null);
   const highlightTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -1803,6 +1805,7 @@ export default function App() {
       if (event.key === 'Escape') {
         setProjectsOpen(false);
         setAttachMenuOpen(false);
+        setChipSwapIndex(null);
         setIsFormatDropdownOpen(false);
         setIsComposerModelOpen(false);
         setIsSlidesDropdownOpen(false);
@@ -2090,7 +2093,11 @@ export default function App() {
     if (pendingProjectId && pendingProjectId !== activeProjectId) switchProject(pendingProjectId);
 
     const currentPhotos = [...attachedImages];
-    const promptText = query || (currentPhotos.length > 0 ? 'Génère un design intégrant mes photos' : '');
+    let promptText = query || (currentPhotos.length > 0 ? 'Génère un design intégrant mes photos' : '');
+    const chipLabels = pendingChips.map((cmd) => STYLE_CHIPS.find((x) => x.cmd === cmd)?.label[lang] || cmd);
+    if (chipLabels.length > 0) {
+      promptText = `${promptText} — ambiance : ${chipLabels.join(', ')}`;
+    }
     const inferred = inferOpts(promptText);
     const resolvedFmt: FormatType = opts.format ?? inferred.format ?? selectedFormat;
     const resolvedStyle: 'dark' | 'light' = pendingStyle ?? 'dark';
@@ -2131,6 +2138,8 @@ export default function App() {
     setAttachedImages([]);
     setPendingStyle(null);
     setPendingProjectId(null);
+    setPendingChips([]);
+    setChipSwapIndex(null);
     setIsGenerating(true);
 
     setTimeout(() => {
@@ -2287,8 +2296,8 @@ export default function App() {
       const fmtLabel = FORMATS[activeFmt].label;
       const isCarousel = FORMATS[activeFmt].kind === 'carousel';
       let aiMsgText = isCarousel
-        ? `Voici votre ${activeFmt === 'presentation' ? 'présentation' : 'carrousel'} de **${resolvedCount} slides** au format **${fmtLabel}**${currentPhotos.length > 0 ? ` avec vos ${currentPhotos.length} photo(s) intégrée(s)` : ''}. Le Canvas ci-dessous vous permet de faire défiler les slides et d'exporter en haute résolution.`
-        : `Voici votre nouveau design au format **${fmtLabel}**${resolvedStyle === 'light' ? ' en **style clair**' : ''}${currentPhotos.length > 0 ? ` avec vos ${currentPhotos.length} photo(s) intégrée(s)` : ''}. Le Canvas ci-dessous vous permet de le visualiser et de l'exporter en haute résolution.`;
+        ? `Voici votre ${activeFmt === 'presentation' ? 'présentation' : 'carrousel'} de **${resolvedCount} slides** au format **${fmtLabel}**${resolvedStyle === 'light' ? ' en **style clair**' : ''}${currentPhotos.length > 0 ? ` avec vos ${currentPhotos.length} photo(s) intégrée(s)` : ''}${chipLabels.length > 0 ? ` — ambiance : **${chipLabels.join(', ')}**` : ''}. Le Canvas ci-dessous vous permet de faire défiler les slides et d'exporter en haute résolution.`
+        : `Voici votre nouveau design au format **${fmtLabel}**${resolvedStyle === 'light' ? ' en **style clair**' : ''}${currentPhotos.length > 0 ? ` avec vos ${currentPhotos.length} photo(s) intégrée(s)` : ''}${chipLabels.length > 0 ? ` — ambiance : **${chipLabels.join(', ')}**` : ''}. Le Canvas ci-dessous vous permet de le visualiser et de l'exporter en haute résolution.`;
 
       const aiMsg: Message = {
         id: `ast_${Date.now()}`,
@@ -2330,7 +2339,7 @@ export default function App() {
   const slashChipItems =
     slashQuery === null
       ? []
-      : STYLE_CHIPS.filter((c) => c.cmd.startsWith(slashQuery) || c.label.toLowerCase().includes(slashQuery)).map((c) => ({
+      : STYLE_CHIPS.filter((c) => c.cmd.startsWith(slashQuery) || c.label.fr.toLowerCase().includes(slashQuery) || c.label.en.toLowerCase().includes(slashQuery)).map((c) => ({
           kind: 'chip' as const,
           cmd: c.cmd,
           label: c.label,
@@ -2349,18 +2358,22 @@ export default function App() {
   const acceptSlash = (item: (typeof slashItems)[number]) => {
     if (item.kind === 'style') {
       setPendingStyle(item.style);
-      showToast(`Style ${item.style === 'dark' ? 'sombre' : 'clair'} appliqué à la prochaine génération`);
+      showToast(`${item.style === 'dark' ? t('styleDark') : t('styleLight')} — ${t('appliedNext')}`);
     } else if (item.kind === 'chip') {
-      // L'ambiance s'inscrit directement dans le texte envoyé à l'IA
-      setInputPrompt((prev) => {
-        const base = prev.replace(/\s+$/, '').replace(/\s*,\s*$/, '');
-        return base ? `${base}, ${item.label}` : item.label;
+      // L'ambiance devient une chip cliquable (pas du texte brut)
+      setPendingChips((prev) => {
+        if (prev.includes(item.cmd)) return prev;
+        if (prev.length >= 3) {
+          showToast(t('maxChips'));
+          return prev;
+        }
+        showToast(`${t('ambianceAdded')} : ${item.label[lang]}`);
+        return [...prev, item.cmd];
       });
-      showToast(`Ambiance « ${item.label} » ajoutée au texte`);
     } else {
       setPendingProjectId(item.id);
       const pk = projects.find((x) => x.id === item.id);
-      showToast(`Espace « ${pk?.name} » appliqué à la prochaine génération`);
+      showToast(`${t('spacesGrp')} « ${pk?.name} » — ${t('appliedNext')}`);
     }
     composerInputRef.current?.focus();
   };
@@ -3375,7 +3388,7 @@ export default function App() {
             {/* Chips des options ponctuelles (commandes « / ») */}
             {(pendingStyle || pendingProjectId) && (
               <div className="flex flex-wrap items-center gap-1.5 mb-2 px-1">
-                <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Appliqué à l'envoi :</span>
+                <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">{t('appliedToSend')} :</span>
                 {pendingProjectId &&
                   (() => {
                     const pk = projects.find((x) => x.id === pendingProjectId);
@@ -3397,7 +3410,7 @@ export default function App() {
                 {pendingStyle && (
                   <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-zinc-900 text-white border border-zinc-700 text-[10px] font-bold shadow-2xs">
                     {pendingStyle === 'dark' ? <Moon className="w-3 h-3" /> : <Sun className="w-3 h-3" />}
-                    {pendingStyle === 'dark' ? 'Sombre' : 'Clair'}
+                    {pendingStyle === 'dark' ? t('styleDark') : t('styleLight')}
                     <button type="button" onClick={() => setPendingStyle(null)} className="text-zinc-500 hover:text-white cursor-pointer">
                       <X className="w-3 h-3" />
                     </button>
@@ -3410,7 +3423,7 @@ export default function App() {
             {slashItems.length > 0 && slashQuery !== null && (
               <div className="absolute left-0 bottom-full mb-3 w-64 max-w-[85vw] rounded-2xl bg-white border border-gray-200 shadow-xl p-1.5 z-30 space-y-0.5 max-h-64 overflow-y-auto">
                 <div className="px-2.5 pt-1 pb-1 text-[10px] font-bold text-gray-400 uppercase tracking-wider">
-                  Commandes
+                  {t('commands')}
                 </div>
 
                 {slashStyleItems.map((it) => {
@@ -3429,16 +3442,16 @@ export default function App() {
                         <span className="w-5 h-5 rounded-md bg-gray-100 flex items-center justify-center shrink-0">
                           {it.style === 'dark' ? <Moon className="w-3 h-3 text-gray-500" /> : <Sun className="w-3 h-3 text-gray-500" />}
                         </span>
-                        <span className="truncate">{it.label}</span>
+                        <span className="truncate">{it.style === 'dark' ? t('styleDark') : t('styleLight')}</span>
                       </span>
-                      <span className="text-[9px] font-semibold text-gray-400 shrink-0">{it.style === 'dark' ? 'Sombre' : 'Clair'}</span>
+                      <span className="text-[9px] font-semibold text-gray-400 shrink-0">{t('styleGrp')}</span>
                     </button>
                   );
                 })}
 
                 {slashChipItems.map((it) => {
                   const flatIdx = slashItems.indexOf(it);
-                  const already = (inputPrompt.toLowerCase().includes(it.label.toLowerCase()));
+                  const already = pendingChips.includes(it.cmd);
                   return (
                     <button
                       key={`sc_${it.cmd}`}
@@ -3453,12 +3466,12 @@ export default function App() {
                         <span className="w-5 h-5 rounded-md bg-gradient-to-br from-amber-100 to-orange-100 flex items-center justify-center shrink-0">
                           <span className="w-2 h-2 rounded-full bg-gradient-to-br from-amber-400 to-orange-500" />
                         </span>
-                        <span className="truncate">{it.label}</span>
+                        <span className="truncate">{it.label[lang]}</span>
                       </span>
                       {already ? (
-                        <span className="text-[9px] font-bold text-emerald-600 shrink-0">DANS LE TEXTE</span>
+                        <Check className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
                       ) : (
-                        <span className="text-[9px] font-semibold text-gray-400 shrink-0">Ambiance</span>
+                        <span className="text-[9px] font-semibold text-gray-400 shrink-0">{t('ambianceGrp')}</span>
                       )}
                     </button>
                   );
@@ -3486,7 +3499,7 @@ export default function App() {
                         </span>
                         <span className="truncate">{it.label}</span>
                       </span>
-                      <span className="text-[9px] font-semibold text-gray-400 shrink-0">Espace</span>
+                      <span className="text-[9px] font-semibold text-gray-400 shrink-0">{t('spacesGrp')}</span>
                     </button>
                   );
                 })}
@@ -3540,7 +3553,7 @@ export default function App() {
                   {attachMenuOpen && (
                     <div className="absolute left-0 bottom-12 w-60 rounded-2xl bg-white border border-gray-200 shadow-xl p-1.5 z-30 space-y-0.5">
                       <div className="px-2.5 pt-1 pb-1 text-[10px] font-bold text-gray-400 uppercase tracking-wider">
-                        Ajouter au design
+                        {t('addToDesign')}
                       </div>
                       <button
                         type="button"
@@ -3553,25 +3566,28 @@ export default function App() {
                         <span className="w-6 h-6 rounded-lg bg-gray-100 flex items-center justify-center shrink-0">
                           <ImageIcon className="w-3.5 h-3.5 text-gray-500" />
                         </span>
-                        Uploader une photo
+                        {t('uploadPhoto')}
                       </button>
                       <button
                         type="button"
                         onClick={() => {
                           setAttachMenuOpen(false);
-                          setInputPrompt('/');
-                          setTimeout(() => composerInputRef.current?.focus(), 0);
+                          if (pendingChips.length >= 3) {
+                            showToast(t('maxChips'));
+                            return;
+                          }
+                          setChipSwapIndex(pendingChips.length);
                         }}
                         className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-xl text-xs font-semibold text-gray-700 hover:bg-gray-100 cursor-pointer transition-colors"
                       >
                         <span className="w-6 h-6 rounded-lg bg-gradient-to-br from-amber-100 to-orange-100 flex items-center justify-center shrink-0">
                           <span className="w-2.5 h-2.5 rounded-full bg-gradient-to-br from-amber-400 to-orange-500" />
                         </span>
-                        Ajouter une ambiance
+                        {t('addAmbiance')}
                       </button>
                       <div className="my-1 border-t border-gray-100" />
                       <p className="px-2.5 pb-1 text-[10px] text-gray-400 leading-relaxed">
-                        Astuce : tapez « / » dans le champ pour les commandes rapides.
+                        {t('slashTip')}
                       </p>
                     </div>
                   )}
@@ -3701,7 +3717,109 @@ export default function App() {
                   </button>
                 </div>
               </div>
+
+              {/* Chips d'ambiance cliquables (remplaçables) */}
+              {pendingChips.length > 0 && (
+                <div className="flex flex-wrap items-center gap-1.5 px-1.5 pb-1">
+                  {pendingChips.map((cmd, idx) => {
+                    const chip = STYLE_CHIPS.find((c) => c.cmd === cmd);
+                    return (
+                      <span
+                        key={cmd}
+                        className="group/chip inline-flex items-center gap-1.5 pl-2.5 pr-1.5 py-1 rounded-full bg-gradient-to-r from-amber-100 to-orange-100 border border-amber-300/70 text-[11px] font-bold text-amber-900 shadow-2xs cursor-pointer hover:from-amber-200 hover:to-orange-200 transition-colors"
+                        onClick={() => setChipSwapIndex(idx)}
+                        title={t('chooseAmbiance')}
+                      >
+                        {chip?.label[lang]}
+                        <ChevronDown className="w-3 h-3 text-amber-500" />
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setPendingChips((prev) => prev.filter((c) => c !== cmd));
+                            showToast(t('ambianceRemoved'));
+                          }}
+                          className="text-amber-400 hover:text-amber-700 cursor-pointer"
+                        >
+                          <X className="w-3 h-3" />
+                        </button>
+                      </span>
+                    );
+                  })}
+                  {pendingChips.length < 3 && (
+                    <button
+                      type="button"
+                      onClick={() => setChipSwapIndex(pendingChips.length)}
+                      className="inline-flex items-center gap-1 pl-2 pr-2.5 py-1 rounded-full border border-dashed border-amber-400/70 text-[11px] font-bold text-amber-700 hover:bg-amber-50 cursor-pointer transition-colors"
+                    >
+                      <Plus className="w-3 h-3" />
+                      {t('addAmbiance')}
+                    </button>
+                  )}
+                </div>
+              )}
             </div>
+
+            {/* Popup de sélection / remplacement d'ambiance */}
+            {chipSwapIndex !== null && (
+              <div className="absolute left-0 bottom-full mb-3 w-64 max-w-[85vw] rounded-2xl bg-white border border-gray-200 shadow-xl p-1.5 z-30 max-h-64 overflow-y-auto">
+                <div className="px-2.5 pt-1 pb-1 text-[10px] font-bold text-gray-400 uppercase tracking-wider flex items-center justify-between">
+                  <span>{t('chooseAmbiance')}</span>
+                  <button type="button" onClick={() => setChipSwapIndex(null)} className="text-gray-300 hover:text-gray-600 cursor-pointer">
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+                {STYLE_CHIPS.map((c) => {
+                  const currentIdx = chipSwapIndex < pendingChips.length ? pendingChips[chipSwapIndex] : null;
+                  const isCurrent = currentIdx === c.cmd;
+                  return (
+                    <button
+                      key={`swap_${c.cmd}`}
+                      type="button"
+                      onClick={() => {
+                        setPendingChips((prev) => {
+                          if (chipSwapIndex >= prev.length) return prev.length < 3 ? [...prev, c.cmd] : prev;
+                          const next = [...prev];
+                          if (next.includes(c.cmd)) return next;
+                          next[chipSwapIndex] = c.cmd;
+                          return next;
+                        });
+                        setChipSwapIndex(null);
+                        showToast(`${t('ambianceReplaced')} : ${c.label[lang]}`);
+                      }}
+                      className={`w-full flex items-center justify-between gap-2 px-2.5 py-1.5 rounded-xl text-xs cursor-pointer transition-colors ${
+                        isCurrent ? 'bg-amber-50 text-amber-900 font-bold' : 'text-gray-700 hover:bg-gray-100'
+                      }`}
+                    >
+                      <span className="flex items-center gap-2 min-w-0">
+                        <span className="w-5 h-5 rounded-md bg-gradient-to-br from-amber-100 to-orange-100 flex items-center justify-center shrink-0">
+                          <span className="w-2 h-2 rounded-full bg-gradient-to-br from-amber-400 to-orange-500" />
+                        </span>
+                        <span className="truncate">{c.label[lang]}</span>
+                      </span>
+                      {isCurrent && <Check className="w-3.5 h-3.5 text-amber-600 shrink-0" />}
+                    </button>
+                  );
+                })}
+                {chipSwapIndex < pendingChips.length && (
+                  <>
+                    <div className="my-1 border-t border-gray-100" />
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setPendingChips((prev) => prev.filter((_, i) => i !== chipSwapIndex));
+                        setChipSwapIndex(null);
+                        showToast(t('ambianceRemoved'));
+                      }}
+                      className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-xl text-xs font-semibold text-red-600 hover:bg-red-50 cursor-pointer transition-colors"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                      {t('remove')}
+                    </button>
+                  </>
+                )}
+              </div>
+            )}
 
             {/* Barre d'outils sous le box (hors du conteneur blanc) */}
             <div className="flex items-center justify-between gap-2 px-1.5 pt-2">
