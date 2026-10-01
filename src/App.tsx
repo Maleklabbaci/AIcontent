@@ -94,7 +94,53 @@ interface RecentSession {
   id: string;
   title: string;
   format: FormatType;
+  projectId?: string;
 }
+
+// ===== ESPACES (PROJETS / BRAND KITS) =====
+interface BrandProject {
+  id: string;
+  name: string;
+  handle: string;
+  color: string;
+  logo?: string | null;
+}
+
+const slugify = (str: string) =>
+  (str || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/(^-|-$)/g, '');
+
+const getInitialProjects = (): BrandProject[] => {
+  try {
+    const raw = localStorage.getItem('aura_projects_v1');
+    if (raw) {
+      const parsed = JSON.parse(raw) as BrandProject[];
+      if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+    }
+  } catch {}
+  // Migration depuis l'ancien Brand Kit unique
+  const b = loadBrand();
+  return [{ id: 'p1', name: b.name || 'Ma marque', handle: b.handle || '@votrecompte', color: b.color || '#F59E0B', logo: null }];
+};
+
+// Commandes slash de format : /post /carrousel /story /carre /site /produit /affiche /presentation
+const FORMAT_SLASH: { id: FormatType; keys: string[] }[] = [
+  { id: 'post', keys: ['post', 'feed'] },
+  { id: 'scroller', keys: ['carrousel', 'carousel', 'slides'] },
+  { id: 'story', keys: ['story', 'stories', 'reel'] },
+  { id: 'square', keys: ['carre', 'square', 'citation'] },
+  { id: 'website', keys: ['site', 'website', 'landing'] },
+  { id: 'product', keys: ['produit', 'product', 'packshot', 'ecommerce'] },
+  { id: 'poster', keys: ['affiche', 'poster', 'flyer'] },
+  { id: 'presentation', keys: ['presentation', 'pitch', 'deck'] },
+];
+
+// Nombre de projets autorisés par pack
+const PACK_PROJECT_LIMIT: Record<PlanId, number> = { free: 1, starter: 3, pro: 10, business: Infinity };
 
 const FORMATS: Record<
   FormatType,
@@ -1158,17 +1204,84 @@ export default function App() {
     return 'Malek';
   });
 
-  // Brand Kit state
+  // ===== ESPACES (PROJETS) + BRAND KIT state =====
   const [isBrandKitOpen, setIsBrandKitOpen] = useState(false);
-  const [brandName, setBrandName] = useState(() => loadBrand().name ?? 'Aura Studio');
-  const [brandHandle, setBrandHandle] = useState(() => loadBrand().handle ?? '@aurastudio.ai');
-  const [brandColor, setBrandColor] = useState(() => loadBrand().color ?? '#F59E0B');
+  const [projects, setProjects] = useState<BrandProject[]>(getInitialProjects);
+  const [activeProjectId, setActiveProjectId] = useState<string>(() => {
+    try {
+      return localStorage.getItem('aura_active_project_v1') || 'p1';
+    } catch {
+      return 'p1';
+    }
+  });
+  const activeProject = projects.find((pk) => pk.id === activeProjectId) || projects[0];
+  const [projectsOpen, setProjectsOpen] = useState(false);
+  const projectsRef = useRef<HTMLDivElement>(null);
+  const brandSyncSkip = useRef(false);
+  const [brandName, setBrandName] = useState(() => activeProject.name);
+  const [brandHandle, setBrandHandle] = useState(() => activeProject.handle);
+  const [brandColor, setBrandColor] = useState(() => activeProject.color);
+  const [brandLogo, setBrandLogo] = useState<string | null>(() => activeProject.logo ?? null);
+  // Changement de projet : charger son Brand Kit dans les champs actifs
+  useEffect(() => {
+    const pk = projects.find((x) => x.id === activeProjectId);
+    if (pk) {
+      brandSyncSkip.current = true;
+      setBrandName(pk.name);
+      setBrandHandle(pk.handle);
+      setBrandColor(pk.color);
+      setBrandLogo(pk.logo ?? null);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeProjectId]);
+  // Édition des champs : écrit dans le projet actif
+  useEffect(() => {
+    if (brandSyncSkip.current) {
+      brandSyncSkip.current = false;
+      return;
+    }
+    setProjects((prev) =>
+      prev.map((pk) => (pk.id === activeProjectId ? { ...pk, name: brandName, handle: brandHandle, color: brandColor, logo: brandLogo } : pk))
+    );
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [brandName, brandHandle, brandColor, brandLogo]);
   useEffect(() => {
     try {
-      localStorage.setItem('aura_brand', JSON.stringify({ name: brandName, handle: brandHandle, color: brandColor }));
+      localStorage.setItem('aura_projects_v1', JSON.stringify(projects));
     } catch {}
-  }, [brandName, brandHandle, brandColor]);
-  const [brandLogo, setBrandLogo] = useState<string | null>(null);
+  }, [projects]);
+  useEffect(() => {
+    try {
+      localStorage.setItem('aura_active_project_v1', activeProjectId);
+    } catch {}
+  }, [activeProjectId]);
+
+  const switchProject = (id: string) => {
+    if (id === activeProjectId) return;
+    setActiveProjectId(id);
+    const pk = projects.find((x) => x.id === id);
+    showToast(`Espace « ${pk?.name} » activé — Brand Kit appliqué !`);
+  };
+
+  const createProject = () => {
+    const limit = PACK_PROJECT_LIMIT[plan];
+    if (projects.length >= limit) {
+      showToast(`Votre pack autorise ${limit} projet${limit > 1 ? 's' : ''}. Passez à un pack supérieur !`);
+      setProjectsOpen(false);
+      navigate('/pricing');
+      return;
+    }
+    const palette = ['#F59E0B', '#EA580C', '#2563EB', '#059669', '#7C3AED', '#DC2626'];
+    const id = `p_${Date.now()}`;
+    setProjects((prev) => [
+      ...prev,
+      { id, name: `Projet ${prev.length + 1}`, handle: '@votrecompte', color: palette[prev.length % palette.length], logo: null },
+    ]);
+    setActiveProjectId(id);
+    setProjectsOpen(false);
+    setIsBrandKitOpen(true);
+    showToast('Projet créé — configurez son Brand Kit !');
+  };
   const [isDragging, setIsDragging] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -1193,6 +1306,7 @@ export default function App() {
   const [resizeOpenId, setResizeOpenId] = useState<string | null>(null);
   const [referralOpen, setReferralOpen] = useState(false);
   const [composerHighlight, setComposerHighlight] = useState(false);
+  const [slashIndex, setSlashIndex] = useState(0);
   const composerInputRef = useRef<HTMLInputElement>(null);
   const highlightTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   // Clic sur une suggestion : préremplit le champ au lieu de générer à l'aveugle
@@ -1308,6 +1422,9 @@ export default function App() {
       if (composerModelRef.current && !composerModelRef.current.contains(event.target as Node)) {
         setIsComposerModelOpen(false);
       }
+      if (projectsRef.current && !projectsRef.current.contains(event.target as Node)) {
+        setProjectsOpen(false);
+      }
       if (slidesCountDropdownRef.current && !slidesCountDropdownRef.current.contains(event.target as Node)) {
         setIsSlidesDropdownOpen(false);
       }
@@ -1319,6 +1436,7 @@ export default function App() {
     function handleEscape(event: KeyboardEvent) {
       if (event.key === 'Escape') {
         setIsBrandKitOpen(false);
+        setProjectsOpen(false);
         setIsFormatDropdownOpen(false);
         setIsComposerModelOpen(false);
         setIsSlidesDropdownOpen(false);
@@ -1596,14 +1714,53 @@ export default function App() {
   };
 
   // Handle send prompt
+  // Parse les commandes slash d'un texte : /projet et /format (même si le format n'est pas mentionné)
+  const parseSlashCommands = (text: string): { clean: string; projectId?: string; fmt?: FormatType } => {
+    const tokens = text.match(/\/([\p{L}\p{N}_-]+)/gu) || [];
+    let projectId: string | undefined;
+    let fmt: FormatType | undefined;
+    let clean = text;
+    for (const tok of tokens) {
+      const key = slugify(tok.slice(1));
+      if (!key) continue;
+      if (!projectId) {
+        const projMatches = projects.filter((pk) => slugify(pk.name) === key || slugify(pk.name).startsWith(key));
+        if (projMatches.length === 1) {
+          projectId = projMatches[0].id;
+          clean = clean.replace(tok, '');
+          continue;
+        }
+      }
+      if (!fmt) {
+        const fmtMatches = FORMAT_SLASH.filter((f) => f.keys.some((k) => k === key || k.startsWith(key)));
+        if (fmtMatches.length === 1) {
+          fmt = fmtMatches[0].id;
+          clean = clean.replace(tok, '');
+        }
+      }
+    }
+    return { clean: clean.replace(/\s+/g, ' ').trim(), projectId, fmt };
+  };
+
   const handleSendMessage = (textToSend?: string, opts: { format?: FormatType; count?: number } = {}) => {
-    const query = (textToSend || inputPrompt).trim();
-    if ((!query && attachedImages.length === 0) || isGenerating) return;
+    const rawQuery = (textToSend || inputPrompt).trim();
+    if ((!rawQuery && attachedImages.length === 0) || isGenerating) return;
+
+    // Commandes slash : projet et/ou format
+    const parsed = parseSlashCommands(rawQuery);
+    if (parsed.projectId && parsed.projectId !== activeProjectId) switchProject(parsed.projectId);
+    if (parsed.fmt && parsed.fmt !== selectedFormat) setSelectedFormat(parsed.fmt);
+
+    const query = parsed.clean;
+    if (!query && attachedImages.length === 0) {
+      showToast('Ajoutez une description après la commande (ex: /produit montre de luxe).');
+      return;
+    }
 
     const currentPhotos = [...attachedImages];
     const promptText = query || (currentPhotos.length > 0 ? 'Génère un design intégrant mes photos' : '');
     const inferred = inferOpts(promptText);
-    const resolvedFmt: FormatType = opts.format ?? inferred.format ?? selectedFormat;
+    const resolvedFmt: FormatType = opts.format ?? parsed.fmt ?? inferred.format ?? selectedFormat;
     const resolvedCount = opts.count ?? inferred.count ?? carouselSlidesCount;
 
     // ===== FACTURATION POINTS : 1 image IA générée par slide =====
@@ -1625,7 +1782,7 @@ export default function App() {
     setRecentSessions((prev) =>
       prev.some((s) => s.id === sessionId)
         ? prev
-        : [{ id: sessionId, title: promptText.length > 34 ? `${promptText.slice(0, 34)}…` : promptText, format: resolvedFmt }, ...prev]
+        : [{ id: sessionId, title: promptText.length > 34 ? `${promptText.slice(0, 34)}…` : promptText, format: resolvedFmt, projectId: parsed.projectId && parsed.projectId !== activeProjectId ? parsed.projectId : activeProjectId }, ...prev]
     );
 
     const userMsg: Message = {
@@ -1820,7 +1977,59 @@ export default function App() {
     }, 1100);
   };
 
+  // ===== COMMANDES SLASH dans le champ de texte =====
+  const slashMatch = /(?:^|\s)\/([\p{L}\p{N}_-]*)$/u.exec(inputPrompt);
+  const slashQuery = slashMatch ? slugify(slashMatch[1]) : null;
+  const slashProjectItems = slashQuery === null ? [] : projects.filter((pk) => slugify(pk.name).includes(slashQuery)).map((pk) => ({ kind: 'project' as const, id: pk.id, label: pk.name, hint: 'Espace · Brand Kit' }));
+  const slashFormatItems =
+    slashQuery === null
+      ? []
+      : FORMAT_SLASH.filter((f) => f.keys.some((k) => k.startsWith(slashQuery) || k.includes(slashQuery))).map((f) => ({
+          kind: 'format' as const,
+          id: f.id,
+          label: FORMATS[f.id].label,
+          hint: 'Format',
+        }));
+  const slashItems = [...slashProjectItems, ...slashFormatItems];
+  useEffect(() => {
+    setSlashIndex(0);
+  }, [inputPrompt]);
+
+  const acceptSlash = (item: (typeof slashItems)[number]) => {
+    if (!slashMatch) return;
+    const cleaned = (inputPrompt.slice(0, slashMatch.index) + inputPrompt.slice(slashMatch.index + slashMatch[0].length)).trim();
+    setInputPrompt(cleaned);
+    if (item.kind === 'project') {
+      switchProject(item.id);
+    } else {
+      setSelectedFormat(item.id);
+      showToast(`Format actif : ${FORMATS[item.id].label}`);
+    }
+    composerInputRef.current?.focus();
+  };
+
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (slashItems.length > 0 && slashQuery !== null) {
+      if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        setSlashIndex((i) => (i + 1) % slashItems.length);
+        return;
+      }
+      if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        setSlashIndex((i) => (i - 1 + slashItems.length) % slashItems.length);
+        return;
+      }
+      if (e.key === 'Enter' || e.key === 'Tab') {
+        e.preventDefault();
+        acceptSlash(slashItems[Math.min(slashIndex, slashItems.length - 1)]);
+        return;
+      }
+      if (e.key === 'Escape') {
+        setInputPrompt(`${inputPrompt} `);
+        return;
+      }
+    }
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
       handleSendMessage();
@@ -1863,8 +2072,8 @@ export default function App() {
     showToast('Session supprimée.');
   };
 
-  const filteredSessions = recentSessions.filter((s) =>
-    s.title.toLowerCase().includes(sessionSearch.trim().toLowerCase())
+  const filteredSessions = recentSessions.filter(
+    (s) => (s.projectId || 'p1') === activeProjectId && s.title.toLowerCase().includes(sessionSearch.trim().toLowerCase())
   );
 
   // Toast partagé entre l'app et la page /pricing
@@ -2023,14 +2232,81 @@ export default function App() {
             />
           )}
 
-          {/* Brand Kit */}
-          <button
-            onClick={() => setIsBrandKitOpen(true)}
-            className="w-full flex items-center gap-3 px-4 py-2 rounded-full hover:bg-gray-200/60 text-gray-600 hover:text-gray-900 text-sm font-medium transition-colors"
-          >
-            <Palette className="w-4 h-4 text-gray-500" />
-            <span>{t('brandKit')}</span>
-          </button>
+          {/* Sélecteur d'Espace (projet / Brand Kit) */}
+          <div className="relative" ref={projectsRef}>
+            <button
+              onClick={() => setProjectsOpen((v) => !v)}
+              className="w-full flex items-center gap-3 px-3 py-2 rounded-full hover:bg-gray-200/60 text-gray-700 hover:text-gray-900 text-sm font-medium transition-colors cursor-pointer"
+              title="Changer de projet / espace de travail"
+            >
+              <span
+                className="w-6 h-6 rounded-lg flex items-center justify-center shrink-0 overflow-hidden text-[10px] font-bold text-white"
+                style={{ backgroundColor: activeProject.color }}
+              >
+                {activeProject.logo ? <img src={activeProject.logo} alt="" className="w-full h-full object-contain p-0.5" /> : activeProject.name.slice(0, 1).toUpperCase()}
+              </span>
+              <span className="truncate flex-1 text-left font-semibold">{activeProject.name}</span>
+              <ChevronDown className={`w-3.5 h-3.5 text-gray-400 transition-transform ${projectsOpen ? 'rotate-180' : ''}`} />
+            </button>
+
+            {projectsOpen && (
+              <div className="absolute left-2 right-2 top-full mt-1.5 rounded-2xl bg-white border border-gray-200 shadow-xl p-1.5 z-40 space-y-0.5">
+                <div className="px-2.5 pt-1 pb-1 text-[10px] font-bold text-gray-400 uppercase tracking-wider flex items-center justify-between">
+                  <span>Espaces</span>
+                  <span>
+                    {projects.length}/{PACK_PROJECT_LIMIT[plan] === Infinity ? '∞' : PACK_PROJECT_LIMIT[plan]}
+                  </span>
+                </div>
+                {projects.map((pk) => (
+                  <button
+                    key={pk.id}
+                    type="button"
+                    onClick={() => {
+                      switchProject(pk.id);
+                      setProjectsOpen(false);
+                    }}
+                    className={`w-full flex items-center gap-2.5 px-2.5 py-2 rounded-xl text-xs cursor-pointer transition-colors ${
+                      pk.id === activeProjectId ? 'bg-amber-50 text-amber-900 font-bold' : 'text-gray-700 hover:bg-gray-100'
+                    }`}
+                  >
+                    <span
+                      className="w-6 h-6 rounded-lg flex items-center justify-center shrink-0 overflow-hidden text-[10px] font-bold text-white"
+                      style={{ backgroundColor: pk.color }}
+                    >
+                      {pk.logo ? <img src={pk.logo} alt="" className="w-full h-full object-contain p-0.5" /> : pk.name.slice(0, 1).toUpperCase()}
+                    </span>
+                    <span className="truncate flex-1 text-left">{pk.name}</span>
+                    <span className="text-[9px] text-gray-400 truncate max-w-[80px]">{pk.handle}</span>
+                    {pk.id === activeProjectId && <Check className="w-3.5 h-3.5 text-amber-600 shrink-0" />}
+                  </button>
+                ))}
+                <div className="my-1 border-t border-gray-100" />
+                <button
+                  type="button"
+                  onClick={createProject}
+                  className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-xl text-xs font-semibold text-amber-700 hover:bg-amber-50 cursor-pointer transition-colors"
+                >
+                  <span className="w-6 h-6 rounded-lg border border-dashed border-amber-400 flex items-center justify-center shrink-0">
+                    <Plus className="w-3.5 h-3.5" />
+                  </span>
+                  Nouveau projet
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setProjectsOpen(false);
+                    setIsBrandKitOpen(true);
+                  }}
+                  className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-xl text-xs font-semibold text-gray-600 hover:bg-gray-100 cursor-pointer transition-colors"
+                >
+                  <span className="w-6 h-6 rounded-lg bg-gray-100 flex items-center justify-center shrink-0">
+                    <Palette className="w-3.5 h-3.5 text-gray-500" />
+                  </span>
+                  Modifier le Brand Kit
+                </button>
+              </div>
+            )}
+          </div>
 
           {/* Tarifs & Packs */}
           <button
@@ -2705,6 +2981,65 @@ export default function App() {
               className="hidden"
             />
 
+            {/* Popup des commandes slash */}
+            {slashItems.length > 0 && slashQuery !== null && (
+              <div className="absolute bottom-full left-0 right-0 mb-3 rounded-2xl bg-white border border-gray-200 shadow-xl p-1.5 z-30 space-y-0.5 max-h-72 overflow-y-auto">
+                <div className="px-2.5 pt-1 pb-1 text-[10px] font-bold text-gray-400 uppercase tracking-wider flex items-center justify-between">
+                  <span>Commandes</span>
+                  <span className="normal-case font-semibold text-gray-300">↑↓ puis Entrée</span>
+                </div>
+                {slashProjectItems.length > 0 && (
+                  <div className="px-2.5 pt-1 text-[9px] font-bold text-gray-300 uppercase tracking-wider">Espaces</div>
+                )}
+                {slashProjectItems.map((it) => {
+                  const flatIdx = slashItems.indexOf(it);
+                  const pk = projects.find((x) => x.id === it.id);
+                  return (
+                    <button
+                      key={`sp_${it.id}`}
+                      type="button"
+                      onMouseEnter={() => setSlashIndex(flatIdx)}
+                      onClick={() => acceptSlash(it)}
+                      className={`w-full flex items-center gap-2.5 px-2.5 py-2 rounded-xl text-xs cursor-pointer transition-colors ${
+                        flatIdx === slashIndex ? 'bg-amber-50 text-amber-900 font-bold' : 'text-gray-700 hover:bg-gray-100'
+                      }`}
+                    >
+                      <span className="w-6 h-6 rounded-lg flex items-center justify-center shrink-0 overflow-hidden text-[10px] font-bold text-white" style={{ backgroundColor: pk?.color }}>
+                        {pk?.logo ? <img src={pk.logo} alt="" className="w-full h-full object-contain p-0.5" /> : it.label.slice(0, 1).toUpperCase()}
+                      </span>
+                      <span className="flex-1 text-left truncate">{it.label}</span>
+                      <span className="text-[9px] font-semibold text-gray-400">{it.hint}</span>
+                    </button>
+                  );
+                })}
+                {slashFormatItems.length > 0 && (
+                  <div className="px-2.5 pt-1 text-[9px] font-bold text-gray-300 uppercase tracking-wider">Formats</div>
+                )}
+                {slashFormatItems.map((it) => {
+                  const flatIdx = slashItems.indexOf(it);
+                  const F = FORMATS[it.id];
+                  return (
+                    <button
+                      key={`sf_${it.id}`}
+                      type="button"
+                      onMouseEnter={() => setSlashIndex(flatIdx)}
+                      onClick={() => acceptSlash(it)}
+                      className={`w-full flex items-center gap-2.5 px-2.5 py-2 rounded-xl text-xs cursor-pointer transition-colors ${
+                        flatIdx === slashIndex ? 'bg-amber-50 text-amber-900 font-bold' : 'text-gray-700 hover:bg-gray-100'
+                      }`}
+                    >
+                      <span className="w-6 h-6 rounded-lg bg-gray-100 flex items-center justify-center shrink-0">
+                        <F.Icon className="w-3.5 h-3.5 text-gray-500" />
+                      </span>
+                      <span className="font-mono text-[11px] text-gray-500 shrink-0">/{FORMAT_SLASH.find((f) => f.id === it.id)?.keys[0]}</span>
+                      <span className="flex-1 text-left truncate font-semibold">{it.label}</span>
+                      <span className="text-[9px] font-semibold text-gray-400">{it.hint}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+
             {/* Conteneur flottant avec grand rayon de bordure */}
             <div className={`relative flex flex-col backdrop-blur-md rounded-[28px] px-3 py-2.5 border shadow-md transition-all ${composerHighlight ? 'bg-white border-amber-400 ring-4 ring-amber-300/40 shadow-lg' : 'bg-white/90 border-orange-200/60 focus-within:shadow-lg focus-within:border-orange-300 focus-within:ring-2 focus-within:ring-orange-400/20'}`}>
               {/* Preview des photos attachées */}
@@ -2997,7 +3332,7 @@ export default function App() {
               <div className="flex items-center justify-between pb-3 border-b border-gray-100">
                 <div className="flex items-center gap-2">
                   <Palette className="w-5 h-5 text-amber-500" />
-                  <h3 className="font-semibold text-gray-900 text-base">Configuration Brand Kit</h3>
+                  <h3 className="font-semibold text-gray-900 text-base">Brand Kit · {brandName || 'Projet'}</h3>
                 </div>
                 <button
                   onClick={() => setIsBrandKitOpen(false)}
