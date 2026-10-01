@@ -1,0 +1,8 @@
+node_modules/
+dist/
+package-lock.json
+image-search/
+.env.local
+.env
+*.log
+.DS_Store
