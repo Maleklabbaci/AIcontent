@@ -24,7 +24,7 @@ const JSON_HEADERS = { 'Content-Type': 'application/json' } as const;
 
 const MODEL_CANDIDATES: Record<string, string[]> = {
   flash: ['gemini-2.5-flash-image'],
-  studio: ['gemini-3.1-flash-image', 'gemini-3.1-flash-image-preview'],
+  studio: ['gemini-3.1-flash-image'],
   pro: ['gemini-3-pro-image', 'gemini-3-pro-image-preview'],
 };
 
@@ -273,76 +273,80 @@ function buildImagePrompt(body: Record<string, unknown>, lang: string, hasRefs: 
   if (!slide || !VALID_FORMATS.has(format)) return null;
   const aspect = FORMAT_ASPECT[format];
   const slideNumber = asInt(slide.slideNumber, 1, 50) ?? 1;
+  const total = asInt(body.total, 1, 50) ?? 1;
 
-  const title = asStr(slide.title, 0, 120) ?? '';
+  const title = asStr(slide.title, 0, 140) ?? '';
   const tag = asStr(slide.tag, 0, 60) ?? '';
-  const subtitle = asStr(slide.subtitle, 0, 220) ?? '';
+  const subtitle = asStr(slide.subtitle, 0, 260) ?? '';
+  const highlight = asStr(slide.highlightWord, 0, 40) ?? '';
+  const cta = asStr(slide.ctaText, 0, 60) ?? '';
+  const bullets = Array.isArray(slide.bulletPoints)
+    ? (slide.bulletPoints as unknown[]).map((b) => asStr(b, 1, 120)).filter((b): b is string => !!b).slice(0, 3)
+    : [];
 
   const brand = body.brand as Record<string, unknown> | undefined;
   const brandColor = /^#[0-9a-fA-F]{6}$/.test(String(brand?.color ?? '')) ? String(brand?.color) : '#F59E0B';
-  const tr = SCENE_TREATMENTS[(slideNumber - 1) % SCENE_TREATMENTS.length];
+  const brandName = asStr(brand?.name, 1, 40) ?? '';
+  const brandHandle = asStr(brand?.handle, 1, 40) ?? '';
 
-  const lines = [
-    // ---- RÔLE & MISSION ----
-    'You are the photographer and art director of a premium brand shoot. Deliver ONE single photographic image: a BACKGROUND ARTWORK for a social media design.',
-    'The artwork will be dimmed to ~15-20% opacity and placed BEHIND a text overlay. It is pure backdrop.',
+  const fonts = body.fonts as Record<string, unknown> | undefined;
+  const fTitle = typeof fonts?.title === 'string' && VALID_FONT_NAMES.has(fonts.title) ? fonts.title : '';
+  const fBody = typeof fonts?.body === 'string' && VALID_FONT_NAMES.has(fonts.body) ? fonts.body : '';
+
+  const tr = SCENE_TREATMENTS[(slideNumber - 1) % SCENE_TREATMENTS.length];
+  const q = (v: string) => JSON.stringify(v);
+  const rtl = lang === 'ar';
+
+  const prof = body.profile as Record<string, unknown> | undefined;
+  const pt = asStr(prof?.productType, 1, 120);
+  const th = asStr(prof?.theme, 1, 120);
+
+  const lines: string[] = [
+    'You are a world-class art director and graphic designer. Deliver ONE single, FINISHED, ready-to-publish social media design as a flat image, in aspect ratio ' + aspect + '. It is the final deliverable: all the text below must be rendered inside the image itself.',
     '',
-    // ---- SUJET (inspiration, pas illustration littérale) ----
-    `Subject inspiration (evoke, do not illustrate literally): ${tag ? `${tag} — ` : ''}${title}${subtitle ? `. Context: ${subtitle}` : ''}`,
-    ...(() => {
-      const prof = body.profile as Record<string, unknown> | undefined;
-      const pt = asStr(prof?.productType, 1, 120);
-      const th = asStr(prof?.theme, 1, 120);
-      return pt || th ? [`Brand universe: ${pt ? `product type ${pt}` : ''}${pt && th ? ', ' : ''}${th ? `${th} aesthetic` : ''} — stay perfectly consistent with this identity.`] : [];
-    })(),
+    '=== TEXT TO RENDER (exact, character for character, in ' + (LANG_NAMES[lang] ?? 'français') + (rtl ? ', right-to-left, correctly connected Arabic letters' : '') + ') ===',
+    ...(brandName ? ['- Brand name (small, header): ' + q(brandName)] : []),
+    ...(total > 1 ? ['- Slide counter (small, header corner): ' + q(String(slideNumber).padStart(2, '0') + ' / ' + String(total).padStart(2, '0'))] : []),
+    ...(tag ? ['- Small label above the headline (uppercase, accent color): ' + q(tag)] : []),
+    '- HEADLINE (largest text, strong hierarchy, maximum 3 lines): ' + q(title) + (highlight && title.includes(highlight) ? ' — render the word ' + q(highlight) + ' in the accent color' : ''),
+    ...(subtitle ? ['- Subtitle (medium, highly readable): ' + q(subtitle)] : []),
+    ...(bullets.length ? ['- Short checklist, one line each, with a small check icon: ' + bullets.map(q).join(' | ')] : []),
+    ...(cta ? ['- Call-to-action button (pill shape, accent color fill, bold): ' + q(cta)] : []),
+    ...(brandHandle ? ['- Footer handle (small): ' + q(brandHandle)] : []),
+    'Do not add, translate, abbreviate or invent ANY other text, number, logo or watermark. Every letter must be perfectly spelled, sharp and legible' + (rtl ? '; Arabic text must read right-to-left with correct letter shaping' : '') + '.',
     '',
-    // ---- TRAITEMENT PHOTO ROTATIONNÉ (anti-répétition) ----
-    `Photographic treatment for this frame: ${tr.scene}`,
-    tr.camera,
-    tr.light,
+    '=== TYPOGRAPHY ===',
+    fTitle ? 'Headline typeface: ' + fTitle + ' (or the closest look-alike). ' : 'Headline typeface: a bold modern display font. ',
+    fBody ? 'Body typeface: ' + fBody + ' (or the closest look-alike).' : 'Body typeface: a clean modern sans-serif.',
+    'Clear hierarchy: headline > subtitle > checklist > small labels. Generous line spacing, aligned on one consistent edge' + (rtl ? ' (right-aligned)' : ' (left-aligned)') + '.',
     '',
-    // ---- THÈME ----
+    '=== LAYOUT & STYLE ===',
+    '- Keep a safe margin of at least 8% on every side: no text touches or crosses the frame edge.',
+    '- Header at the top (brand + counter), headline block in the vertical middle or lower-middle, call-to-action and handle near the bottom.',
+    '- Text must have strong contrast with the background everywhere (use a soft gradient or calm area behind text if needed).',
     style === 'light'
-      ? 'Theme: LIGHT editorial. Bright, airy, luminous composition; whites that stay clean white (never gray or washed out); soft daylight mood; low-contrast elegance.'
-      : 'Theme: DARK editorial. Deep true blacks that keep rich shadow detail (never muddy gray); one confident light source; restrained specular highlights; luxurious night-shoot mood.',
+      ? '- Theme: LIGHT. Bright, airy, luminous background (clean whites), dark text.'
+      : '- Theme: DARK. Deep rich dark background, white text, premium night mood.',
+    '- Accent color: ' + brandColor + ' — use it for the label, the highlighted word, the check icons and the button.',
+    '- Visual: integrate ONE premium photographic or 3D-style hero visual that evokes the subject (not literal clip-art), placed so it never covers the text. Photographic direction: ' + tr.scene + ' ' + tr.camera + '; ' + tr.light + '.',
+    '- Modern, minimal, agency-level quality. No clutter, no stock-template look, no borders or frames around the whole image.',
     '',
-    // ---- CONTRAT RÉALISME (anti look-IA) ----
-    'Realism contract — this MUST look like a real photograph taken by a human photographer:',
-    '- Rendered like a frame from a professional shoot on Kodak Portra 400 film: natural muted palette, gentle contrast curve, fine organic film grain.',
-    '- True optical physics: physically correct shadow directions, natural light falloff, honest reflections, slight natural softness at frame edges.',
-    '- Human imperfection: subtle asymmetry, micro dust or fiber details, materials with real wear. Nothing sterile, nothing plastic, nothing waxy.',
-    '- Neutral true-to-life white balance (no yellow or teal cast), restrained saturation. No HDR, no bloom, no glow, no over-sharpening halos.',
-    '- It must NOT look like CGI, a 3D render, a video game screenshot, AI art, vector art or an illustration.',
-    '',
-    // ---- COMPOSITION (contraintes de fond-de-texte) ----
-    'Composition rules:',
-    '- Exactly ONE focal point, placed off-center on a rule-of-thirds intersection. Never dead-center, never mirrored symmetry.',
-    '- Maximum 1-3 visual elements. Zero clutter, zero repeated patterns.',
-    '- The lower 45% of the frame stays visually calm (soft surface or gradient) so overlaid headlines remain readable.',
-    '',
-    // ---- COULEUR D'ACCENT ----
-    `Weave the accent color ${brandColor} into ONE small detail only (a reflection, an object, a subtle light tint) — never as a dominant color.`,
-    '',
-    // ---- INTERDITS ABSOLUS ----
+    'Subject of the design: ' + [tag, title, subtitle].filter(Boolean).join(' — '),
+    ...(pt || th ? ['Brand universe: ' + (pt ? 'product type ' + pt : '') + (pt && th ? ', ' : '') + (th ? th + ' aesthetic' : '') + ' — stay perfectly consistent with this identity.'] : []),
     ...(hasProduct
       ? [
+          '',
           'PRODUCT FIDELITY CONTRACT — the FIRST attached image(s) show a REAL product from the user\'s shop:',
-          '- Show THIS EXACT product in your scene. Preserve it 100%: exact shape, exact proportions, exact colors, exact label text and logo placement, exact materials and finish.',
-          '- Do NOT redraw, redesign, restyle, warp, blur, recolor or reinterpret the product in any way. No invented packaging details, no distorted text on the label.',
-          '- Integrate it as the hero of the composition with a soft realistic contact shadow and correct scale — professional commercial product photography.',
+          '- Show THIS EXACT product as the hero visual. Preserve it 100%: exact shape, proportions, colors, label text, logo placement, materials and finish.',
+          '- Do NOT redraw, redesign, recolor or distort the product. Integrate it with a soft realistic contact shadow and correct scale.',
         ]
       : []),
     ...(hasRefs && !hasProduct
-      ? [
-          'Reference images are attached: match their photographic style, lighting mood, color palette and material feel.',
-          'The references are STYLE GUIDANCE ONLY — never copy any text, logo, face or exact layout from them. Your output must still contain zero text.',
-        ]
+      ? ['', 'Reference images are attached: match their visual style, mood, color palette and material feel. They are STYLE GUIDANCE ONLY — never copy their text, logos or faces.']
       : []),
-    'Strictly forbidden: any text, letters, numbers, typography, captions, signatures, logos, watermarks, UI elements, borders, frames, split screens, collages, image grids, distorted faces, extra fingers, plastic skin, vignettes, light leaks, lens flares, fisheye distortion.',
   ];
   return lines.join('\n');
 }
-
 
 // Extrait { mime, data } d'un data URL (le vrai MIME, pas un jpeg codé en dur)
 function parseDataUrl(r: string): { mime: string; data: string } {
@@ -408,52 +412,29 @@ async function handleImage(apiKey: string, body: Record<string, unknown>): Promi
   let lastStatus = 502;
   let lastDetail = '';
   for (const model of candidates) {
-    // --- Tentative 1 : API Interactions ---
-    let res = await fetchWithTimeout(
-      'https://generativelanguage.googleapis.com/v1beta/interactions',
+    // Endpoint officiel generateContent — ratio/taille dans generationConfig.responseFormat.image
+    const res = await fetchWithTimeout(
+      `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,
       {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'x-goog-api-key': apiKey },
         body: JSON.stringify({
-          model,
-          input: [
-            ...inputImages.map((im) => ({ type: 'image', mime_type: im.mime, data: im.data })),
-            { type: 'text', text: imagePrompt },
+          contents: [
+            {
+              parts: [
+                ...inputImages.map((im) => ({ inline_data: { mime_type: im.mime, data: im.data } })),
+                { text: imagePrompt },
+              ],
+            },
           ],
-          response_format: { type: 'image', aspect_ratio: aspect, ...(sendSize ? { image_size: size } : {}) },
+          generationConfig: {
+            responseModalities: ['IMAGE'],
+            responseFormat: { image: { aspectRatio: aspect, ...(sendSize ? { imageSize: size } : {}) } },
+          },
         }),
       },
       90000
     );
-
-    // --- Tentative 2 (400/404 = requête rejetée, non facturée) : endpoint classique generateContent ---
-    if (res.status === 400 || res.status === 404) {
-      const firstErr = (await res.text().catch(() => '')).slice(0, 400);
-      console.error('interactions rejected', model, res.status, firstErr);
-      lastDetail = firstErr;
-      res = await fetchWithTimeout(
-        `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,
-        {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'x-goog-api-key': apiKey },
-          body: JSON.stringify({
-            contents: [
-              {
-                parts: [
-                  ...inputImages.map((im) => ({ inline_data: { mime_type: im.mime, data: im.data } })),
-                  { text: imagePrompt },
-                ],
-              },
-            ],
-            generationConfig: {
-              responseModalities: ['IMAGE'],
-              imageConfig: { aspectRatio: aspect, ...(sendSize ? { imageSize: size } : {}) },
-            },
-          }),
-        },
-        90000
-      );
-    }
 
     if (res.ok) {
       let data: unknown;
