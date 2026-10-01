@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { motion, AnimatePresence } from 'motion/react';
+import { m, AnimatePresence } from 'motion/react';
 import {
   Sparkles,
   Plus,
@@ -39,10 +39,13 @@ import {
   Info,
   Zap,
   LogOut,
-  FileImage
+  FileImage,
+  History,
+  User as UserIcon,
+  Pencil
 } from 'lucide-react';
-import imgAbstract from './assets/images/social_abstract_accent_1790812839231.jpg';
-import imgMarketing from './assets/images/social_marketing_visual_1790812851560.jpg';
+import imgAbstract from './assets/images/social_abstract_accent_1790812839231.webp';
+import imgMarketing from './assets/images/social_marketing_visual_1790812851560.webp';
 
 // Format types
 type FormatType = 'scroller' | 'story' | 'square' | 'website' | 'product' | 'poster' | 'presentation';
@@ -187,9 +190,9 @@ const FORMATS: Record<
 const FORMAT_ORDER: FormatType[] = ['scroller', 'story', 'square', 'website', 'product', 'poster', 'presentation'];
 
 const I18N: Record<Lang, Record<string, string>> = {
-  fr: { newDesign: 'Nouveau design', search: 'Recherche', brandKit: 'Brand Kit', templates: 'Templates', recents: 'Récents', greeting: 'Bonjour', subtitle: "On travaille sur quoi aujourd'hui ?", placeholder: "Décrivez le design à créer... (site web, produit, story, carrousel, affiche)", share: 'Partager', settings: 'Paramètres', language: 'Langue', help: "Obtenir de l'aide", learnMore: 'En savoir plus', upgrade: 'Mettre le forfait à niveau', logout: 'Se déconnecter', plan: 'Forfait' },
-  en: { newDesign: 'New design', search: 'Search', brandKit: 'Brand Kit', templates: 'Templates', recents: 'Recents', greeting: 'Hello', subtitle: 'What are we working on today?', placeholder: 'Describe the design to create... (website, product, story, carousel, poster)', share: 'Share', settings: 'Settings', language: 'Language', help: 'Get help', learnMore: 'Learn more', upgrade: 'Upgrade plan', logout: 'Log out', plan: 'Plan' },
-  ar: { newDesign: 'تصميم جديد', search: 'بحث', brandKit: 'هوية العلامة', templates: 'قوالب', recents: 'الأخيرة', greeting: 'مرحباً', subtitle: 'على ماذا سنعمل اليوم؟', placeholder: 'صف التصميم المطلوب... (موقع، منتج، ستوري، كاروسيل، ملصق)', share: 'مشاركة', settings: 'الإعدادات', language: 'اللغة', help: 'احصل على مساعدة', learnMore: 'اعرف المزيد', upgrade: 'ترقية الباقة', logout: 'تسجيل الخروج', plan: 'الباقة' },
+  fr: { newDesign: 'Nouveau design', search: 'Recherche', brandKit: 'Brand Kit', templates: 'Templates', recents: 'Récents', greeting: 'Bonjour', subtitle: "On travaille sur quoi aujourd'hui ?", placeholder: 'Décrivez votre design…', share: 'Partager', settings: 'Paramètres', language: 'Langue', help: "Obtenir de l'aide", learnMore: 'En savoir plus', upgrade: 'Mettre le forfait à niveau', logout: 'Se déconnecter', plan: 'Forfait', create: 'Créer', profile: 'Profil', edit: 'Éditer', copy: 'Copier', shareSlide: 'Partager', install: "Installer l'application" },
+  en: { newDesign: 'New design', search: 'Search', brandKit: 'Brand Kit', templates: 'Templates', recents: 'Recents', greeting: 'Hello', subtitle: 'What are we working on today?', placeholder: 'Describe your design…', share: 'Share', settings: 'Settings', language: 'Language', help: 'Get help', learnMore: 'Learn more', upgrade: 'Upgrade plan', logout: 'Log out', plan: 'Plan', create: 'Create', profile: 'Profile', edit: 'Edit', copy: 'Copy', shareSlide: 'Share', install: 'Install the app' },
+  ar: { newDesign: 'تصميم جديد', search: 'بحث', brandKit: 'هوية العلامة', templates: 'قوالب', recents: 'الأخيرة', greeting: 'مرحباً', subtitle: 'على ماذا سنعمل اليوم؟', placeholder: 'صف تصميمك…', share: 'مشاركة', settings: 'الإعدادات', language: 'اللغة', help: 'احصل على مساعدة', learnMore: 'اعرف المزيد', upgrade: 'ترقية الباقة', logout: 'تسجيل الخروج', plan: 'الباقة', create: 'إنشاء', profile: 'حسابي', edit: 'تعديل', copy: 'نسخ', shareSlide: 'مشاركة', install: 'تثبيت التطبيق' },
 };
 const LANGS: { id: Lang; label: string }[] = [
   { id: 'fr', label: 'Français' },
@@ -205,7 +208,8 @@ const FAQ: { q: string; a: string }[] = [
   { q: 'Quels types de designs puis-je créer ?', a: 'Posts et stories pour les réseaux sociaux, carrousels, sites web, fiches produit, affiches et présentations. Choisissez le format dans la barre de saisie.' },
   { q: 'Comment exporter mon design ?', a: 'Dans le Canvas, cliquez sur « PNG HD » pour télécharger le slide affiché, ou utilisez la suggestion « Télécharger les slides en PNG » pour tout exporter.' },
   { q: 'Comment appliquer ma marque ?', a: 'Ouvrez Brand Kit : logo, nom, identifiant et couleur d\'accentuation sont appliqués à tous vos designs.' },
-  { q: 'Raccourcis utiles', a: 'Entrée pour envoyer, Échap pour fermer une fenêtre ou un menu.' },
+  { q: 'Raccourcis utiles', a: 'Entrée pour envoyer (ordinateur), Maj+Entrée pour un retour à la ligne, Échap pour fermer une fenêtre ou un menu. Sur téléphone : glissez le design pour changer de slide.' },
+  { q: "Comment installer l'application ?", a: "Android (Chrome) : menu ⋮ puis « Installer l'application ». iPhone (Safari) : bouton Partager puis « Sur l'écran d'accueil ». Aura s'ouvre ensuite en plein écran, comme une vraie application." },
 ];
 
 const loadImage = (src: string) =>
@@ -422,9 +426,62 @@ const loadBrand = (): { name?: string; handle?: string; color?: string } => {
 
 const MODELS = ['Aura 2.5 Social', 'Aura 2.5 Pro'];
 
+const BRAND_COLORS = ['#F59E0B', '#EA580C', '#EAB308', '#F97316', '#10B981', '#3B82F6', '#8B5CF6', '#EC4899'];
+
+const ACTION_BTN =
+  'flex flex-col items-center justify-center gap-1 min-h-[52px] rounded-2xl text-[11px] font-semibold transition-colors bg-zinc-900 hover:bg-zinc-800 active:bg-zinc-700 text-zinc-200 border border-zinc-800 cursor-pointer';
+
+function SlideThumbs({
+  slides,
+  active,
+  onSelect,
+  accent,
+}: {
+  slides: Slide[];
+  active: number;
+  onSelect: (i: number) => void;
+  accent: string;
+}) {
+  const refs = useRef<(HTMLButtonElement | null)[]>([]);
+  const first = useRef(true);
+  useEffect(() => {
+    if (first.current) {
+      first.current = false;
+      return;
+    }
+    refs.current[active]?.scrollIntoView({ inline: 'center', block: 'nearest', behavior: 'smooth' });
+  }, [active]);
+  return (
+    <div className="flex-1 min-w-0 flex gap-2 overflow-x-auto no-scrollbar py-1 snap-x" role="tablist" aria-label="Slides">
+      {slides.map((sl, i) => (
+        <button
+          key={sl.id}
+          ref={(el) => {
+            refs.current[i] = el;
+          }}
+          type="button"
+          role="tab"
+          aria-selected={i === active}
+          aria-label={`Slide ${i + 1}`}
+          onClick={() => onSelect(i)}
+          className={`snap-center shrink-0 w-14 h-[4.5rem] rounded-xl p-1.5 text-left flex flex-col justify-between overflow-hidden border transition-all cursor-pointer ${
+            i === active ? 'bg-zinc-800' : 'bg-zinc-900 border-zinc-800 opacity-70 hover:opacity-100'
+          }`}
+          style={i === active ? { borderColor: accent } : undefined}
+        >
+          <span className="text-[9px] font-bold" style={{ color: accent }}>
+            {String(i + 1).padStart(2, '0')}
+          </span>
+          <span className="text-[7px] leading-tight text-zinc-300 line-clamp-3">{sl.title}</span>
+        </button>
+      ))}
+    </div>
+  );
+}
+
 export default function App() {
   // Sidebar state
-  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [sidebarOpen, setSidebarOpen] = useState(() => typeof window === 'undefined' || window.innerWidth >= 768);
   const [activeSessionId, setActiveSessionId] = useState('sess_draft');
   const activeIdRef = useRef('sess_draft');
   useEffect(() => {
@@ -515,6 +572,17 @@ export default function App() {
   // Templates Modal state
   const [isTemplatesOpen, setIsTemplatesOpen] = useState(false);
 
+  // Mobile / PWA
+  const [isTouch] = useState(() => typeof window !== 'undefined' && window.matchMedia('(pointer: coarse)').matches);
+  const [isStandalone] = useState(
+    () =>
+      typeof window !== 'undefined' &&
+      (window.matchMedia('(display-mode: standalone)').matches || (navigator as any).standalone === true)
+  );
+  const [installEvt, setInstallEvt] = useState<any>(null);
+  const [editingMsgId, setEditingMsgId] = useState<string | null>(null);
+  const promptRef = useRef<HTMLTextAreaElement>(null);
+
   // Chat & Input state
   const [inputPrompt, setInputPrompt] = useState('');
   const [selectedFormat, setSelectedFormat] = useState<FormatType>('scroller');
@@ -587,13 +655,58 @@ export default function App() {
     toastTimer.current = setTimeout(() => setToastMessage(null), 2800);
   };
 
+  // Installation PWA
+  useEffect(() => {
+    const onPrompt = (e: Event) => {
+      e.preventDefault();
+      setInstallEvt(e);
+    };
+    const onInstalled = () => {
+      setInstallEvt(null);
+      showToast('Application installée !');
+    };
+    window.addEventListener('beforeinstallprompt', onPrompt);
+    window.addEventListener('appinstalled', onInstalled);
+    return () => {
+      window.removeEventListener('beforeinstallprompt', onPrompt);
+      window.removeEventListener('appinstalled', onInstalled);
+    };
+  }, []);
+
+  const handleInstall = async () => {
+    if (!installEvt) {
+      setFaqOpen(FAQ.length - 1);
+      setModal('help');
+      return;
+    }
+    installEvt.prompt();
+    try {
+      await installEvt.userChoice;
+    } catch {}
+    setInstallEvt(null);
+  };
+
+  // Zone de saisie : hauteur auto (jusqu'à ~5 lignes)
+  useEffect(() => {
+    const el = promptRef.current;
+    if (!el) return;
+    el.style.height = 'auto';
+    el.style.height = `${Math.min(el.scrollHeight, 160)}px`;
+  }, [inputPrompt]);
+
   useEffect(() => {
     setSessionMessagesMap((prev) => (prev[activeSessionId] === messages ? prev : { ...prev, [activeSessionId]: messages }));
   }, [messages, activeSessionId]);
 
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages, isGenerating]);
+    // Un nouveau design s'affiche depuis son début (le slide d'abord), le reste suit le bas du fil
+    const last = messages[messages.length - 1];
+    if (last?.sender === 'assistant' && last.design) {
+      document.getElementById(`msg-${last.id}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    } else {
+      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }
+  }, [messages.length, isGenerating]);
 
   // Click outside format & slides count dropdowns
   useEffect(() => {
@@ -696,6 +809,44 @@ export default function App() {
     showToast('Tous les slides sont téléchargés !');
   };
 
+  // Édition rapide d'un slide
+  const handleSlideEdit = (messageId: string, slideIndex: number, patch: Partial<Slide>) => {
+    setMessages((prev) =>
+      prev.map((msg) =>
+        msg.id === messageId && msg.design
+          ? {
+              ...msg,
+              design: {
+                ...msg.design,
+                slides: msg.design.slides.map((sl, i) => (i === slideIndex ? { ...sl, ...patch } : sl)),
+              },
+            }
+          : msg
+      )
+    );
+  };
+
+  // Partage natif (feuille de partage du téléphone) avec repli sur le téléchargement
+  const handleShareSlide = async (design: DesignContent, index: number) => {
+    const blob = await slideToPngBlob(design.slides[index], design.format, design.slides.length, {
+      name: brandName,
+      handle: brandHandle,
+      color: brandColor,
+    });
+    if (!blob) {
+      showToast('Export impossible sur ce navigateur.');
+      return;
+    }
+    const file = new File([blob], `${design.title.replace(/[^\w\-]+/g, '_')}_slide_${index + 1}.png`, { type: 'image/png' });
+    if (navigator.canShare?.({ files: [file] })) {
+      try {
+        await navigator.share({ files: [file], title: design.title });
+      } catch {}
+      return;
+    }
+    await handleExportSlide(design, index);
+  };
+
   // Copy slide text
   const handleCopySlideText = async (slide: Slide) => {
     const text = `${slide.tag}\n\n${slide.title}\n\n${slide.subtitle}\n\n${slide.bulletPoints?.join('\n') || ''}`;
@@ -763,6 +914,7 @@ export default function App() {
     if (!textToSend) setInputPrompt('');
     setAttachedImages([]);
     setIsGenerating(true);
+    if (isTouch) promptRef.current?.blur();
 
     setTimeout(() => {
       setIsGenerating(false);
@@ -942,8 +1094,8 @@ export default function App() {
     }, 1100);
   };
 
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key === 'Enter' && !e.shiftKey && !isTouch && !e.nativeEvent.isComposing) {
       e.preventDefault();
       handleSendMessage();
     }
@@ -1021,8 +1173,59 @@ export default function App() {
     );
   }
 
+  const navActive =
+    modal === 'settings'
+      ? 'profile'
+      : isBrandKitOpen
+      ? 'brand'
+      : isTemplatesOpen
+      ? 'templates'
+      : sidebarOpen
+      ? 'recents'
+      : 'create';
+  const navItems: { id: string; label: string; Icon: React.ComponentType<{ className?: string }>; action: () => void }[] = [
+    {
+      id: 'create',
+      label: t('create'),
+      Icon: Sparkles,
+      action: () => {
+        setSidebarOpen(false);
+        if (messages.length === 0) promptRef.current?.focus();
+        else handleNewDesign();
+      },
+    },
+    { id: 'recents', label: t('recents'), Icon: History, action: () => setSidebarOpen((v) => !v) },
+    {
+      id: 'templates',
+      label: t('templates'),
+      Icon: LayoutTemplate,
+      action: () => {
+        setSidebarOpen(false);
+        setIsTemplatesOpen(true);
+      },
+    },
+    {
+      id: 'brand',
+      label: t('brandKit'),
+      Icon: Palette,
+      action: () => {
+        setSidebarOpen(false);
+        setIsBrandKitOpen(true);
+      },
+    },
+    {
+      id: 'profile',
+      label: t('profile'),
+      Icon: UserIcon,
+      action: () => {
+        setSidebarOpen(false);
+        setModal('settings');
+      },
+    },
+  ];
+
   return (
-    <div dir={lang === 'ar' ? 'rtl' : 'ltr'} className="relative flex h-screen w-screen bg-transparent text-gray-900 font-sans overflow-hidden antialiased">
+    <div dir={lang === 'ar' ? 'rtl' : 'ltr'} className="relative flex h-dvh w-full bg-transparent text-gray-900 font-sans overflow-hidden antialiased max-md:pb-[calc(4rem+env(safe-area-inset-bottom))]">
 
       {/* Fond dégradé orange / jaune qui bouge lentement */}
       <div className="aurora" aria-hidden="true">
@@ -1034,10 +1237,17 @@ export default function App() {
       {/* ========================================================= */}
       {/* 1. PANNEAU GAUCHE (SIDEBAR - MENU & HISTORIQUE STYLE GEMINI) */}
       {/* ========================================================= */}
+      {sidebarOpen && (
+        <div
+          className="md:hidden fixed inset-0 z-20 bg-black/30 animate-fade-in"
+          onClick={() => setSidebarOpen(false)}
+          aria-hidden="true"
+        />
+      )}
       <aside
         className={`${
-          sidebarOpen ? 'w-64 sm:w-72' : 'w-0 -translate-x-full'
-        } transition-all duration-300 ease-in-out h-full bg-white/60 backdrop-blur-xl border-r border-orange-200/40 flex flex-col shrink-0 z-20 overflow-hidden max-md:absolute max-md:inset-y-0 max-md:left-0`}
+          sidebarOpen ? 'w-72 max-w-[85vw]' : 'w-0 -translate-x-full'
+        } transition-all duration-300 ease-in-out h-full max-md:h-auto bg-white/85 max-md:bg-white backdrop-blur-xl border-r border-orange-200/40 flex flex-col shrink-0 z-20 overflow-hidden max-md:absolute max-md:top-0 max-md:bottom-[calc(4rem+env(safe-area-inset-bottom))] max-md:left-0 max-md:z-30 max-md:shadow-2xl`}
       >
         {/* En haut : Logo / Titre SaaS */}
         <div className="p-4 flex items-center justify-between">
@@ -1056,7 +1266,7 @@ export default function App() {
           <button
             onClick={() => setSidebarOpen(false)}
             title="Masquer la barre latérale"
-            className="p-1.5 rounded-full hover:bg-gray-200/80 text-gray-500 hover:text-gray-900 transition-colors"
+            className="p-2.5 md:p-1.5 rounded-full hover:bg-gray-200/80 text-gray-500 hover:text-gray-900 transition-colors"
           >
             <Menu className="w-4 h-4" />
           </button>
@@ -1092,7 +1302,7 @@ export default function App() {
               value={sessionSearch}
               onChange={(e) => setSessionSearch(e.target.value)}
               placeholder="Rechercher une session..."
-              className="w-full px-4 py-2 rounded-full bg-white/90 border border-orange-200/60 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-orange-300/50"
+              className="w-full px-4 py-2 rounded-full bg-white/90 border border-orange-200/60 text-base md:text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-orange-300/50"
             />
           )}
 
@@ -1155,7 +1365,7 @@ export default function App() {
         </div>
 
         {/* En bas : Profil utilisateur "Labbaci Malek" avec avatar et réglages */}
-        <div ref={accountRef} className="relative p-3 border-t border-orange-200/40 bg-white/40">
+        <div ref={accountRef} className="relative p-3 border-t border-orange-200/40 bg-white/60">
           {accountMenuOpen && (
             <div className="absolute bottom-full left-3 right-3 mb-2 rounded-2xl bg-white border border-gray-200 shadow-xl p-1.5 z-40 animate-fade-in">
               {[
@@ -1259,13 +1469,13 @@ export default function App() {
       {/* ========================================================= */}
       <main className="flex-1 flex flex-col h-full relative min-w-0">
         {/* Top Header épuré style Gemini */}
-        <header className="h-14 px-4 sm:px-6 flex items-center justify-between z-10 shrink-0">
+        <header className="h-[calc(3.5rem+env(safe-area-inset-top))] pt-[env(safe-area-inset-top)] px-4 sm:px-6 flex items-center justify-between z-10 shrink-0">
           <div className="flex items-center gap-3">
             {!sidebarOpen && (
               <button
                 onClick={() => setSidebarOpen(true)}
                 title="Ouvrir la barre latérale"
-                className="p-2 rounded-full hover:bg-gray-100 text-gray-600 transition-colors"
+                className="max-md:hidden p-2 rounded-full hover:bg-gray-100 text-gray-600 transition-colors"
               >
                 <Menu className="w-5 h-5" />
               </button>
@@ -1317,7 +1527,7 @@ export default function App() {
         </header>
 
         {/* Flux de discussion (Au centre) */}
-        <div className={`flex-1 overflow-y-auto px-4 sm:px-6 pt-4 flex flex-col ${messages.length === 0 ? 'pb-[calc(54vh+1rem)]' : 'pb-36'}`}>
+        <div className={`flex-1 overflow-y-auto px-4 sm:px-6 pt-4 flex flex-col ${messages.length === 0 ? 'pb-[calc(54vh+1rem)]' : 'pb-52'}`}>
           {messages.length === 0 ? (
             /* ========================================================= */
             /* PAGE D'ACCUEIL NOUVEAU DESIGN STYLE GEMINI */
@@ -1332,6 +1542,16 @@ export default function App() {
               <p className="text-base sm:text-lg text-gray-500 font-normal">
                 {t('subtitle')}
               </p>
+              {installEvt && !isStandalone && (
+                <button
+                  type="button"
+                  onClick={handleInstall}
+                  className="mt-4 inline-flex items-center gap-2 px-4 py-2 rounded-full bg-gray-900 text-white text-xs font-semibold shadow-sm cursor-pointer active:scale-95 transition-transform"
+                >
+                  <Download className="w-3.5 h-3.5" />
+                  {t('install')}
+                </button>
+              )}
             </div>
           ) : (
             <div className="max-w-3xl mx-auto space-y-8 w-full">
@@ -1340,8 +1560,9 @@ export default function App() {
                   const isUser = msg.sender === 'user';
 
                   return (
-                    <motion.div
+                    <m.div
                       key={msg.id}
+                      id={`msg-${msg.id}`}
                       initial={{ opacity: 0, y: 16 }}
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
@@ -1392,45 +1613,30 @@ export default function App() {
 
                           {/* CANVA DE PRÉVISUALISATION VISUELLE INTÉGRÉ AU FLUX (BLOC SOMBRE CONTRASTÉ) */}
                           {msg.design && (
-                            <div className="mt-5 rounded-3xl bg-zinc-950 text-white border border-zinc-800 p-4 sm:p-6 shadow-xl relative overflow-hidden">
+                            <div className="mt-5 max-sm:-ml-[2.625rem] rounded-3xl bg-zinc-950 text-white border border-zinc-800 p-3 sm:p-6 shadow-xl relative overflow-hidden">
                               {/* Ambient glow */}
                               <div className="absolute top-0 right-0 w-64 h-64 bg-amber-500/10 rounded-full blur-3xl pointer-events-none" />
 
                               {/* Canvas Top Controls */}
-                              <div className="flex items-center justify-between pb-4 border-b border-zinc-800/80 text-xs">
-                                <div className="flex items-center gap-2">
-                                  <span className="px-2.5 py-1 rounded-full bg-zinc-900 text-amber-400  text-[11px] font-bold border border-amber-500/30">
+                              <div className="flex items-center justify-between gap-2 pb-3 border-b border-zinc-800/80 text-xs">
+                                <div className="flex items-center gap-2 min-w-0">
+                                  <span className="px-2.5 py-1 rounded-full bg-zinc-900 text-amber-400 text-[11px] font-bold border border-amber-500/30 shrink-0">
                                     {FORMATS[msg.design.format].label}
                                   </span>
-                                  <span className="text-zinc-400 text-xs font-medium">
+                                  <span className="text-zinc-400 text-xs font-medium truncate">
                                     Slide {(msg.design.activeSlideIndex || 0) + 1} sur {msg.design.slides.length}
                                   </span>
                                 </div>
-
-                                {/* Actions d'export & copie */}
-                                <div className="flex items-center gap-1.5">
+                                {msg.design.slides.length > 1 && (
                                   <button
-                                    onClick={() =>
-                                      handleCopySlideText(msg.design!.slides[msg.design!.activeSlideIndex || 0])
-                                    }
-                                    title="Copier le texte"
-                                    className="p-1.5 rounded-full hover:bg-zinc-800 text-zinc-400 hover:text-white transition-colors"
+                                    type="button"
+                                    onClick={() => handleExportAll(msg.design!)}
+                                    className="shrink-0 flex items-center gap-1 px-2.5 py-1.5 rounded-full text-zinc-300 hover:text-white hover:bg-zinc-800 text-[11px] font-semibold transition-colors cursor-pointer"
                                   >
-                                    {copiedId === msg.design.slides[msg.design.activeSlideIndex || 0].id ? (
-                                      <Check className="w-3.5 h-3.5 text-amber-400" />
-                                    ) : (
-                                      <Copy className="w-3.5 h-3.5" />
-                                    )}
+                                    <Download className="w-3.5 h-3.5" />
+                                    Tout exporter
                                   </button>
-
-                                  <button
-                                    onClick={() => handleExportSlide(msg.design!, msg.design!.activeSlideIndex || 0)}
-                                    className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-black font-semibold text-xs tracking-wide transition-all shadow-sm cursor-pointer"
-                                  >
-                                    <Download className="w-3.5 h-3.5 stroke-[2.5]" />
-                                    <span>PNG HD</span>
-                                  </button>
-                                </div>
+                                )}
                               </div>
 
                               {/* Le Canvas Visuel Actif avec transition animée des slides */}
@@ -1443,20 +1649,29 @@ export default function App() {
                                     }`}
                                   >
                                     <AnimatePresence mode="wait">
-                                      <motion.div
+                                      <m.div
                                         key={`slide_${msg.id}_${msg.design.activeSlideIndex || 0}`}
                                         initial={{ opacity: 0, y: 8, scale: 0.985 }}
                                         animate={{ opacity: 1, y: 0, scale: 1 }}
                                         exit={{ opacity: 0, y: -8, scale: 0.985 }}
                                         transition={{ duration: 0.22, ease: 'easeOut' }}
-                                        className="w-full h-full rounded-2xl bg-zinc-900 border border-zinc-800 p-6 sm:p-8 flex flex-col justify-between relative overflow-hidden shadow-lg"
+                                        drag={msg.design.slides.length > 1 ? 'x' : false}
+                                        dragConstraints={{ left: 0, right: 0 }}
+                                        dragElastic={0.35}
+                                        dragSnapToOrigin
+                                        onDragEnd={(_e: unknown, info: { offset: { x: number }; velocity: { x: number } }) => {
+                                          const cur = msg.design!.activeSlideIndex || 0;
+                                          if (info.offset.x < -60 || info.velocity.x < -450) handleSlideChange(msg.id, cur + 1);
+                                          else if (info.offset.x > 60 || info.velocity.x > 450) handleSlideChange(msg.id, cur - 1);
+                                        }}
+                                        className="w-full h-full touch-pan-y select-none rounded-2xl bg-zinc-900 border border-zinc-800 p-5 sm:p-8 flex flex-col justify-between relative overflow-hidden shadow-lg"
                                       >
                                         {/* Background Image texture if present */}
                                         {slide.image && (
                                           <div className="absolute inset-0 z-0 opacity-20 pointer-events-none">
                                             <img
                                               src={slide.image}
-                                              alt="Backdrop visual"
+                                              alt="" loading="lazy" decoding="async" draggable={false}
                                               className="w-full h-full object-cover filter contrast-125"
                                             />
                                             <div className="absolute inset-0 bg-gradient-to-t from-zinc-950 via-zinc-950/80 to-transparent" />
@@ -1550,65 +1765,180 @@ export default function App() {
                                             </div>
                                           )}
                                         </div>
-                                      </motion.div>
+                                      </m.div>
                                     </AnimatePresence>
                                   </div>
                                 );
                               })()}
 
-                              {/* Navigation entre les slides du carrousel */}
-                              <div className="flex items-center justify-between pt-2">
-                                <button
-                                  onClick={() =>
-                                    handleSlideChange(msg.id, (msg.design!.activeSlideIndex || 0) - 1)
-                                  }
-                                  disabled={(msg.design.activeSlideIndex || 0) === 0}
-                                  className={`flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-semibold transition-all ${
-                                    (msg.design.activeSlideIndex || 0) === 0
+                              {(() => {
+                                const idx = msg.design.activeSlideIndex || 0;
+                                const total = msg.design.slides.length;
+                                const cur = msg.design.slides[idx];
+                                const navBtn = (disabled: boolean) =>
+                                  `w-11 h-11 shrink-0 rounded-full flex items-center justify-center transition-colors ${
+                                    disabled
                                       ? 'text-zinc-600 bg-zinc-900/50 cursor-not-allowed'
-                                      : 'text-zinc-200 bg-zinc-800 hover:bg-zinc-700 cursor-pointer'
-                                  }`}
-                                >
-                                  <ChevronLeft className="w-3.5 h-3.5" />
-                                  <span>Précédent</span>
-                                </button>
+                                      : 'text-zinc-100 bg-zinc-800 hover:bg-zinc-700 active:bg-zinc-600 cursor-pointer'
+                                  }`;
+                                const field =
+                                  'w-full rounded-xl bg-zinc-950 border border-zinc-700 px-3 py-2 text-base sm:text-sm text-white placeholder-zinc-500 focus:outline-none focus:border-amber-500';
+                                return (
+                                  <>
+                                    {/* Navigation + miniatures */}
+                                    {total > 1 && (
+                                      <div className="flex items-center gap-2 pt-1">
+                                        <button
+                                          type="button"
+                                          aria-label="Slide précédent"
+                                          onClick={() => handleSlideChange(msg.id, idx - 1)}
+                                          disabled={idx === 0}
+                                          className={navBtn(idx === 0)}
+                                        >
+                                          <ChevronLeft className="w-5 h-5" />
+                                        </button>
+                                        <SlideThumbs
+                                          slides={msg.design.slides}
+                                          active={idx}
+                                          accent={brandColor}
+                                          onSelect={(i) => handleSlideChange(msg.id, i)}
+                                        />
+                                        <button
+                                          type="button"
+                                          aria-label="Slide suivant"
+                                          onClick={() => handleSlideChange(msg.id, idx + 1)}
+                                          disabled={idx === total - 1}
+                                          className={navBtn(idx === total - 1)}
+                                        >
+                                          <ChevronRight className="w-5 h-5" />
+                                        </button>
+                                      </div>
+                                    )}
 
-                                {/* Dots de slides */}
-                                <div className="flex items-center gap-1.5">
-                                  {msg.design.slides.map((s, idx) => (
-                                    <button
-                                      key={s.id}
-                                      onClick={() => handleSlideChange(msg.id, idx)}
-                                      className={`h-2 rounded-full transition-all ${
-                                        idx === (msg.design!.activeSlideIndex || 0)
-                                          ? 'w-6 bg-amber-400'
-                                          : 'w-2 bg-zinc-700 hover:bg-zinc-500'
-                                      }`}
-                                    />
-                                  ))}
-                                </div>
+                                    {/* Actions tactiles */}
+                                    <div className="grid grid-cols-4 gap-2 pt-3">
+                                      <button
+                                        type="button"
+                                        onClick={() => {
+                                          const opening = editingMsgId !== msg.id;
+                                          setEditingMsgId(opening ? msg.id : null);
+                                          if (opening)
+                                            setTimeout(
+                                              () => document.getElementById(`edit-${msg.id}`)?.scrollIntoView({ behavior: 'smooth', block: 'nearest' }),
+                                              80
+                                            );
+                                        }}
+                                        className={`${ACTION_BTN} ${editingMsgId === msg.id ? '!border-amber-500/60 !text-amber-400' : ''}`}
+                                      >
+                                        <Pencil className="w-4 h-4" />
+                                        {t('edit')}
+                                      </button>
+                                      <button type="button" onClick={() => handleCopySlideText(cur)} className={ACTION_BTN}>
+                                        {copiedId === cur.id ? <Check className="w-4 h-4 text-amber-400" /> : <Copy className="w-4 h-4" />}
+                                        {t('copy')}
+                                      </button>
+                                      <button type="button" onClick={() => handleShareSlide(msg.design!, idx)} className={ACTION_BTN}>
+                                        <Share2 className="w-4 h-4" />
+                                        {t('shareSlide')}
+                                      </button>
+                                      <button
+                                        type="button"
+                                        onClick={() => handleExportSlide(msg.design!, idx)}
+                                        className="flex flex-col items-center justify-center gap-1 min-h-[52px] rounded-2xl text-[11px] font-bold bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 active:brightness-95 text-black transition-all cursor-pointer"
+                                      >
+                                        <Download className="w-4 h-4 stroke-[2.5]" />
+                                        PNG HD
+                                      </button>
+                                    </div>
 
-                                <button
-                                  onClick={() =>
-                                    handleSlideChange(msg.id, (msg.design!.activeSlideIndex || 0) + 1)
-                                  }
-                                  disabled={
-                                    (msg.design.activeSlideIndex || 0) === msg.design.slides.length - 1
-                                  }
-                                  className={`flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-semibold transition-all ${
-                                    (msg.design.activeSlideIndex || 0) === msg.design.slides.length - 1
-                                      ? 'text-zinc-600 bg-zinc-900/50 cursor-not-allowed'
-                                      : 'text-zinc-200 bg-zinc-800 hover:bg-zinc-700 cursor-pointer'
-                                  }`}
-                                >
-                                  <span>Suivant</span>
-                                <ChevronRight className="w-3.5 h-3.5" />
-                              </button>
+                                    {/* Panneau d'édition rapide */}
+                                    {editingMsgId === msg.id && (
+                                      <div id={`edit-${msg.id}`} className="mt-3 rounded-2xl bg-zinc-900 border border-zinc-800 p-3 space-y-3 animate-fade-in scroll-mb-24">
+                                        <div className="flex items-center justify-between">
+                                          <span className="text-xs font-semibold text-zinc-200">Éditer le slide {idx + 1}</span>
+                                          <button
+                                            type="button"
+                                            aria-label="Fermer l'édition"
+                                            onClick={() => setEditingMsgId(null)}
+                                            className="w-9 h-9 -mr-1 rounded-full flex items-center justify-center text-zinc-400 hover:text-white hover:bg-zinc-800 cursor-pointer"
+                                          >
+                                            <X className="w-4 h-4" />
+                                          </button>
+                                        </div>
+                                        <label className="block space-y-1">
+                                          <span className="text-[11px] font-semibold text-zinc-400">Étiquette</span>
+                                          <input
+                                            type="text"
+                                            dir="auto"
+                                            value={cur.tag}
+                                            onChange={(e) => handleSlideEdit(msg.id, idx, { tag: e.target.value })}
+                                            className={field}
+                                          />
+                                        </label>
+                                        <label className="block space-y-1">
+                                          <span className="text-[11px] font-semibold text-zinc-400">Titre</span>
+                                          <textarea
+                                            dir="auto"
+                                            rows={2}
+                                            value={cur.title}
+                                            onChange={(e) => handleSlideEdit(msg.id, idx, { title: e.target.value })}
+                                            className={`${field} resize-none`}
+                                          />
+                                        </label>
+                                        <label className="block space-y-1">
+                                          <span className="text-[11px] font-semibold text-zinc-400">Sous-titre</span>
+                                          <textarea
+                                            dir="auto"
+                                            rows={3}
+                                            value={cur.subtitle}
+                                            onChange={(e) => handleSlideEdit(msg.id, idx, { subtitle: e.target.value })}
+                                            className={`${field} resize-none`}
+                                          />
+                                        </label>
+                                        <label className="block space-y-1">
+                                          <span className="text-[11px] font-semibold text-zinc-400">Bouton d'action (CTA)</span>
+                                          <input
+                                            type="text"
+                                            dir="auto"
+                                            value={cur.ctaText ?? ''}
+                                            placeholder="Ex : Réservez maintenant ➔"
+                                            onChange={(e) => handleSlideEdit(msg.id, idx, { ctaText: e.target.value || undefined })}
+                                            className={field}
+                                          />
+                                        </label>
+                                        <div className="space-y-1.5">
+                                          <span className="text-[11px] font-semibold text-zinc-400">Couleur d'accent</span>
+                                          <div className="flex flex-wrap gap-2">
+                                            {BRAND_COLORS.map((color) => (
+                                              <button
+                                                key={color}
+                                                type="button"
+                                                aria-label={`Couleur ${color}`}
+                                                onClick={() => setBrandColor(color)}
+                                                className={`w-9 h-9 rounded-full border-2 transition-transform cursor-pointer ${
+                                                  brandColor === color ? 'border-white scale-110' : 'border-transparent'
+                                                }`}
+                                                style={{ backgroundColor: color }}
+                                              />
+                                            ))}
+                                          </div>
+                                        </div>
+                                        <button
+                                          type="button"
+                                          onClick={() => setEditingMsgId(null)}
+                                          className="w-full min-h-11 rounded-xl bg-amber-500 hover:bg-amber-400 text-black text-sm font-bold cursor-pointer transition-colors"
+                                        >
+                                          Terminé
+                                        </button>
+                                      </div>
+                                    )}
+                                  </>
+                                );
+                              })()}
                             </div>
-                          </div>
-                        )}
+                          )}
 
-                        {/* Suggestions d'itérations rapides (Pills) */}
+                          {/* Suggestions d'itérations rapides (Pills) */}
                         {msg.suggestions && msg.suggestions.length > 0 && (
                           <div className="mt-3 flex flex-wrap gap-2">
                             {msg.suggestions.map((sug, i) => (
@@ -1654,7 +1984,7 @@ export default function App() {
                         )}
                       </div>
                     </div>
-                  </motion.div>
+                  </m.div>
                 );
               })}
             </AnimatePresence>
@@ -1662,7 +1992,7 @@ export default function App() {
             {/* État de génération IA en cours avec transition */}
             <AnimatePresence>
               {isGenerating && (
-                <motion.div
+                <m.div
                   initial={{ opacity: 0, y: 12 }}
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: -8 }}
@@ -1679,7 +2009,7 @@ export default function App() {
                       <span>Génération et mise en page du visuel dans le Canvas...</span>
                     </div>
                   </div>
-                </motion.div>
+                </m.div>
               )}
             </AnimatePresence>
 
@@ -1691,7 +2021,7 @@ export default function App() {
       {/* ========================================================= */}
         {/* BARRE DE SAISIE (EN BAS, CENTRÉE ET FLOTTANTE STYLE GEMINI) */}
         {/* ========================================================= */}
-        <div className={`absolute left-0 right-0 p-4 sm:p-6 pointer-events-none transition-all duration-300 ${messages.length === 0 ? 'top-[46%]' : 'bottom-0 bg-gradient-to-t from-[#fff7ec] via-[#fff7ec]/80 to-transparent'}`}>
+        <div className={`absolute left-0 right-0 p-4 sm:p-6 pointer-events-none transition-all duration-300 ${editingMsgId ? 'hidden' : ''} ${messages.length === 0 ? 'top-[46%]' : 'bottom-0 bg-gradient-to-t from-[#fffdf9] via-[#fffdf9]/85 to-transparent'}`}>
           <div className="max-w-3xl mx-auto w-full pointer-events-auto">
             {/* Input file caché pour les photos */}
             <input
@@ -1703,178 +2033,164 @@ export default function App() {
               className="hidden"
             />
 
-            {/* Conteneur flottant avec grand rayon de bordure */}
-            <div className="relative flex flex-col bg-white/85 backdrop-blur-md rounded-[28px] px-3 py-2.5 border border-orange-200/60 shadow-md focus-within:shadow-lg focus-within:border-orange-300 focus-within:ring-2 focus-within:ring-orange-400/20 transition-all">
+            {/* Conteneur flottant : texte en haut, outils en dessous (facile au pouce) */}
+            <div className="relative flex flex-col bg-white/95 backdrop-blur-md rounded-3xl px-3 pt-2 pb-2.5 border border-orange-200/60 shadow-md focus-within:shadow-lg focus-within:border-orange-300 focus-within:ring-2 focus-within:ring-orange-400/20 transition-all">
               {/* Preview des photos attachées */}
               {attachedImages.length > 0 && (
-                <div className="flex items-center gap-2 px-2 pt-1 pb-2 border-b border-gray-200/70 mb-1 overflow-x-auto">
+                <div className="flex items-center gap-2 px-1 pt-1 pb-2 border-b border-gray-200/70 mb-1 overflow-x-auto no-scrollbar">
                   {attachedImages.map((img, idx) => (
                     <div
                       key={idx}
-                      className="relative group w-12 h-12 rounded-xl overflow-hidden border border-gray-200 shadow-2xs shrink-0 bg-white"
+                      className="relative group w-14 h-14 rounded-xl overflow-hidden border border-gray-200 shadow-2xs shrink-0 bg-white"
                     >
-                      <img src={img} alt={`Attached ${idx}`} className="w-full h-full object-cover" />
+                      <img src={img} alt={`Photo ${idx + 1}`} className="w-full h-full object-cover" />
                       <button
                         type="button"
+                        aria-label="Retirer la photo"
                         onClick={() => setAttachedImages((prev) => prev.filter((_, i) => i !== idx))}
-                        className="absolute top-0.5 right-0.5 w-4 h-4 bg-gray-900/80 hover:bg-red-500 text-white rounded-full flex items-center justify-center text-[10px] transition-colors cursor-pointer"
-                        title="Retirer la photo"
+                        className="absolute top-0.5 right-0.5 w-5 h-5 bg-gray-900/80 hover:bg-red-500 text-white rounded-full flex items-center justify-center text-xs transition-colors cursor-pointer"
                       >
                         ×
                       </button>
                     </div>
                   ))}
-                  <button
-                    type="button"
-                    onClick={() => photoInputRef.current?.click()}
-                    className="h-12 px-3 rounded-xl border border-dashed border-gray-300 hover:border-gray-400 bg-white hover:bg-gray-50 text-gray-600 text-xs font-medium flex items-center gap-1 shrink-0 transition-colors cursor-pointer"
-                  >
-                    <Plus className="w-3.5 h-3.5" />
-                    <span>Ajouter photo</span>
-                  </button>
                 </div>
               )}
 
-              <div className="flex items-center w-full">
-                {/* Icône "+" pour ajouter des photos et images */}
+              <textarea
+                ref={promptRef}
+                rows={1}
+                dir="auto"
+                value={inputPrompt}
+                onChange={(e) => setInputPrompt(e.target.value)}
+                onKeyDown={handleKeyDown}
+                placeholder={t('placeholder')}
+                enterKeyHint="send"
+                className="w-full resize-none bg-transparent px-2 py-2 text-base text-gray-900 placeholder-gray-400 focus:outline-none max-h-40 leading-snug"
+              />
+
+              <div className="flex items-center gap-1.5 pt-1">
+                {/* Ajouter des photos */}
                 <button
                   type="button"
                   onClick={() => photoInputRef.current?.click()}
-                  title="Ajouter des photos"
-                  className="w-9 h-9 rounded-full hover:bg-gray-200/80 text-gray-600 hover:text-gray-900 flex items-center justify-center shrink-0 transition-colors cursor-pointer"
+                  aria-label="Ajouter des photos"
+                  className="w-10 h-10 rounded-full bg-white hover:bg-gray-100 border border-gray-200/90 text-gray-600 hover:text-gray-900 flex items-center justify-center shrink-0 transition-colors cursor-pointer"
                 >
                   <Plus className="w-5 h-5 stroke-[2]" />
                 </button>
 
-                {/* Champ de texte */}
-                <input
-                  type="text"
-                  value={inputPrompt}
-                  onChange={(e) => setInputPrompt(e.target.value)}
-                  onKeyDown={handleKeyDown}
-                  placeholder={t('placeholder')}
-                  className="flex-1 bg-transparent px-3 py-1.5 text-sm sm:text-[15px] text-gray-900 placeholder-gray-400 focus:outline-none"
-                />
+                {/* Format */}
+                <div className="relative" ref={dropdownRef}>
+                  <button
+                    type="button"
+                    onClick={() => setIsFormatDropdownOpen(!isFormatDropdownOpen)}
+                    className="h-10 flex items-center gap-1.5 px-3 rounded-full bg-white hover:bg-gray-100 text-gray-700 text-xs font-semibold border border-gray-200/90 shadow-2xs transition-colors cursor-pointer"
+                  >
+                    {currentFormatObj.icon}
+                    <span className="hidden sm:inline">{currentFormatObj.label}</span>
+                    <span className="sm:hidden">{FORMATS[selectedFormat].short}</span>
+                    <ChevronDown className="w-3 h-3 text-gray-400" />
+                  </button>
 
-                {/* À droite : Sélecteur déroulant de format, Nombre de slides & bouton d'envoi */}
-                <div className="flex items-center gap-1.5 shrink-0">
-                  {/* Dropdown sélecteur de format */}
-                  <div className="relative" ref={dropdownRef}>
+                  {isFormatDropdownOpen && (
+                    <div className="absolute left-0 bottom-full mb-2 w-64 rounded-2xl bg-white border border-gray-200 shadow-xl p-1.5 z-30 space-y-0.5 animate-fade-in">
+                      <div className="px-2.5 py-1 text-[11px] font-semibold text-gray-400 uppercase tracking-wider">
+                        Format du design
+                      </div>
+                      {formatOptions.map((fmt) => (
+                        <button
+                          key={fmt.id}
+                          type="button"
+                          onClick={() => {
+                            setSelectedFormat(fmt.id);
+                            setIsFormatDropdownOpen(false);
+                            showToast(`Format actif : ${fmt.label}`);
+                          }}
+                          className={`w-full flex items-center justify-between px-2.5 py-2.5 rounded-xl text-xs font-semibold transition-colors cursor-pointer ${
+                            selectedFormat === fmt.id ? 'bg-amber-50 text-amber-800 font-bold' : 'text-gray-700 hover:bg-gray-100'
+                          }`}
+                        >
+                          <div className="flex items-center gap-2">
+                            {fmt.icon}
+                            <span>{fmt.label}</span>
+                          </div>
+                          {selectedFormat === fmt.id && <Check className="w-3.5 h-3.5 text-amber-600" />}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {/* Nombre de slides (carrousel / présentation) */}
+                {FORMATS[selectedFormat].kind === 'carousel' && (
+                  <div className="relative" ref={slidesCountDropdownRef}>
                     <button
                       type="button"
-                      onClick={() => setIsFormatDropdownOpen(!isFormatDropdownOpen)}
-                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white hover:bg-gray-100 text-gray-700 text-xs font-semibold border border-gray-200/90 shadow-2xs transition-colors cursor-pointer"
+                      onClick={() => setIsSlidesDropdownOpen(!isSlidesDropdownOpen)}
+                      className="h-10 flex items-center gap-1.5 px-3 rounded-full bg-amber-50 hover:bg-amber-100/90 text-amber-900 border border-amber-200 text-xs font-bold transition-all shadow-2xs cursor-pointer"
+                      title="Nombre de slides du carrousel"
                     >
-                      {currentFormatObj.icon}
-                      <span className="hidden md:inline">{currentFormatObj.label}</span>
-                      <span className="md:hidden">
-                        {FORMATS[selectedFormat].short}
-                      </span>
-                      <ChevronDown className="w-3 h-3 text-gray-400" />
+                      <Layers className="w-3.5 h-3.5 text-amber-700" />
+                      <span>{carouselSlidesCount}</span>
+                      <span className="hidden sm:inline">slides</span>
+                      <ChevronDown className="w-3 h-3 text-amber-700" />
                     </button>
 
-                    {/* Menu déroulant format */}
-                    {isFormatDropdownOpen && (
-                      <div className="absolute right-0 bottom-12 w-60 rounded-2xl bg-white border border-gray-200 shadow-xl p-1.5 z-30 space-y-1">
-                        <div className="px-2.5 py-1 text-[11px] font-semibold text-gray-400 uppercase tracking-wider">
-                          Format du design
+                    {isSlidesDropdownOpen && (
+                      <div className="absolute left-0 bottom-full mb-2 w-40 rounded-2xl bg-white border border-gray-200 shadow-xl p-1.5 z-30 space-y-0.5 animate-fade-in">
+                        <div className="px-2.5 py-1 text-[10px] font-bold text-gray-400 uppercase tracking-wider">
+                          Nombre de slides
                         </div>
-                        {formatOptions.map((fmt) => (
+                        {[3, 4, 5, 6, 7, 8, 10].map((count) => (
                           <button
-                            key={fmt.id}
+                            key={count}
                             type="button"
                             onClick={() => {
-                              setSelectedFormat(fmt.id);
-                              setIsFormatDropdownOpen(false);
-                              showToast(`Format actif : ${fmt.label}`);
+                              setCarouselSlidesCount(count);
+                              setIsSlidesDropdownOpen(false);
+                              showToast(`Carrousel configuré à ${count} slides`);
                             }}
                             className={`w-full flex items-center justify-between px-2.5 py-2 rounded-xl text-xs font-semibold transition-colors cursor-pointer ${
-                              selectedFormat === fmt.id
-                                ? 'bg-amber-50 text-amber-800 font-bold'
-                                : 'text-gray-700 hover:bg-gray-100'
+                              carouselSlidesCount === count ? 'bg-amber-100 text-amber-900 font-bold' : 'text-gray-700 hover:bg-gray-100'
                             }`}
                           >
-                            <div className="flex items-center gap-2">
-                              {fmt.icon}
-                              <span>{fmt.label}</span>
-                            </div>
-                            {selectedFormat === fmt.id && <Check className="w-3.5 h-3.5 text-amber-600" />}
+                            <span>{count} slides</span>
+                            {carouselSlidesCount === count && <Check className="w-3.5 h-3.5 text-amber-700" />}
                           </button>
                         ))}
                       </div>
                     )}
                   </div>
+                )}
 
-                  {/* Bouton du nombre de slides affiché uniquement quand Carrousel est sélectionné */}
-                  {FORMATS[selectedFormat].kind === 'carousel' && (
-                    <div className="relative" ref={slidesCountDropdownRef}>
-                      <button
-                        type="button"
-                        onClick={() => setIsSlidesDropdownOpen(!isSlidesDropdownOpen)}
-                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-amber-50 hover:bg-amber-100/90 text-amber-900 border border-amber-200 text-xs font-bold transition-all shadow-2xs cursor-pointer"
-                        title="Nombre de slides du carrousel"
-                      >
-                        <Layers className="w-3.5 h-3.5 text-amber-700" />
-                        <span>{carouselSlidesCount} slides</span>
-                        <ChevronDown className="w-3 h-3 text-amber-700" />
-                      </button>
+                <div className="flex-1" />
 
-                      {isSlidesDropdownOpen && (
-                        <div className="absolute right-0 bottom-12 w-36 rounded-2xl bg-white border border-gray-200 shadow-xl p-1.5 z-30 space-y-1">
-                          <div className="px-2.5 py-1 text-[10px] font-bold text-gray-400 uppercase tracking-wider">
-                            Nombre de slides
-                          </div>
-                          {[3, 4, 5, 6, 7, 8, 10].map((count) => (
-                            <button
-                              key={count}
-                              type="button"
-                              onClick={() => {
-                                setCarouselSlidesCount(count);
-                                setIsSlidesDropdownOpen(false);
-                                showToast(`Carrousel configuré à ${count} slides`);
-                              }}
-                              className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-xl text-xs font-semibold transition-colors cursor-pointer ${
-                                carouselSlidesCount === count
-                                  ? 'bg-amber-100 text-amber-900 font-bold'
-                                  : 'text-gray-700 hover:bg-gray-100'
-                              }`}
-                            >
-                              <span>{count} slides</span>
-                              {carouselSlidesCount === count && (
-                                <Check className="w-3.5 h-3.5 text-amber-700" />
-                              )}
-                            </button>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  )}
-
-                  {/* Bouton d'envoi circulaire style Gemini */}
-                  <button
-                    type="button"
-                    onClick={() => handleSendMessage()}
-                    disabled={(!inputPrompt.trim() && attachedImages.length === 0) || isGenerating}
-                    className={`w-9 h-9 rounded-full flex items-center justify-center transition-all ${
-                      (inputPrompt.trim() || attachedImages.length > 0) && !isGenerating
-                        ? 'bg-gray-900 hover:bg-black text-white shadow-xs cursor-pointer'
-                        : 'bg-gray-200 text-gray-400 cursor-not-allowed'
-                    }`}
-                  >
-                    <ArrowUp className="w-4 h-4 stroke-[2.5]" />
-                  </button>
-                </div>
+                {/* Envoi */}
+                <button
+                  type="button"
+                  aria-label="Générer"
+                  onClick={() => handleSendMessage()}
+                  disabled={(!inputPrompt.trim() && attachedImages.length === 0) || isGenerating}
+                  className={`w-11 h-11 rounded-full flex items-center justify-center shrink-0 transition-all ${
+                    (inputPrompt.trim() || attachedImages.length > 0) && !isGenerating
+                      ? 'bg-gray-900 hover:bg-black active:scale-95 text-white shadow-xs cursor-pointer'
+                      : 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                  }`}
+                >
+                  <ArrowUp className="w-5 h-5 stroke-[2.5]" />
+                </button>
               </div>
             </div>
 
             {messages.length === 0 ? (
-              <div className="flex flex-wrap justify-center gap-2 mt-4">
+              <div className="flex flex-wrap justify-center gap-2 mt-3">
                 {welcomeSuggestions.map((card, idx) => (
                   <button
                     key={idx}
                     type="button"
                     onClick={() => handleSendMessage(card.prompt, { format: card.format, count: card.slidesCount })}
-                    className="flex items-center gap-2 px-4 py-2 rounded-full bg-white/75 hover:bg-white border border-orange-200/60 text-sm text-gray-700 hover:text-gray-900 shadow-2xs transition-all cursor-pointer"
+                    className="flex items-center gap-2 px-4 py-2 rounded-full bg-white/90 hover:bg-white border border-orange-200/60 text-sm text-gray-700 hover:text-gray-900 shadow-2xs transition-all cursor-pointer"
                   >
                     {card.icon}
                     <span>{card.title}</span>
@@ -1882,7 +2198,7 @@ export default function App() {
                 ))}
               </div>
             ) : (
-              <p className="text-[11px] text-gray-400 text-center mt-2 font-normal">
+              <p className="hidden md:block text-[11px] text-gray-400 text-center mt-2 font-normal">
                 Aura AI génère des visuels optimisés pour LinkedIn, Instagram et X. Vérifiez les textes avant publication.
               </p>
             )}
@@ -1895,20 +2211,20 @@ export default function App() {
       {/* ========================================================= */}
       <AnimatePresence>
         {isBrandKitOpen && (
-          <motion.div
+          <m.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.2 }}
             onMouseDown={(e) => e.target === e.currentTarget && setIsBrandKitOpen(false)}
-            className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-2xs p-4"
+            className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/30 backdrop-blur-2xs p-0 sm:p-4"
           >
-            <motion.div
+            <m.div
               initial={{ opacity: 0, scale: 0.95, y: 10 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 10 }}
               transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
-              className="bg-white rounded-3xl border border-gray-200 shadow-2xl w-full max-w-md p-6 space-y-5"
+              className="bg-white rounded-3xl max-sm:rounded-b-none border border-gray-200 shadow-2xl w-full max-sm:max-h-[88dvh] max-sm:overflow-y-auto max-sm:pb-[calc(1.5rem+env(safe-area-inset-bottom))] max-w-md p-6 space-y-5"
             >
               <div className="flex items-center justify-between pb-3 border-b border-gray-100">
                 <div className="flex items-center gap-2">
@@ -2007,7 +2323,7 @@ export default function App() {
                       setUserFirstName(e.target.value);
                       localStorage.setItem('aura_user_firstname', e.target.value);
                     }}
-                    className="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 text-sm text-gray-900 focus:outline-none focus:border-amber-500"
+                    className="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 text-base sm:text-sm text-gray-900 focus:outline-none focus:border-amber-500"
                     placeholder="Ex: Malek"
                   />
                 </div>
@@ -2020,7 +2336,7 @@ export default function App() {
                     type="text"
                     value={brandName}
                     onChange={(e) => setBrandName(e.target.value)}
-                    className="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 text-sm text-gray-900 focus:outline-none focus:border-amber-500"
+                    className="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 text-base sm:text-sm text-gray-900 focus:outline-none focus:border-amber-500"
                     placeholder="Ex: Aura Studio"
                   />
                 </div>
@@ -2033,7 +2349,7 @@ export default function App() {
                     type="text"
                     value={brandHandle}
                     onChange={(e) => setBrandHandle(e.target.value)}
-                    className="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 text-sm text-gray-900  focus:outline-none focus:border-amber-500"
+                    className="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 text-base sm:text-sm text-gray-900  focus:outline-none focus:border-amber-500"
                     placeholder="@votrecompte"
                   />
                 </div>
@@ -2042,12 +2358,12 @@ export default function App() {
                   <label className="text-xs font-semibold text-gray-700 block mb-1.5">
                     Couleur d'accentuation
                   </label>
-                  <div className="flex items-center gap-2">
-                    {['#F59E0B', '#EA580C', '#EAB308', '#F97316'].map((color) => (
+                  <div className="flex flex-wrap items-center gap-2">
+                    {BRAND_COLORS.map((color) => (
                       <button
                         key={color}
                         onClick={() => setBrandColor(color)}
-                        className={`w-8 h-8 rounded-full border-2 transition-transform ${
+                        className={`w-9 h-9 rounded-full border-2 transition-transform ${
                           brandColor === color ? 'border-gray-900 scale-110' : 'border-transparent'
                         }`}
                         style={{ backgroundColor: color }}
@@ -2068,8 +2384,8 @@ export default function App() {
                   Enregistrer
                 </button>
               </div>
-            </motion.div>
-          </motion.div>
+            </m.div>
+          </m.div>
         )}
       </AnimatePresence>
 
@@ -2078,20 +2394,20 @@ export default function App() {
       {/* ========================================================= */}
       <AnimatePresence>
         {isTemplatesOpen && (
-          <motion.div
+          <m.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.2 }}
             onMouseDown={(e) => e.target === e.currentTarget && setIsTemplatesOpen(false)}
-            className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-2xs p-4"
+            className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/30 backdrop-blur-2xs p-0 sm:p-4"
           >
-            <motion.div
+            <m.div
               initial={{ opacity: 0, scale: 0.95, y: 10 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 10 }}
               transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
-              className="bg-white rounded-3xl border border-gray-200 shadow-2xl w-full max-w-lg p-6 space-y-4"
+              className="bg-white rounded-3xl max-sm:rounded-b-none border border-gray-200 shadow-2xl w-full max-sm:max-h-[88dvh] max-sm:overflow-y-auto max-sm:pb-[calc(1.5rem+env(safe-area-inset-bottom))] max-w-lg p-6 space-y-4"
             >
               <div className="flex items-center justify-between pb-3 border-b border-gray-100">
                 <div className="flex items-center gap-2">
@@ -2135,28 +2451,28 @@ export default function App() {
                   </div>
                 ))}
               </div>
-            </motion.div>
-          </motion.div>
+            </m.div>
+          </m.div>
         )}
       </AnimatePresence>
 
       {/* ===== MODALS COMPTE ===== */}
       <AnimatePresence>
         {modal && (
-          <motion.div
+          <m.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.2 }}
             onMouseDown={(e) => e.target === e.currentTarget && setModal(null)}
-            className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-2xs p-4"
+            className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/30 backdrop-blur-2xs p-0 sm:p-4"
           >
-            <motion.div
+            <m.div
               initial={{ opacity: 0, scale: 0.95, y: 10 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 10 }}
               transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
-              className={`bg-white rounded-3xl border border-gray-200 shadow-2xl w-full p-6 space-y-5 max-h-[90vh] overflow-y-auto ${modal === 'upgrade' ? 'max-w-3xl' : 'max-w-md'}`}
+              className={`bg-white rounded-3xl max-sm:rounded-b-none border border-gray-200 shadow-2xl w-full max-sm:max-h-[88dvh] max-sm:overflow-y-auto max-sm:pb-[calc(1.5rem+env(safe-area-inset-bottom))] p-6 space-y-5 max-h-[90vh] overflow-y-auto ${modal === 'upgrade' ? 'max-w-3xl' : 'max-w-md'}`}
             >
               <div className="flex items-center justify-between pb-3 border-b border-gray-100">
                 <h3 className="font-semibold text-gray-900 text-base">
@@ -2180,7 +2496,7 @@ export default function App() {
                           localStorage.setItem('aura_user_firstname', e.target.value);
                         } catch {}
                       }}
-                      className="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 text-sm text-gray-900 focus:outline-none focus:border-orange-400"
+                      className="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 text-base sm:text-sm text-gray-900 focus:outline-none focus:border-orange-400"
                     />
                   </div>
                   <div>
@@ -2226,6 +2542,49 @@ export default function App() {
                     >
                       <Trash2 className="w-4 h-4" />
                       Effacer l'historique des sessions
+                    </button>
+                    {!isStandalone && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setModal(null);
+                          handleInstall();
+                        }}
+                        className="w-full flex items-center gap-2 px-3 py-2.5 rounded-xl border border-gray-200 hover:bg-gray-50 text-sm text-gray-700 cursor-pointer transition-colors"
+                      >
+                        <Download className="w-4 h-4 text-orange-500" />
+                        {t('install')}
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => setModal('help')}
+                      className="w-full flex items-center gap-2 px-3 py-2.5 rounded-xl border border-gray-200 hover:bg-gray-50 text-sm text-gray-700 cursor-pointer transition-colors"
+                    >
+                      <CircleHelp className="w-4 h-4 text-gray-500" />
+                      {t('help')}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setModal('upgrade')}
+                      className="w-full flex items-center gap-2 px-3 py-2.5 rounded-xl border border-gray-200 hover:bg-gray-50 text-sm text-gray-700 cursor-pointer transition-colors"
+                    >
+                      <Zap className="w-4 h-4 text-orange-500" />
+                      {t('upgrade')}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        try {
+                          localStorage.setItem('aura_logged_out', '1');
+                        } catch {}
+                        setModal(null);
+                        setLoggedOut(true);
+                      }}
+                      className="w-full flex items-center gap-2 px-3 py-2.5 rounded-xl border border-red-100 hover:bg-red-50 text-sm text-red-600 cursor-pointer transition-colors"
+                    >
+                      <LogOut className="w-4 h-4" />
+                      {t('logout')}
                     </button>
                   </div>
                 </div>
@@ -2296,16 +2655,45 @@ export default function App() {
                   ))}
                 </div>
               )}
-            </motion.div>
-          </motion.div>
+            </m.div>
+          </m.div>
         )}
       </AnimatePresence>
 
       {/* ========================================================= */}
       {/* TOAST NOTIFICATION FLOTTANT */}
       {/* ========================================================= */}
+      {/* ========================================================= */}
+      {/* BARRE DE NAVIGATION BASSE (MOBILE) */}
+      {/* ========================================================= */}
+      <nav
+        aria-label="Navigation principale"
+        className="md:hidden fixed bottom-0 inset-x-0 z-40 bg-white/95 backdrop-blur-xl border-t border-orange-200/50 pb-[env(safe-area-inset-bottom)]"
+      >
+        <div className="grid grid-cols-5 h-16">
+          {navItems.map(({ id, label, Icon, action }) => {
+            const active = navActive === id;
+            return (
+              <button
+                key={id}
+                type="button"
+                onClick={action}
+                aria-current={active ? 'page' : undefined}
+                className={`relative flex flex-col items-center justify-center gap-0.5 text-[10px] font-semibold transition-colors cursor-pointer active:bg-orange-50 ${
+                  active ? 'text-orange-600' : 'text-gray-500'
+                }`}
+              >
+                {active && <span className="absolute top-0 h-0.5 w-8 rounded-full bg-orange-500" />}
+                <Icon className={`w-[22px] h-[22px] ${active ? 'stroke-[2.4]' : 'stroke-[1.9]'}`} />
+                <span className="truncate max-w-full px-1">{label}</span>
+              </button>
+            );
+          })}
+        </div>
+      </nav>
+
       {toastMessage && (
-        <div className="fixed bottom-24 right-6 z-50 flex items-center gap-2.5 px-4 py-2.5 rounded-full bg-gray-900 text-white shadow-xl text-xs font-medium animate-fade-in">
+        <div className="fixed top-[calc(3.75rem+env(safe-area-inset-top))] md:top-auto md:bottom-24 left-1/2 -translate-x-1/2 md:left-auto md:translate-x-0 md:right-6 z-50 max-w-[90vw] flex items-center gap-2.5 px-4 py-2.5 rounded-full bg-gray-900 text-white shadow-xl text-xs font-medium animate-fade-in">
           <Sparkles className="w-3.5 h-3.5 text-amber-400 shrink-0" />
           <span>{toastMessage}</span>
         </div>
