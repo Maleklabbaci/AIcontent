@@ -227,7 +227,7 @@ const SCENE_TREATMENTS = [
   },
 ];
 
-function buildImagePrompt(body: Record<string, unknown>, lang: string): string | null {
+function buildImagePrompt(body: Record<string, unknown>, lang: string, hasRefs: boolean): string | null {
   const slide = body.slide as Record<string, unknown> | undefined;
   const style = body.style === 'light' ? 'light' : 'dark';
   const format = typeof body.format === 'string' ? body.format : '';
@@ -279,6 +279,12 @@ function buildImagePrompt(body: Record<string, unknown>, lang: string): string |
     `Weave the accent color ${brandColor} into ONE small detail only (a reflection, an object, a subtle light tint) — never as a dominant color.`,
     '',
     // ---- INTERDITS ABSOLUS ----
+    ...(hasRefs
+      ? [
+          'Reference images are attached: match their photographic style, lighting mood, color palette and material feel.',
+          'The references are STYLE GUIDANCE ONLY — never copy any text, logo, face or exact layout from them. Your output must still contain zero text.',
+        ]
+      : []),
     'Strictly forbidden: any text, letters, numbers, typography, captions, signatures, logos, watermarks, UI elements, borders, frames, split screens, collages, image grids, distorted faces, extra fingers, plastic skin, vignettes, light leaks, lens flares, fisheye distortion.',
   ];
   return lines.join('\n');
@@ -294,7 +300,14 @@ async function handleImage(apiKey: string, body: Record<string, unknown>): Promi
     return json({ error: 'invalid_payload' }, 400);
   }
 
-  const imagePrompt = buildImagePrompt(body, lang);
+  // Images de référence (photos uploadées + bibliothèque de modèles du client)
+  const refs = Array.isArray(body.references)
+    ? (body.references as unknown[])
+        .filter((r): r is string => typeof r === 'string' && r.startsWith('data:image/') && r.length <= 300_000)
+        .slice(0, 3)
+    : [];
+
+  const imagePrompt = buildImagePrompt(body, lang, refs.length > 0);
   if (!imagePrompt) return json({ error: 'invalid_payload' }, 400);
 
   const aspect = FORMAT_ASPECT[format];
@@ -313,7 +326,10 @@ async function handleImage(apiKey: string, body: Record<string, unknown>): Promi
         headers: { 'Content-Type': 'application/json', 'x-goog-api-key': apiKey },
         body: JSON.stringify({
           model,
-          input: [{ type: 'text', text: imagePrompt }],
+          input: [
+            ...refs.map((r) => ({ type: 'image', mime_type: 'image/jpeg', data: r.slice(r.indexOf(',') + 1) })),
+            { type: 'text', text: imagePrompt },
+          ],
           response_format: { type: 'image', mime_type: 'image/png', aspect_ratio: aspect, image_size: size },
         }),
       },
@@ -366,7 +382,7 @@ export const onRequestPost = async (context: { request: Request; env: Env }): Pr
     return json({ configured: false, error: 'GEMINI_API_KEY non configurée sur Cloudflare' });
   }
 
-  const body = await readJson(request, 200_000);
+  const body = await readJson(request, 600_000);
   if (!body) return json({ error: 'invalid_payload' }, 400);
 
   const stage = body.stage;
