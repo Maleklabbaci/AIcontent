@@ -35,6 +35,8 @@ import {
   BadgePercent,
   Quote,
   Instagram,
+  Moon,
+  Sun,
   Gift,
   Presentation,
   Languages,
@@ -78,6 +80,7 @@ interface DesignContent {
   title: string;
   slides: Slide[];
   activeSlideIndex: number;
+  style?: 'dark' | 'light';
 }
 
 interface Message {
@@ -216,7 +219,7 @@ async function slideToPngBlob(
   format: FormatType,
   total: number,
   brand: { name: string; handle: string; color: string },
-  opts?: { watermark?: boolean; mime?: 'image/png' | 'image/jpeg' }
+  opts?: { watermark?: boolean; mime?: 'image/png' | 'image/jpeg'; light?: boolean }
 ): Promise<Blob | null> {
   const { w, h } = FORMATS[format];
   const canvas = document.createElement('canvas');
@@ -232,8 +235,9 @@ async function slideToPngBlob(
     ]);
   } catch {}
   const F = (weight: number, size: number) => `${weight} ${size}px Poppins, system-ui, sans-serif`;
+  const isLight = !!opts?.light;
 
-  ctx.fillStyle = '#18181b';
+  ctx.fillStyle = isLight ? '#FFFFFF' : '#18181b';
   ctx.fillRect(0, 0, w, h);
 
   if (slide.image) {
@@ -246,9 +250,9 @@ async function slideToPngBlob(
     }
   }
   const grad = ctx.createLinearGradient(0, h, 0, 0);
-  grad.addColorStop(0, 'rgba(9,9,11,0.95)');
-  grad.addColorStop(0.6, 'rgba(9,9,11,0.7)');
-  grad.addColorStop(1, 'rgba(9,9,11,0.1)');
+  grad.addColorStop(0, isLight ? 'rgba(255,255,255,0.97)' : 'rgba(9,9,11,0.95)');
+  grad.addColorStop(0.6, isLight ? 'rgba(255,255,255,0.75)' : 'rgba(9,9,11,0.7)');
+  grad.addColorStop(1, isLight ? 'rgba(255,255,255,0.05)' : 'rgba(9,9,11,0.1)');
   ctx.fillStyle = grad;
   ctx.fillRect(0, 0, w, h);
 
@@ -265,7 +269,7 @@ async function slideToPngBlob(
   ctx.textAlign = 'center';
   ctx.fillText(brand.name.slice(0, 2).toUpperCase(), pad + 28, 116);
   ctx.textAlign = 'left';
-  ctx.fillStyle = '#fff';
+  ctx.fillStyle = isLight ? '#18181B' : '#fff';
   ctx.font = F(600, 28);
   ctx.fillText(brand.name.toUpperCase(), pad + 76, 117);
   ctx.textAlign = 'right';
@@ -285,7 +289,7 @@ async function slideToPngBlob(
   y += 90;
 
   ctx.font = F(700, big);
-  ctx.fillStyle = '#fff';
+  ctx.fillStyle = isLight ? '#18181B' : '#fff';
   for (const line of wrapLines(ctx, slide.title, maxW)) {
     ctx.fillText(line, pad, y);
     y += big * 1.18;
@@ -293,7 +297,7 @@ async function slideToPngBlob(
   y += 20;
 
   ctx.font = F(400, 36);
-  ctx.fillStyle = '#d4d4d8';
+  ctx.fillStyle = isLight ? '#52525B' : '#d4d4d8';
   for (const line of wrapLines(ctx, slide.subtitle, maxW)) {
     ctx.fillText(line, pad, y);
     y += 54;
@@ -306,7 +310,7 @@ async function slideToPngBlob(
     ctx.fillText(slide.stat.value, pad, y + 100);
     y += 150;
     ctx.font = F(400, 30);
-    ctx.fillStyle = '#a1a1aa';
+    ctx.fillStyle = isLight ? '#71717A' : '#a1a1aa';
     for (const line of wrapLines(ctx, slide.stat.label, maxW)) {
       ctx.fillText(line, pad, y + 20);
       y += 44;
@@ -320,7 +324,7 @@ async function slideToPngBlob(
       ctx.beginPath();
       ctx.arc(pad + 14, y - 10, 14, 0, Math.PI * 2);
       ctx.fill();
-      ctx.fillStyle = '#e4e4e7';
+      ctx.fillStyle = isLight ? '#3F3F46' : '#e4e4e7';
       for (const line of wrapLines(ctx, bp, maxW - 60)) {
         ctx.fillText(line, pad + 50, y);
         y += 50;
@@ -330,9 +334,9 @@ async function slideToPngBlob(
   }
 
   // Footer
-  ctx.fillStyle = 'rgba(255,255,255,0.15)';
+  ctx.fillStyle = isLight ? 'rgba(0,0,0,0.12)' : 'rgba(255,255,255,0.15)';
   ctx.fillRect(pad, h - 150, w - pad * 2, 2);
-  ctx.fillStyle = '#fff';
+  ctx.fillStyle = isLight ? '#18181B' : '#fff';
   ctx.font = F(600, 28);
   ctx.textAlign = 'left';
   ctx.fillText(brand.handle, pad, h - 90);
@@ -353,18 +357,18 @@ async function slideToPngBlob(
     const ph = 50;
     const px0 = (w - pw) / 2;
     const py0 = h - 74;
-    ctx.fillStyle = 'rgba(255,255,255,0.14)';
+    ctx.fillStyle = isLight ? 'rgba(24,24,27,0.08)' : 'rgba(255,255,255,0.14)';
     ctx.beginPath();
     ctx.roundRect(px0, py0, pw, ph, 25);
     ctx.fill();
-    ctx.strokeStyle = 'rgba(255,255,255,0.28)';
+    ctx.strokeStyle = isLight ? 'rgba(24,24,27,0.22)' : 'rgba(255,255,255,0.28)';
     ctx.lineWidth = 2;
     ctx.stroke();
-    ctx.fillStyle = 'rgba(255,255,255,0.85)';
+    ctx.fillStyle = isLight ? '#F59E0B' : 'rgba(255,255,255,0.85)';
     ctx.beginPath();
     ctx.arc(px0 + 30, py0 + ph / 2, 8, 0, Math.PI * 2);
     ctx.fill();
-    ctx.fillStyle = 'rgba(255,255,255,0.92)';
+    ctx.fillStyle = isLight ? 'rgba(24,24,27,0.85)' : 'rgba(255,255,255,0.92)';
     ctx.textAlign = 'left';
     ctx.fillText(wmText, px0 + 50, py0 + ph / 2 + 8);
     ctx.textAlign = 'left';
@@ -1307,6 +1311,10 @@ export default function App() {
   const [referralOpen, setReferralOpen] = useState(false);
   const [composerHighlight, setComposerHighlight] = useState(false);
   const [slashIndex, setSlashIndex] = useState(0);
+  // Options ponctuelles posées par les commandes « / » (chips visibles, valables pour le prochain envoi uniquement)
+  const [pendingFormat, setPendingFormat] = useState<FormatType | null>(null);
+  const [pendingStyle, setPendingStyle] = useState<'dark' | 'light' | null>(null);
+  const [pendingProjectId, setPendingProjectId] = useState<string | null>(null);
   const composerInputRef = useRef<HTMLInputElement>(null);
   const highlightTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   // Clic sur une suggestion : préremplit le champ au lieu de générer à l'aveugle
@@ -1492,7 +1500,7 @@ export default function App() {
         handle: brandHandle,
         color: brandColor,
       },
-      { watermark: plan === 'free' }
+      { watermark: plan === 'free', light: design.style === 'light' }
     );
     if (!blob) {
       showToast("Export impossible sur ce navigateur.");
@@ -1541,6 +1549,7 @@ export default function App() {
         title: design.title,
         widthPx: fmt.w,
         heightPx: fmt.h,
+        light: design.style === 'light',
         slides: design.slides.map((s) => ({
           slideNumber: s.slideNumber,
           tag: s.tag,
@@ -1609,7 +1618,7 @@ export default function App() {
           design.format,
           design.slides.length,
           { name: brandName, handle: brandHandle, color: brandColor },
-          { mime: 'image/jpeg', watermark: plan === 'free' }
+          { mime: 'image/jpeg', watermark: plan === 'free', light: design.style === 'light' }
         );
         if (!blob) {
           showToast('Export PDF impossible sur ce navigateur.');
@@ -1645,6 +1654,7 @@ export default function App() {
       title: design.title,
       activeSlideIndex: 0,
       slides: design.slides.map((sl, i) => ({ ...sl, id: `rsz_${i}_${Date.now()}` })),
+      style: design.style,
     };
     const resizeMsg: Message = {
       id: `ast_${Date.now()}`,
@@ -1714,53 +1724,18 @@ export default function App() {
   };
 
   // Handle send prompt
-  // Parse les commandes slash d'un texte : /projet et /format (même si le format n'est pas mentionné)
-  const parseSlashCommands = (text: string): { clean: string; projectId?: string; fmt?: FormatType } => {
-    const tokens = text.match(/\/([\p{L}\p{N}_-]+)/gu) || [];
-    let projectId: string | undefined;
-    let fmt: FormatType | undefined;
-    let clean = text;
-    for (const tok of tokens) {
-      const key = slugify(tok.slice(1));
-      if (!key) continue;
-      if (!projectId) {
-        const projMatches = projects.filter((pk) => slugify(pk.name) === key || slugify(pk.name).startsWith(key));
-        if (projMatches.length === 1) {
-          projectId = projMatches[0].id;
-          clean = clean.replace(tok, '');
-          continue;
-        }
-      }
-      if (!fmt) {
-        const fmtMatches = FORMAT_SLASH.filter((f) => f.keys.some((k) => k === key || k.startsWith(key)));
-        if (fmtMatches.length === 1) {
-          fmt = fmtMatches[0].id;
-          clean = clean.replace(tok, '');
-        }
-      }
-    }
-    return { clean: clean.replace(/\s+/g, ' ').trim(), projectId, fmt };
-  };
-
   const handleSendMessage = (textToSend?: string, opts: { format?: FormatType; count?: number } = {}) => {
-    const rawQuery = (textToSend || inputPrompt).trim();
-    if ((!rawQuery && attachedImages.length === 0) || isGenerating) return;
+    const query = (textToSend || inputPrompt).trim();
+    if ((!query && attachedImages.length === 0) || isGenerating) return;
 
-    // Commandes slash : projet et/ou format
-    const parsed = parseSlashCommands(rawQuery);
-    if (parsed.projectId && parsed.projectId !== activeProjectId) switchProject(parsed.projectId);
-    if (parsed.fmt && parsed.fmt !== selectedFormat) setSelectedFormat(parsed.fmt);
-
-    const query = parsed.clean;
-    if (!query && attachedImages.length === 0) {
-      showToast('Ajoutez une description après la commande (ex: /produit montre de luxe).');
-      return;
-    }
+    // Options ponctuelles posées via les commandes « / » (chips visibles au-dessus du champ)
+    if (pendingProjectId && pendingProjectId !== activeProjectId) switchProject(pendingProjectId);
 
     const currentPhotos = [...attachedImages];
     const promptText = query || (currentPhotos.length > 0 ? 'Génère un design intégrant mes photos' : '');
     const inferred = inferOpts(promptText);
-    const resolvedFmt: FormatType = opts.format ?? parsed.fmt ?? inferred.format ?? selectedFormat;
+    const resolvedFmt: FormatType = opts.format ?? pendingFormat ?? inferred.format ?? selectedFormat;
+    const resolvedStyle: 'dark' | 'light' = pendingStyle ?? 'dark';
     const resolvedCount = opts.count ?? inferred.count ?? carouselSlidesCount;
 
     // ===== FACTURATION POINTS : 1 image IA générée par slide =====
@@ -1782,7 +1757,7 @@ export default function App() {
     setRecentSessions((prev) =>
       prev.some((s) => s.id === sessionId)
         ? prev
-        : [{ id: sessionId, title: promptText.length > 34 ? `${promptText.slice(0, 34)}…` : promptText, format: resolvedFmt, projectId: parsed.projectId && parsed.projectId !== activeProjectId ? parsed.projectId : activeProjectId }, ...prev]
+        : [{ id: sessionId, title: promptText.length > 34 ? `${promptText.slice(0, 34)}…` : promptText, format: resolvedFmt, projectId: pendingProjectId ?? activeProjectId }, ...prev]
     );
 
     const userMsg: Message = {
@@ -1796,6 +1771,9 @@ export default function App() {
     setMessages((prev) => [...prev, userMsg]);
     if (!textToSend) setInputPrompt('');
     setAttachedImages([]);
+    setPendingFormat(null);
+    setPendingStyle(null);
+    setPendingProjectId(null);
     setIsGenerating(true);
 
     setTimeout(() => {
@@ -1946,13 +1924,14 @@ export default function App() {
         title: promptText.length < 35 ? promptText : 'Post Social Media Optimisé',
         activeSlideIndex: 0,
         slides: slidesToBuild,
+        style: resolvedStyle,
       };
 
       const fmtLabel = FORMATS[activeFmt].label;
       const isCarousel = FORMATS[activeFmt].kind === 'carousel';
       const aiMsgText = isCarousel
         ? `Voici votre ${activeFmt === 'presentation' ? 'présentation' : 'carrousel'} de **${resolvedCount} slides** au format **${fmtLabel}**${currentPhotos.length > 0 ? ` avec vos ${currentPhotos.length} photo(s) intégrée(s)` : ''}. Le Canvas ci-dessous vous permet de faire défiler les slides et d'exporter en haute résolution.`
-        : `Voici votre nouveau design au format **${fmtLabel}**${currentPhotos.length > 0 ? ` avec vos ${currentPhotos.length} photo(s) intégrée(s)` : ''}. Le Canvas ci-dessous vous permet de le visualiser et de l'exporter en haute résolution.`;
+        : `Voici votre nouveau design au format **${fmtLabel}**${resolvedStyle === 'light' ? ' en **style clair**' : ''}${currentPhotos.length > 0 ? ` avec vos ${currentPhotos.length} photo(s) intégrée(s)` : ''}. Le Canvas ci-dessous vous permet de le visualiser et de l'exporter en haute résolution.`;
 
       const aiMsg: Message = {
         id: `ast_${Date.now()}`,
@@ -1977,33 +1956,52 @@ export default function App() {
     }, 1100);
   };
 
-  // ===== COMMANDES SLASH dans le champ de texte =====
-  const slashMatch = /(?:^|\s)\/([\p{L}\p{N}_-]*)$/u.exec(inputPrompt);
-  const slashQuery = slashMatch ? slugify(slashMatch[1]) : null;
-  const slashProjectItems = slashQuery === null ? [] : projects.filter((pk) => slugify(pk.name).includes(slashQuery)).map((pk) => ({ kind: 'project' as const, id: pk.id, label: pk.name, hint: 'Espace · Brand Kit' }));
+  // ===== COMMANDES SLASH (précises) : « / » uniquement en tout début de champ =====
+  // En plein texte (ex: « promo 20/30 »), le slash reste du texte simple : zéro conflit avec les pills
+  // (format, modèle), qui restent les réglages persistants par défaut.
+  const slashMatch = /^\/([\p{L}\p{N}_-]*)$/u.exec(inputPrompt.trimStart());
+  const slashQuery = slashMatch ? slashMatch[1].toLowerCase() : null;
   const slashFormatItems =
     slashQuery === null
       ? []
       : FORMAT_SLASH.filter((f) => f.keys.some((k) => k.startsWith(slashQuery) || k.includes(slashQuery))).map((f) => ({
           kind: 'format' as const,
           id: f.id,
+          cmd: f.keys[0],
           label: FORMATS[f.id].label,
-          hint: 'Format',
         }));
-  const slashItems = [...slashProjectItems, ...slashFormatItems];
+  const slashStyleItems =
+    slashQuery === null
+      ? []
+      : [
+          { cmd: 'sombre', label: 'Design sombre', style: 'dark' as const },
+          { cmd: 'clair', label: 'Design clair', style: 'light' as const },
+        ]
+          .filter((st) => st.cmd.startsWith(slashQuery) || st.cmd.includes(slashQuery))
+          .map((st) => ({ kind: 'style' as const, ...st }));
+  const slashProjectItems =
+    slashQuery === null
+      ? []
+      : projects
+          .filter((pk) => slugify(pk.name).includes(slashQuery))
+          .map((pk) => ({ kind: 'project' as const, id: pk.id, cmd: slugify(pk.name), label: pk.name }));
+  const slashItems = [...slashFormatItems, ...slashStyleItems, ...slashProjectItems];
   useEffect(() => {
     setSlashIndex(0);
   }, [inputPrompt]);
 
   const acceptSlash = (item: (typeof slashItems)[number]) => {
-    if (!slashMatch) return;
-    const cleaned = (inputPrompt.slice(0, slashMatch.index) + inputPrompt.slice(slashMatch.index + slashMatch[0].length)).trim();
-    setInputPrompt(cleaned);
-    if (item.kind === 'project') {
-      switchProject(item.id);
+    setInputPrompt('');
+    if (item.kind === 'format') {
+      setPendingFormat(item.id);
+      showToast(`Format « ${FORMATS[item.id].label} » appliqué à la prochaine génération`);
+    } else if (item.kind === 'style') {
+      setPendingStyle(item.style);
+      showToast(`Style ${item.style === 'dark' ? 'sombre' : 'clair'} appliqué à la prochaine génération`);
     } else {
-      setSelectedFormat(item.id);
-      showToast(`Format actif : ${FORMATS[item.id].label}`);
+      setPendingProjectId(item.id);
+      const pk = projects.find((x) => x.id === item.id);
+      showToast(`Espace « ${pk?.name} » appliqué à la prochaine génération`);
     }
     composerInputRef.current?.focus();
   };
@@ -2710,6 +2708,7 @@ export default function App() {
                               {/* Le Canvas Visuel Actif avec transition animée des slides */}
                               {(() => {
                                 const slide = msg.design.slides[msg.design.activeSlideIndex || 0];
+                                const isLight = msg.design.style === 'light';
                                 return (
                                   <div
                                     className={`my-4 mx-auto w-full transition-all duration-300 ${
@@ -2723,17 +2722,17 @@ export default function App() {
                                         animate={{ opacity: 1, y: 0, scale: 1 }}
                                         exit={{ opacity: 0, y: -8, scale: 0.985 }}
                                         transition={{ duration: 0.22, ease: 'easeOut' }}
-                                        className="w-full h-full rounded-2xl bg-zinc-900 border border-zinc-800 p-6 sm:p-8 flex flex-col justify-between relative overflow-hidden shadow-lg"
+                                        className={`w-full h-full rounded-2xl p-6 sm:p-8 flex flex-col justify-between relative overflow-hidden shadow-lg border ${isLight ? 'bg-white border-gray-200' : 'bg-zinc-900 border-zinc-800'}`}
                                       >
                                         {/* Background Image texture if present */}
                                         {slide.image && (
-                                          <div className="absolute inset-0 z-0 opacity-20 pointer-events-none">
+                                          <div className={`absolute inset-0 z-0 pointer-events-none ${isLight ? 'opacity-10' : 'opacity-20'}`}>
                                             <img
                                               src={slide.image}
                                               alt="Backdrop visual"
                                               className="w-full h-full object-cover filter contrast-125"
                                             />
-                                            <div className="absolute inset-0 bg-gradient-to-t from-zinc-950 via-zinc-950/80 to-transparent" />
+                                            <div className={`absolute inset-0 bg-gradient-to-t ${isLight ? 'from-white via-white/80 to-transparent' : 'from-zinc-950 via-zinc-950/80 to-transparent'}`} />
                                           </div>
                                         )}
 
@@ -2747,7 +2746,7 @@ export default function App() {
                                                 brandName.slice(0, 2).toUpperCase()
                                               )}
                                             </div>
-                                            <span className="text-xs font-semibold tracking-wider text-white uppercase">
+                                            <span className={`text-xs font-semibold tracking-wider uppercase ${isLight ? 'text-gray-900' : 'text-white'}`}>
                                               {brandName}
                                             </span>
                                           </div>
@@ -2768,7 +2767,7 @@ export default function App() {
                                           </div>
 
                                           {/* Big Hook Headline */}
-                                          <h2 className="text-xl sm:text-2xl font-semibold tracking-tight text-white leading-tight">
+                                          <h2 className={`text-xl sm:text-2xl font-semibold tracking-tight leading-tight ${isLight ? 'text-gray-900' : 'text-white'}`}>
                                             {slide.highlightWord && slide.title.includes(slide.highlightWord) ? (
                                               <>
                                                 {slide.title.split(slide.highlightWord)[0]}
@@ -2782,17 +2781,17 @@ export default function App() {
                                             )}
                                           </h2>
 
-                                          <p className="text-xs sm:text-sm text-zinc-300 leading-relaxed font-normal">
+                                          <p className={`text-xs sm:text-sm leading-relaxed font-normal ${isLight ? 'text-gray-600' : 'text-zinc-300'}`}>
                                             {slide.subtitle}
                                           </p>
 
                                           {/* Stat Callout if present */}
                                           {slide.stat && (
-                                            <div className="p-3.5 rounded-xl bg-zinc-950/80 border border-amber-500/30 my-2">
+                                            <div className={`p-3.5 rounded-xl border my-2 ${isLight ? 'bg-amber-50/70 border-amber-500/40' : 'bg-zinc-950/80 border-amber-500/30'}`}>
                                               <div style={{ color: brandColor }} className="text-3xl font-bold">
                                                 {slide.stat.value}
                                               </div>
-                                              <div className="text-xs text-zinc-400 mt-0.5">{slide.stat.label}</div>
+                                              <div className={`text-xs mt-0.5 ${isLight ? 'text-gray-500' : 'text-zinc-400'}`}>{slide.stat.label}</div>
                                             </div>
                                           )}
 
@@ -2800,7 +2799,7 @@ export default function App() {
                                           {slide.bulletPoints && (
                                             <div className="space-y-1.5 pt-1">
                                               {slide.bulletPoints.map((bp, i) => (
-                                                <div key={i} className="flex items-start gap-2 text-xs text-zinc-200">
+                                                <div key={i} className={`flex items-start gap-2 text-xs ${isLight ? 'text-gray-700' : 'text-zinc-200'}`}>
                                                   <div className="w-3.5 h-3.5 rounded-full bg-amber-500/20 text-amber-400 flex items-center justify-center shrink-0 mt-0.5">
                                                     ✓
                                                   </div>
@@ -2812,9 +2811,9 @@ export default function App() {
                                         </div>
 
                                         {/* Slide Footer */}
-                                        <div className="relative z-10 pt-3 border-t border-zinc-800/80 flex items-center justify-between text-xs">
-                                          <div className="flex items-center gap-1 text-zinc-400 ">
-                                            <span className="text-white font-medium">{brandHandle}</span>
+                                        <div className={`relative z-10 pt-3 border-t flex items-center justify-between text-xs ${isLight ? 'border-gray-200' : 'border-zinc-800/80'}`}>
+                                          <div className={`flex items-center gap-1 ${isLight ? 'text-gray-400' : 'text-zinc-400'}`}>
+                                            <span className={`font-medium ${isLight ? 'text-gray-900' : 'text-white'}`}>{brandHandle}</span>
                                             <CheckCircle2 className="w-3 h-3 text-amber-400 inline" />
                                           </div>
 
@@ -2981,39 +2980,58 @@ export default function App() {
               className="hidden"
             />
 
-            {/* Popup des commandes slash */}
+            {/* Chips des options ponctuelles (commandes « / ») */}
+            {(pendingFormat || pendingStyle || pendingProjectId) && (
+              <div className="flex flex-wrap items-center gap-1.5 mb-2 px-1">
+                <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Appliqué à l'envoi :</span>
+                {pendingProjectId &&
+                  (() => {
+                    const pk = projects.find((x) => x.id === pendingProjectId);
+                    return (
+                      <span
+                        className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-white border text-[10px] font-bold text-gray-800 shadow-2xs"
+                        style={{ borderColor: `${pk?.color || '#F59E0B'}66` }}
+                      >
+                        <span className="w-3.5 h-3.5 rounded flex items-center justify-center text-white text-[8px] font-bold" style={{ backgroundColor: pk?.color }}>
+                          {pk?.name.slice(0, 1).toUpperCase()}
+                        </span>
+                        {pk?.name}
+                        <button type="button" onClick={() => setPendingProjectId(null)} className="text-gray-300 hover:text-gray-600 cursor-pointer">
+                          <X className="w-3 h-3" />
+                        </button>
+                      </span>
+                    );
+                  })()}
+                {pendingFormat && (
+                  <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-amber-50 border border-amber-200 text-[10px] font-bold text-amber-800 shadow-2xs">
+                    {FORMATS[pendingFormat].label}
+                    <button type="button" onClick={() => setPendingFormat(null)} className="text-amber-400 hover:text-amber-700 cursor-pointer">
+                      <X className="w-3 h-3" />
+                    </button>
+                  </span>
+                )}
+                {pendingStyle && (
+                  <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-zinc-900 text-white border border-zinc-700 text-[10px] font-bold shadow-2xs">
+                    {pendingStyle === 'dark' ? <Moon className="w-3 h-3" /> : <Sun className="w-3 h-3" />}
+                    {pendingStyle === 'dark' ? 'Sombre' : 'Clair'}
+                    <button type="button" onClick={() => setPendingStyle(null)} className="text-zinc-500 hover:text-white cursor-pointer">
+                      <X className="w-3 h-3" />
+                    </button>
+                  </span>
+                )}
+              </div>
+            )}
+
+            {/* Popup des commandes slash (uniquement en début de champ) */}
             {slashItems.length > 0 && slashQuery !== null && (
               <div className="absolute bottom-full left-0 right-0 mb-3 rounded-2xl bg-white border border-gray-200 shadow-xl p-1.5 z-30 space-y-0.5 max-h-72 overflow-y-auto">
                 <div className="px-2.5 pt-1 pb-1 text-[10px] font-bold text-gray-400 uppercase tracking-wider flex items-center justify-between">
                   <span>Commandes</span>
                   <span className="normal-case font-semibold text-gray-300">↑↓ puis Entrée</span>
                 </div>
-                {slashProjectItems.length > 0 && (
-                  <div className="px-2.5 pt-1 text-[9px] font-bold text-gray-300 uppercase tracking-wider">Espaces</div>
-                )}
-                {slashProjectItems.map((it) => {
-                  const flatIdx = slashItems.indexOf(it);
-                  const pk = projects.find((x) => x.id === it.id);
-                  return (
-                    <button
-                      key={`sp_${it.id}`}
-                      type="button"
-                      onMouseEnter={() => setSlashIndex(flatIdx)}
-                      onClick={() => acceptSlash(it)}
-                      className={`w-full flex items-center gap-2.5 px-2.5 py-2 rounded-xl text-xs cursor-pointer transition-colors ${
-                        flatIdx === slashIndex ? 'bg-amber-50 text-amber-900 font-bold' : 'text-gray-700 hover:bg-gray-100'
-                      }`}
-                    >
-                      <span className="w-6 h-6 rounded-lg flex items-center justify-center shrink-0 overflow-hidden text-[10px] font-bold text-white" style={{ backgroundColor: pk?.color }}>
-                        {pk?.logo ? <img src={pk.logo} alt="" className="w-full h-full object-contain p-0.5" /> : it.label.slice(0, 1).toUpperCase()}
-                      </span>
-                      <span className="flex-1 text-left truncate">{it.label}</span>
-                      <span className="text-[9px] font-semibold text-gray-400">{it.hint}</span>
-                    </button>
-                  );
-                })}
+
                 {slashFormatItems.length > 0 && (
-                  <div className="px-2.5 pt-1 text-[9px] font-bold text-gray-300 uppercase tracking-wider">Formats</div>
+                  <div className="px-2.5 pt-1 text-[9px] font-bold text-gray-300 uppercase tracking-wider">Format</div>
                 )}
                 {slashFormatItems.map((it) => {
                   const flatIdx = slashItems.indexOf(it);
@@ -3031,9 +3049,63 @@ export default function App() {
                       <span className="w-6 h-6 rounded-lg bg-gray-100 flex items-center justify-center shrink-0">
                         <F.Icon className="w-3.5 h-3.5 text-gray-500" />
                       </span>
-                      <span className="font-mono text-[11px] text-gray-500 shrink-0">/{FORMAT_SLASH.find((f) => f.id === it.id)?.keys[0]}</span>
+                      <span className="font-mono text-[11px] text-gray-500 shrink-0">/{it.cmd}</span>
                       <span className="flex-1 text-left truncate font-semibold">{it.label}</span>
-                      <span className="text-[9px] font-semibold text-gray-400">{it.hint}</span>
+                      <span className="text-[9px] font-semibold text-gray-400">Format</span>
+                    </button>
+                  );
+                })}
+
+                {slashStyleItems.length > 0 && (
+                  <div className="px-2.5 pt-1 text-[9px] font-bold text-gray-300 uppercase tracking-wider">Style</div>
+                )}
+                {slashStyleItems.map((it) => {
+                  const flatIdx = slashItems.indexOf(it);
+                  return (
+                    <button
+                      key={`ss_${it.cmd}`}
+                      type="button"
+                      onMouseEnter={() => setSlashIndex(flatIdx)}
+                      onClick={() => acceptSlash(it)}
+                      className={`w-full flex items-center gap-2.5 px-2.5 py-2 rounded-xl text-xs cursor-pointer transition-colors ${
+                        flatIdx === slashIndex ? 'bg-amber-50 text-amber-900 font-bold' : 'text-gray-700 hover:bg-gray-100'
+                      }`}
+                    >
+                      <span className="w-6 h-6 rounded-lg bg-gray-100 flex items-center justify-center shrink-0">
+                        {it.style === 'dark' ? <Moon className="w-3.5 h-3.5 text-gray-500" /> : <Sun className="w-3.5 h-3.5 text-gray-500" />}
+                      </span>
+                      <span className="font-mono text-[11px] text-gray-500 shrink-0">/{it.cmd}</span>
+                      <span className="flex-1 text-left truncate font-semibold">{it.label}</span>
+                      <span className="text-[9px] font-semibold text-gray-400">Style</span>
+                    </button>
+                  );
+                })}
+
+                {slashProjectItems.length > 0 && (
+                  <div className="px-2.5 pt-1 text-[9px] font-bold text-gray-300 uppercase tracking-wider">Espaces</div>
+                )}
+                {slashProjectItems.map((it) => {
+                  const flatIdx = slashItems.indexOf(it);
+                  const pk = projects.find((x) => x.id === it.id);
+                  return (
+                    <button
+                      key={`sp_${it.id}`}
+                      type="button"
+                      onMouseEnter={() => setSlashIndex(flatIdx)}
+                      onClick={() => acceptSlash(it)}
+                      className={`w-full flex items-center gap-2.5 px-2.5 py-2 rounded-xl text-xs cursor-pointer transition-colors ${
+                        flatIdx === slashIndex ? 'bg-amber-50 text-amber-900 font-bold' : 'text-gray-700 hover:bg-gray-100'
+                      }`}
+                    >
+                      <span
+                        className="w-6 h-6 rounded-lg flex items-center justify-center shrink-0 overflow-hidden text-[10px] font-bold text-white"
+                        style={{ backgroundColor: pk?.color }}
+                      >
+                        {pk?.logo ? <img src={pk.logo} alt="" className="w-full h-full object-contain p-0.5" /> : it.label.slice(0, 1).toUpperCase()}
+                      </span>
+                      <span className="font-mono text-[11px] text-gray-500 shrink-0">/{it.cmd}</span>
+                      <span className="flex-1 text-left truncate font-semibold">{it.label}</span>
+                      <span className="text-[9px] font-semibold text-gray-400">Espace</span>
                     </button>
                   );
                 })}

@@ -18,6 +18,7 @@ export interface CanvaExportInput {
   widthPx: number;
   heightPx: number;
   slides: CanvaSlideInput[];
+  light?: boolean;
   brand: {
     name: string;
     handle: string;
@@ -198,11 +199,18 @@ function buildSlideXml(
   total: number,
   w: number,
   h: number,
-  brand: { name: string; handle: string; color: string }
+  brand: { name: string; handle: string; color: string },
+  light = false
 ): string {
   const pad = 80;
   const contentW = w - pad * 2;
   const accent = cleanHex(brand.color || '#F59E0B');
+  const bgHex = light ? 'FFFFFF' : '18181B';
+  const inkHex = light ? '18181B' : 'FFFFFF';
+  const subHex = light ? '52525B' : 'D4D4D8';
+  const statFillHex = light ? 'FEF3C7' : '09090B';
+  const statLabelHex = light ? '71717A' : 'A1A1AA';
+  const bulletHex = light ? '3F3F46' : 'E4E4E7';
 
   const shapes: string[] = [];
 
@@ -216,7 +224,7 @@ function buildSlideXml(
     <p:spPr>
       <a:xfrm><a:off x="0" y="0"/><a:ext cx="${px(w)}" cy="${px(h)}"/></a:xfrm>
       <a:prstGeom prst="rect"><a:avLst/></a:prstGeom>
-      <a:solidFill><a:srgbClr val="18181B"/></a:solidFill>
+      <a:solidFill><a:srgbClr val="${bgHex}"/></a:solidFill>
       <a:ln><a:noFill/></a:ln>
     </p:spPr>
   </p:sp>`);
@@ -246,7 +254,7 @@ function buildSlideXml(
       h: 48,
       text: brand.name.toUpperCase(),
       fontSizePt: 18,
-      colorHex: 'FFFFFF',
+      colorHex: inkHex,
       bold: true,
     }),
     textBoxXml({
@@ -310,7 +318,7 @@ function buildSlideXml(
       h: 130,
       text: slide.subtitle,
       fontSizePt: 21,
-      colorHex: 'D4D4D8',
+      colorHex: subHex,
     })
   );
   yCursor += 145;
@@ -329,7 +337,7 @@ function buildSlideXml(
         fontSizePt: 54,
         colorHex: accent,
         bold: true,
-        fillHex: '09090B',
+        fillHex: statFillHex,
         borderHex: accent,
       }),
       textBoxXml({
@@ -341,7 +349,7 @@ function buildSlideXml(
         h: 65,
         text: slide.stat.label,
         fontSizePt: 17,
-        colorHex: 'A1A1AA',
+        colorHex: statLabelHex,
       })
     );
     yCursor += 195;
@@ -360,7 +368,7 @@ function buildSlideXml(
         h: Math.min(240, slide.bulletPoints.length * 68),
         text: bulletsText,
         fontSizePt: 20,
-        colorHex: 'E4E4E7',
+        colorHex: bulletHex,
       })
     );
   }
@@ -376,7 +384,7 @@ function buildSlideXml(
       h: 54,
       text: brand.handle,
       fontSizePt: 18,
-      colorHex: 'FFFFFF',
+      colorHex: inkHex,
       bold: true,
     })
   );
@@ -524,7 +532,7 @@ export function createEditableCanvaPptx(input: CanvaExportInput): Blob {
   ];
 
   slides.forEach((sl, idx) => {
-    const xml = buildSlideXml(sl, slides.length, widthPx, heightPx, brand);
+    const xml = buildSlideXml(sl, slides.length, widthPx, heightPx, brand, !!input.light);
     files.push({ name: `ppt/slides/slide${idx + 1}.xml`, data: enc.encode(xml) });
     files.push({ name: `ppt/slides/_rels/slide${idx + 1}.xml.rels`, data: enc.encode(singleSlideRelsXml) });
   });
