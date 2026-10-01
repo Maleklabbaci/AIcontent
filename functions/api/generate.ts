@@ -44,6 +44,23 @@ const FORMAT_ASPECT: Record<string, string> = {
 const VALID_FORMATS = new Set(Object.keys(FORMAT_ASPECT));
 const VALID_MODELS = new Set(Object.keys(MODEL_CANDIDATES));
 const VALID_STYLES = new Set(['dark', 'light']);
+
+// Catalogue open source (Google Fonts) — même liste que le client.
+const TITLE_FONTS = [
+  'Playfair Display', 'Cormorant Garamond', 'DM Serif Display', 'Marcellus', 'Cinzel',
+  'Fraunces', 'Libre Baskerville', 'Lora', 'Abril Fatface', 'Bebas Neue', 'Anton',
+  'Archivo Black', 'Oswald', 'League Spartan', 'Alfa Slab One', 'Space Grotesk',
+  'El Messiri', 'Changa', 'Lalezar', 'Reem Kufi', 'Noto Kufi Arabic', 'Amiri', 'Markazi Text',
+  'Dancing Script', 'Great Vibes', 'Caveat', 'Pacifico',
+];
+const BODY_FONTS = [
+  'Inter', 'Manrope', 'Outfit', 'Sora', 'Urbanist', 'Plus Jakarta Sans', 'Work Sans',
+  'Figtree', 'Public Sans', 'Nunito Sans', 'Poppins', 'Quicksand', 'Baloo 2', 'Fredoka',
+  'Comfortaa', 'JetBrains Mono', 'IBM Plex Mono', 'Space Mono', 'Merriweather', 'Newsreader',
+  'Source Serif 4', 'Epilogue', 'Cairo', 'Tajawal', 'Almarai', 'Mada', 'Readex Pro',
+  'IBM Plex Sans Arabic', 'Scheherazade New',
+];
+const VALID_FONT_NAMES = new Set([...TITLE_FONTS, ...BODY_FONTS]);
 const VALID_LANGS = new Set(['fr', 'en', 'ar']);
 
 const LANG_NAMES: Record<string, string> = {
@@ -133,6 +150,7 @@ RÈGLES D'ÉCRITURE (niveau expert)
 RÉPONDS UNIQUEMENT avec ce JSON valide, sans texte autour :
 {
   "title": "Titre court du projet",
+  "fonts": { "title": "Nom exact du MENU", "body": "Nom exact du MENU" },
   "slides": [
     {
       "slideNumber": 1,
@@ -146,11 +164,17 @@ RÉPONDS UNIQUEMENT avec ce JSON valide, sans texte autour :
   ]
 }
 
+MENU DE POLICES (obligatoirement issues de cette liste)
+Polices de TITRES (display/serif) : ${TITLE_FONTS.join(', ')}
+Polices de TEXTES (sans/lecture) : ${BODY_FONTS.join(', ')}
+Choisis le couple le plus cohérent avec le sujet et l'ambiance (ex: luxe -> Playfair Display + Inter ; tech -> Space Grotesk + Manrope ; fun -> Baloo 2 + Nunito Sans ; affiche/sport -> Bebas Neue + Work Sans${lang === 'ar' ? ' ; ARABE -> titres : El Messiri/Changa/Lalezar/Reem Kufi/Amiri, textes : Cairo/Tajawal/Almarai/Readex Pro' : ''}).
+
 CONTRAINTES DE SORTIE
 - Exactement ${slidesCount} slide(s) dans le tableau "slides", numérotées 1..N.
 - Si slidesCount === 1 : slide autonome (hook + valeur + CTA), bulletPoints = tableau vide.
 - bulletPoints (3 max) uniquement pour les carrousels/présentations.
 - highlightWord : un mot qui existe dans le titre.
+- "fonts" : title ET body doivent être copiés EXACTEMENT depuis le menu (majuscules identiques).
 - Pas d'emojis, pas de guillemets non échappés dans les chaînes JSON.`;
 
   const res = await fetchWithTimeout(
@@ -184,7 +208,12 @@ CONTRAINTES DE SORTIE
   const slides = Array.isArray(design.slides) ? design.slides.slice(0, 10) : [];
   if (slides.length === 0) return json({ error: 'copy_no_slides' }, 502);
 
-  return json({ configured: true, stage: 'copy', design: { title: design.title || '', slides } });
+  const rawFonts = (design as { fonts?: { title?: unknown; body?: unknown } }).fonts || {};
+  const fonts = {
+    title: typeof rawFonts.title === 'string' && VALID_FONT_NAMES.has(rawFonts.title) ? rawFonts.title : 'Space Grotesk',
+    body: typeof rawFonts.body === 'string' && VALID_FONT_NAMES.has(rawFonts.body) ? rawFonts.body : 'Inter',
+  };
+  return json({ configured: true, stage: 'copy', design: { title: design.title || '', fonts, slides } });
 }
 
 // ============================================================

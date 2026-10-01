@@ -19,6 +19,7 @@ export interface CanvaExportInput {
   heightPx: number;
   slides: CanvaSlideInput[];
   light?: boolean;
+  fonts?: { title: string; body: string };
   brand: {
     name: string;
     handle: string;
@@ -147,6 +148,7 @@ function textBoxXml(opts: {
   align?: 'l' | 'ctr' | 'r';
   fillHex?: string;
   borderHex?: string;
+  fontFace?: string;
 }) {
   const fillXml = opts.fillHex
     ? `<a:solidFill><a:srgbClr val="${cleanHex(opts.fillHex)}"/></a:solidFill>`
@@ -163,7 +165,7 @@ function textBoxXml(opts: {
         <a:r>
           <a:rPr lang="fr-FR" sz="${Math.round(opts.fontSizePt * 100)}" b="${opts.bold ? '1' : '0'}" dirty="0">
             <a:solidFill><a:srgbClr val="${cleanHex(opts.colorHex)}"/></a:solidFill>
-            <a:latin typeface="Poppins"/>
+            <a:latin typeface="${opts.fontFace || 'Poppins'}"/>
           </a:rPr>
           <a:t>${escXml(line)}</a:t>
         </a:r>
@@ -200,8 +202,11 @@ function buildSlideXml(
   w: number,
   h: number,
   brand: { name: string; handle: string; color: string },
-  light = false
+  light = false,
+  fonts: { title: string; body: string } = { title: 'Poppins', body: 'Poppins' }
 ): string {
+  const FT = fonts.title || 'Poppins';
+  const FB = fonts.body || 'Poppins';
   const pad = 80;
   const contentW = w - pad * 2;
   const accent = cleanHex(brand.color || '#F59E0B');
@@ -234,6 +239,7 @@ function buildSlideXml(
     textBoxXml({
       id: 3,
       name: 'Badge Marque',
+      fontFace: FB,
       x: pad,
       y: 70,
       w: 56,
@@ -248,6 +254,7 @@ function buildSlideXml(
     textBoxXml({
       id: 4,
       name: 'Nom de Marque',
+      fontFace: FB,
       x: pad + 70,
       y: 74,
       w: 420,
@@ -260,6 +267,7 @@ function buildSlideXml(
     textBoxXml({
       id: 5,
       name: 'Numéro de Slide',
+      fontFace: FB,
       x: w - pad - 160,
       y: 74,
       w: 160,
@@ -278,6 +286,7 @@ function buildSlideXml(
     textBoxXml({
       id: 6,
       name: 'Catégorie / Tag',
+      fontFace: FT,
       x: pad,
       y: yCursor,
       w: contentW,
@@ -295,6 +304,7 @@ function buildSlideXml(
     textBoxXml({
       id: 7,
       name: 'Titre Principal (Éditable)',
+      fontFace: FT,
       x: pad,
       y: yCursor,
       w: contentW,
@@ -312,6 +322,7 @@ function buildSlideXml(
     textBoxXml({
       id: 8,
       name: 'Sous-titre (Éditable)',
+      fontFace: FB,
       x: pad,
       y: yCursor,
       w: contentW,
@@ -329,6 +340,7 @@ function buildSlideXml(
       textBoxXml({
         id: 9,
         name: 'Chiffre Clé (Stat)',
+      fontFace: FT,
         x: pad,
         y: yCursor,
         w: contentW,
@@ -343,6 +355,7 @@ function buildSlideXml(
       textBoxXml({
         id: 10,
         name: 'Légende Statistique',
+      fontFace: FB,
         x: pad,
         y: yCursor + 115,
         w: contentW,
@@ -362,6 +375,7 @@ function buildSlideXml(
       textBoxXml({
         id: 11,
         name: 'Liste à puces (Éditable)',
+      fontFace: FB,
         x: pad,
         y: yCursor,
         w: contentW,
@@ -378,6 +392,7 @@ function buildSlideXml(
     textBoxXml({
       id: 12,
       name: 'Identifiant (@handle)',
+      fontFace: FB,
       x: pad,
       y: h - 130,
       w: 400,
@@ -394,6 +409,7 @@ function buildSlideXml(
       textBoxXml({
         id: 13,
         name: 'Bouton CTA (Éditable)',
+      fontFace: FT,
         x: w - pad - 420,
         y: h - 132,
         w: 420,
@@ -532,7 +548,7 @@ export function createEditableCanvaPptx(input: CanvaExportInput): Blob {
   ];
 
   slides.forEach((sl, idx) => {
-    const xml = buildSlideXml(sl, slides.length, widthPx, heightPx, brand, !!input.light);
+    const xml = buildSlideXml(sl, slides.length, widthPx, heightPx, brand, !!input.light, input.fonts ?? { title: 'Poppins', body: 'Poppins' });
     files.push({ name: `ppt/slides/slide${idx + 1}.xml`, data: enc.encode(xml) });
     files.push({ name: `ppt/slides/_rels/slide${idx + 1}.xml.rels`, data: enc.encode(singleSlideRelsXml) });
   });
