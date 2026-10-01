@@ -51,16 +51,26 @@ import {
   Lightbulb,
   Rocket,
   PencilRuler,
-  RefreshCw
+  RefreshCw,
+  Mail,
+  Lock,
+  User,
+  Eye,
+  EyeOff,
+  ArrowRight
 } from 'lucide-react';
+import type { User as SupabaseUser } from '@supabase/supabase-js';
 
 // Sync des sessions via Supabase (si configuré) — sinon localStorage seul
-import { isSupabaseConfigured } from './lib/supabase';
+// Auth obligatoire : la page /login|/signup remplace toute autre vue tant que
+// `isSupabaseConfigured && authReady && !authUser`.
+import { isSupabaseConfigured, readAuthRemember, supabase, writeAuthRemember } from './lib/supabase';
 import { deleteRemoteSession, loadRemoteSessions, saveRemoteSession } from './utils/remoteStorage';
 import { createEditableCanvaPptx } from './utils/canvaExport';
 import { createPdfFromJpegs, pxToPt } from './utils/pdfExport';
 import imgAbstract from './assets/images/social_abstract_accent_1790812839231.jpg';
 import imgMarketing from './assets/images/social_marketing_visual_1790812851560.jpg';
+import imgAuthNeural from './assets/images/auth-neural.webp';
 
 // Format types
 type FormatType = 'post' | 'scroller' | 'story' | 'square' | 'website' | 'product' | 'poster' | 'presentation';
@@ -222,9 +232,9 @@ const FORMATS: Record<
 const FORMAT_ORDER: FormatType[] = ['post', 'scroller', 'story', 'square', 'website', 'product', 'poster', 'presentation'];
 
 const I18N: Record<Lang, Record<string, string>> = {
-  fr: { newDesign: 'Nouveau design', search: 'Recherche', templates: 'Templates', recents: 'Récents', greeting: 'Bonjour', subtitle: "On travaille sur quoi aujourd'hui ?", placeholder: "Décrivez le design à créer...", share: 'Partager', settings: 'Paramètres', language: 'Langue', help: "Obtenir de l'aide", learnMore: 'En savoir plus', upgrade: 'Tarifs & Packs', logout: 'Se déconnecter', plan: 'Pack', commands: 'Commandes', styleGrp: 'Style', ambianceGrp: 'Ambiance', spacesGrp: 'Espaces', appliedToSend: "Appliqué à l'envoi", addToDesign: 'Ajouter au design', uploadPhoto: 'Uploader une photo', addAmbiance: 'Ajouter une ambiance', slashTip: 'Astuce : tapez « / » pour les commandes rapides.', ambianceAdded: 'Ambiance ajoutée', ambianceReplaced: 'Ambiance remplacée', ambianceRemoved: 'Ambiance retirée', maxChips: 'Maximum 3 ambiances par design.', appliedNext: 'appliqué à la prochaine génération', styleDark: 'Design sombre', styleLight: 'Design clair', chooseAmbiance: 'Choisir une ambiance', packs: 'Packs', lowBalance: 'Solde faible — voir les packs', noSessions: 'Aucune session trouvée.', backToStudio: "Retour à l'atelier", currentBadge: 'ACTUEL', packCurrent: 'Pack actuel', popular: 'LE PLUS POPULAIRE', surDevis: 'Sur devis', forever: 'pour toujours', perMonth: '/ mois', projectDefault: 'Projet', spaceDeleted: 'Espace supprimé.', keepOneSpace: 'Impossible : gardez au moins un espace.', spaceCreated: 'Espace créé — configurez son Brand Kit !', spaceActivated: 'activé — Brand Kit appliqué !', packLimitHit: 'projet(s) maximum dans votre pack. Passez à un pack supérieur !', pricingBadge: 'TARIFS & PACKS', pricingTitleA: 'Choisissez votre', pricingTitleB: 'pack', pricingTitleC: ', générez en liberté', yourBalance: 'Votre solde actuel', chooseYourPack: 'Choisissez votre pack', tipsTitle: 'BONS REFLEXES', brandTitle: 'Espaces & Brand Kit', brandSub: 'Chaque espace possède sa propre identité : logo, nom, @handle et couleur appliqués automatiquement à tous vos designs.', mySpaces: 'Mes espaces', activeBadge: 'ACTIF', unnamed: 'Sans nom', deleteSpace: 'Supprimer cet espace', newSpace: 'Nouvel espace', limitReached: 'Limite du pack atteinte', limitReachedSub: "Passez à un pack supérieur pour plus d'espaces", activeSpace: 'Espace actif', savedAuto: 'Enregistré automatiquement ✓', logoLabel: 'Logo de la marque', logoDrag: 'Glissez votre logo ou parcourez', logoHint: 'PNG, JPG, SVG — carré recommandé', logoImported: 'Logo importé', logoReplace: 'Cliquer pour remplacer', remove: 'Retirer', brandNameLabel: 'Nom de la marque', brandHandleLabel: 'Identifiant social (@handle)', handleHint: 'Affiché en bas de chaque design, avec une coche de vérification.', brandColorLabel: "Couleur d'accentuation", colorHint: "Utilisée pour les tags, chiffres clés, boutons et bordures. Code :", previewLive: 'Aperçu en direct', previewTag: 'Nouvelle collection', previewPlaceholder: 'Votre marque', previewCta: 'Votre CTA ici ➔', previewNote: "Cet aperçu utilise vos réglages en temps réel. Tout est appliqué à l'écran, en PNG HD, PDF et dans l'export multi-calques Canva.", ambianceInfo: 'Ambiance', freeBadge: 'GRATUIT', refWelcome: 'Code d’invitation {r} détecté — vos 20 points de bienvenue vous attendent !', exportUnsupported: 'Export impossible sur ce navigateur.', exportingSlide: 'Export du slide {n} en cours...', slideDownloaded: 'Slide {n} téléchargé !', exportingAll: 'Export de {n} slides en cours...', exportingPdf: 'Export PDF de {n} slide(s) en cours...', resizedTo: 'Design décliné en {f} — gratuit !', textCopied: 'Texte copié !', linkCopiedClip: 'Lien copié dans le presse-papier !', insufficient: 'Solde insuffisant : {n} points requis ({c} restants).', pointsSpent: '−{n} points · solde : {c} pts', generatedMany: '{n} slides générés !', generatedOne: 'Nouveau design généré !', customColor: 'Couleur personnalisée', hideSidebar: 'Masquer la barre latérale', showSidebar: 'Ouvrir la barre latérale', searchSessions: 'Rechercher une session...', changeProject: 'Changer de projet / espace de travail', yourPack: 'Votre pack', copyText: 'Copier le texte', exportAllPdf: 'Exporter tous les slides en un seul PDF', openInCanvaTip: 'Ouvrir ce design éditable dans votre compte Canva', removePhoto: 'Retirer la photo', addPhotoOrVibe: 'Ajouter une photo ou une ambiance', carouselTip: 'Nombre de slides du carrousel', modelTip: 'Modèle de génération', defaultBrand: 'Ma marque', newProject: 'Nouveau projet', editBrandKit: 'Modifier le Brand Kit', referFriend: 'Parrainer un ami', loggedOutTitle: 'Vous êtes déconnecté', loggedOutSub: 'À bientôt sur Aura Design.', relogin: 'Se reconnecter', resizeTitle: 'Décliner en', resizeHint: 'Décliner ce design dans un autre format (gratuit)', editOnCanva: 'Modifier sur Canva', prevSlide: 'Précédent', nextSlide: 'Suivant', aiThinking: 'Génération de votre design en cours...', slideProgress: 'Slide {i}/{n}…', engineError: 'Le moteur IA n’a pas répondu. Aucun point débité — réessaie.', partialGen: '{a}/{b} images générées — {p} points débités.', aiIntroOne: 'Voici votre nouveau design au format **{fmt}**', aiIntroMany: 'Voici votre carrousel de **{n} slides** au format **{fmt}**', aiStyleLight: 'en **style clair**', aiPhotos: 'avec {n} photo(s) intégrée(s)', aiChips: '— ambiance : **{chips}**', aiCanvasTip: 'Le Canvas ci-dessous vous permet de le visualiser et de l’exporter en haute résolution.', sugRefine: 'Affiner le texte du Slide 1', sugRegenSlides: 'Régénérer avec {n} slides', sugToCarousel: 'Passer en format Carrousel 4:5', sugExportPng: 'Exporter en PNG HD', sugExportPdf: 'Exporter en PDF', photoAdded: 'Photo ajoutée au message', canvaConnectedToast: 'Compte Canva connecté ! Prochain export : envoi automatique.', slideCopied: 'Contenu du slide copié !', canvaOpened: 'Design ouvert dans votre compte Canva !', canvaExportFail: 'Export Canva impossible.', pdfUnsupported: 'Export PDF impossible sur ce navigateur.', pdfFail: 'Export PDF impossible.', canvaFallback: 'Import automatique indisponible — fichier multi-calques téléchargé.', feedbackThanks: 'Merci pour votre retour !', pdfDownloaded: 'PDF téléchargé !', pleaseWaitGenerating: 'Patientez, génération en cours...', personalizeIdea: 'Personnalisez votre idée puis envoyez', feedbackSaved: 'Retour enregistré.', sessionDeleted: 'Session supprimée.', allSlidesDownloaded: 'Tous les slides sont téléchargés !', canvaPreparing: 'Préparation du fichier multi-calques...', addTemplates: 'Ajouter des modèles', templatesTitle: 'Bibliothèque de modèles', templateSaved: 'Modèle enregistré', tplSavedCount: '{n} modèle(s) enregistré(s)', libFull: 'Bibliothèque pleine (24 max) — supprime un modèle.', developMe: 'Fais-moi développer', developMeSub: 'Ajoute tes modèles, décris ton produit et ton thème — l’IA apprend ton univers et s’y tient.', productTypeLabel: 'Type de produit', productTypePh: 'Ex : pâtisserie, vêtements, cosmétiques…', themeLabel: 'Thème / style visuel', themePh: 'Ex : chaleureux et artisanal, luxe minimaliste…', aiProductExact: 'avec ton produit intégré à l’identique', fontTitleLabel: 'Police des titres', fontBodyLabel: 'Police des textes', fontAuto: 'Auto — l’IA choisit', resizedMsg: 'Voici votre design **décliné au format {fmt}** — même contenu, nouvelles proportions. Le recyclage entre formats est **gratuit** !', tplHint: 'Tes modèles servent de référence de style : l’IA s’en inspire à chaque génération pour se rapprocher de ton identité.', useTplToggle: 'Guider l’IA avec mes modèles', tplEmpty: 'Aucun modèle pour l’instant. Ajoute tes meilleures créations !', removeTpl: 'Supprimer ce modèle', aiRefUsed: '— inspirée de tes modèles', photoSavedTpl: 'Photo enregistrée dans tes modèles', addPhotoShort: 'Ajouter photo', designFormat: 'Format du design', formatSet: 'Format actif :', slidesCount: 'Nombre de slides', carouselSet: 'Carrousel configuré à {n} slides', modelHeader: 'Modèle de génération', modelSet: 'Modèle actif : {m} · {p} pts/image', seePacks: 'Voir les packs', aiRemark: 'Aura AI génère des visuels optimisés pour LinkedIn, Instagram et X. Vérifiez les textes avant publication.', firstName: 'Prénom', canvaAccount: 'Compte Canva', connectedBadge: 'CONNECTÉ', notConnectedBadge: 'NON CONNECTÉ', clearHistory: "Effacer l'historique des sessions", historyCleared: 'Historique effacé.', aboutP1: 'est un générateur de designs par IA : posts et stories pour les réseaux sociaux, carrousels, sites web, fiches produit, affiches et présentations.', aboutP2: 'Décrivez ce que vous voulez, choisissez un format, puis exportez votre création en PNG haute définition avec votre Brand Kit.', version: 'Version 1.0', canvaTitle: 'Connecter votre compte Canva', canvaIntroA: 'Ouvrez vos designs', canvaIntroB: '100% éditables', canvaIntroC: '(textes, calques et couleurs séparés) directement dans votre éditeur Canva.', canvaStep1: 'Créez une app gratuite sur', canvaStep2: "Copiez votre jeton d'accès personnel.", canvaStep3: 'Collez-le ici : vos prochains exports arriveront', canvaStep3B: 'automatiquement dans votre compte Canva', canvaOk: 'Compte Canva connecté — envoi automatique actif.', canvaTokenLabel: "Jeton d'accès Canva", canvaTokenPh: 'Collez votre jeton ici...', disconnect: 'Déconnecter', updateToken: 'Mettre à jour le jeton', connectCanva: 'Connecter Canva', canvaDisconnected: 'Compte Canva déconnecté.', referTitle: 'Parrainez vos amis', refStep1: 'Partagez votre lien', refStep2: 'Votre pote reçoit 20 pts', refStep3: 'Il paye un pack → vous gagnez 50 pts', yourCode: "Votre code d'invitation", copyLink: 'Copier le lien', linkCopied: 'Lien de parrainage copié !', copyFail: 'Copie impossible.', shareWa: 'Partager sur WhatsApp', waText: "Crée des designs de fou avec l'IA sur Aura Design — 20 points offerts avec mon lien :", referNote: "Les 50 points sont crédités automatiquement sur votre solde dès que votre filleul active son premier pack payant. Pas de limite : 3 filleuls = 150 points !", },
-  en: { newDesign: 'New design', search: 'Search', templates: 'Templates', recents: 'Recents', greeting: 'Hello', subtitle: 'What are we working on today?', placeholder: 'Describe the design to create...', share: 'Share', settings: 'Settings', language: 'Language', help: 'Get help', learnMore: 'Learn more', upgrade: 'Pricing & Packs', logout: 'Log out', plan: 'Pack', commands: 'Commands', styleGrp: 'Style', ambianceGrp: 'Vibe', spacesGrp: 'Spaces', appliedToSend: 'Applied to next send', addToDesign: 'Add to design', uploadPhoto: 'Upload a photo', addAmbiance: 'Add a vibe', slashTip: 'Tip: type "/" for quick commands.', ambianceAdded: 'Vibe added', ambianceReplaced: 'Vibe replaced', ambianceRemoved: 'Vibe removed', maxChips: 'Up to 3 vibes per design.', appliedNext: 'applied to the next generation', styleDark: 'Dark design', styleLight: 'Light design', chooseAmbiance: 'Choose a vibe', packs: 'Packs', lowBalance: 'Low balance — view packs', noSessions: 'No sessions found.', backToStudio: 'Back to studio', currentBadge: 'CURRENT', packCurrent: 'Current pack', popular: 'MOST POPULAR', surDevis: 'Custom quote', forever: 'forever', perMonth: '/ month', projectDefault: 'Project', spaceDeleted: 'Space deleted.', keepOneSpace: "Can't remove: keep at least one space.", spaceCreated: 'Space created — set up its Brand Kit!', spaceActivated: 'activated — Brand Kit applied!', packLimitHit: 'space(s) max in your pack. Upgrade to add more!', pricingBadge: 'PRICING & PACKS', pricingTitleA: 'Pick your', pricingTitleB: 'pack', pricingTitleC: ', create freely', yourBalance: 'Your current balance', chooseYourPack: 'Choose your pack', tipsTitle: 'GOOD TO KNOW', brandTitle: 'Spaces & Brand Kit', brandSub: 'Each space has its own identity: logo, name, @handle and accent color applied to all your designs.', mySpaces: 'My spaces', activeBadge: 'ACTIVE', unnamed: 'Unnamed', deleteSpace: 'Delete this space', newSpace: 'New space', limitReached: 'Pack limit reached', limitReachedSub: 'Upgrade to a higher pack for more spaces', activeSpace: 'Active space', savedAuto: 'Auto-saved ✓', logoLabel: 'Brand logo', logoDrag: 'Drag your logo or browse', logoHint: 'PNG, JPG, SVG — square recommended', logoImported: 'Logo imported', logoReplace: 'Click to replace', remove: 'Remove', brandNameLabel: 'Brand name', brandHandleLabel: 'Social handle (@handle)', handleHint: 'Shown at the bottom of every design, with a verified check.', brandColorLabel: 'Accent color', colorHint: 'Used for tags, key stats, buttons and borders. Code:', previewLive: 'Live preview', previewTag: 'New collection', previewPlaceholder: 'Your brand', previewCta: 'Your CTA here ➔', previewNote: 'This preview uses your live settings. Applied on screen, in PNG HD, PDF and the multi-layer Canva export.', ambianceInfo: 'Vibe', freeBadge: 'FREE', refWelcome: 'Invite code {r} detected — your 20 welcome points are waiting!', exportUnsupported: 'Export not supported in this browser.', exportingSlide: 'Exporting slide {n}...', slideDownloaded: 'Slide {n} downloaded!', exportingAll: 'Exporting {n} slides...', exportingPdf: 'PDF export of {n} slide(s) in progress...', resizedTo: 'Design resized to {f} — free!', textCopied: 'Text copied!', linkCopiedClip: 'Link copied to clipboard!', insufficient: 'Insufficient balance: {n} points required ({c} left).', pointsSpent: '−{n} points · balance: {c} pts', generatedMany: '{n} slides generated!', generatedOne: 'New design generated!', customColor: 'Custom color', hideSidebar: 'Hide sidebar', showSidebar: 'Open sidebar', searchSessions: 'Search a session...', changeProject: 'Switch project / workspace', yourPack: 'Your pack', copyText: 'Copy text', exportAllPdf: 'Export all slides as one PDF', openInCanvaTip: 'Open this editable design in your Canva account', removePhoto: 'Remove photo', addPhotoOrVibe: 'Add a photo or a vibe', carouselTip: 'Carousel slide count', modelTip: 'Generation model', defaultBrand: 'My brand', newProject: 'New project', editBrandKit: 'Edit Brand Kit', referFriend: 'Refer a friend', loggedOutTitle: 'You are logged out', loggedOutSub: 'See you soon on Aura Design.', relogin: 'Log back in', resizeTitle: 'Resize to', resizeHint: 'Resize this design to another format (free)', editOnCanva: 'Edit on Canva', prevSlide: 'Previous', nextSlide: 'Next', aiThinking: 'Generating your design...', slideProgress: 'Slide {i}/{n}…', engineError: 'The AI engine did not respond. No points charged — try again.', partialGen: '{a}/{b} images generated — {p} points charged.', aiIntroOne: 'Here is your new design in **{fmt}** format', aiIntroMany: 'Here is your carousel — **{n} slides** in **{fmt}** format', aiStyleLight: 'in **light style**', aiPhotos: 'with {n} photo(s) included', aiChips: '— vibe: **{chips}**', aiCanvasTip: 'The Canvas below lets you view it and export in high resolution.', sugRefine: 'Refine Slide 1 text', sugRegenSlides: 'Regenerate with {n} slides', sugToCarousel: 'Switch to 4:5 Carousel format', sugExportPng: 'Export as PNG HD', sugExportPdf: 'Export as PDF', photoAdded: 'Photo added to the message', canvaConnectedToast: 'Canva account connected! Next export: auto-send.', slideCopied: 'Slide content copied!', canvaOpened: 'Design opened in your Canva account!', canvaExportFail: 'Canva export failed.', pdfUnsupported: 'PDF export not supported in this browser.', pdfFail: 'PDF export failed.', canvaFallback: 'Auto-import unavailable — multi-layer file downloaded.', feedbackThanks: 'Thanks for your feedback!', pdfDownloaded: 'PDF downloaded!', pleaseWaitGenerating: 'Hold on, generation in progress...', personalizeIdea: 'Customize your idea then send', feedbackSaved: 'Feedback saved.', sessionDeleted: 'Session deleted.', allSlidesDownloaded: 'All slides downloaded!', canvaPreparing: 'Preparing the multi-layer file...', addTemplates: 'Add templates', templatesTitle: 'Template library', templateSaved: 'Template saved', tplSavedCount: '{n} template(s) saved', libFull: 'Library full (24 max) — delete a template.', developMe: 'Develop with me', developMeSub: 'Add your templates, describe your product and theme — the AI learns your universe and sticks to it.', productTypeLabel: 'Product type', productTypePh: 'E.g.: bakery, clothing, cosmetics…', themeLabel: 'Visual theme / style', themePh: 'E.g.: warm and artisanal, minimal luxury…', aiProductExact: 'with your product reproduced exactly', fontTitleLabel: 'Headline font', fontBodyLabel: 'Body font', fontAuto: 'Auto — the AI picks', resizedMsg: 'Here is your design **resized to {fmt}** — same content, new proportions. Recycling between formats is **free**!', tplHint: 'Your templates act as style references: the AI draws inspiration from them on every generation to match your identity.', useTplToggle: 'Let the AI learn from my templates', tplEmpty: 'No templates yet. Add your best creations!', removeTpl: 'Delete this template', aiRefUsed: '— inspired by your templates', photoSavedTpl: 'Photo saved to your templates', addPhotoShort: 'Add photo', designFormat: 'Design format', formatSet: 'Active format:', slidesCount: 'Number of slides', carouselSet: 'Carousel set to {n} slides', modelHeader: 'Generation model', modelSet: 'Active model: {m} · {p} pts/image', seePacks: 'View packs', aiRemark: 'Aura AI generates visuals optimized for LinkedIn, Instagram and X. Review texts before publishing.', firstName: 'First name', canvaAccount: 'Canva account', connectedBadge: 'CONNECTED', notConnectedBadge: 'NOT CONNECTED', clearHistory: 'Clear session history', historyCleared: 'History cleared.', aboutP1: 'is an AI design generator: social posts and stories, carousels, websites, product shots, posters and presentations.', aboutP2: 'Describe what you want, pick a format, then export your creation in high-definition PNG with your Brand Kit.', version: 'Version 1.0', canvaTitle: 'Connect your Canva account', canvaIntroA: 'Open your designs', canvaIntroB: '100% editable', canvaIntroC: '(texts, layers and colors separated) directly in your Canva editor.', canvaStep1: 'Create a free app on', canvaStep2: 'Copy your personal access token.', canvaStep3: 'Paste it here: your next exports will land', canvaStep3B: 'automatically in your Canva account', canvaOk: 'Canva account connected — auto-send active.', canvaTokenLabel: 'Canva access token', canvaTokenPh: 'Paste your token here...', disconnect: 'Disconnect', updateToken: 'Update token', connectCanva: 'Connect Canva', canvaDisconnected: 'Canva account disconnected.', referTitle: 'Refer your friends', refStep1: 'Share your link', refStep2: 'Your friend gets 20 pts', refStep3: 'They buy a pack → you earn 50 pts', yourCode: 'Your invite code', copyLink: 'Copy link', linkCopied: 'Referral link copied!', copyFail: 'Copy failed.', shareWa: 'Share on WhatsApp', waText: 'Create amazing AI designs on Aura Design — 20 free points with my link:', referNote: 'The 50 points are credited automatically to your balance as soon as your referral activates their first paid pack. No limit: 3 referrals = 150 points!', },
-  ar: { newDesign: 'تصميم جديد', search: 'بحث', brandKit: 'هوية العلامة', templates: 'قوالب', recents: 'الأخيرة', greeting: 'مرحباً', subtitle: 'على ماذا سنعمل اليوم؟', placeholder: 'صف التصميم المطلوب...', share: 'مشاركة', settings: 'الإعدادات', language: 'اللغة', help: 'احصل على مساعدة', learnMore: 'اعرف المزيد', upgrade: 'ترقية الباقة', logout: 'تسجيل الخروج', plan: 'الباقة', commands: 'الأوامر', styleGrp: 'النمط', ambianceGrp: 'الأجواء', spacesGrp: 'المساحات', appliedToSend: 'يُطبق عند الإرسال', addToDesign: 'أضف إلى التصميم', uploadPhoto: 'تحميل صورة', addAmbiance: 'أضف أجواءً', slashTip: 'نصيحة: اكتب "/" للأوامر السريعة.', ambianceAdded: 'تمت إضافة الأجواء', ambianceReplaced: 'تم استبدال الأجواء', ambianceRemoved: 'تمت إزالة الأجواء', maxChips: 'الحد الأقصى 3 أجواء لكل تصميم.', appliedNext: 'سيُطبق على التوليد التالي', styleDark: 'تصميم داكن', styleLight: 'تصميم فاتح', chooseAmbiance: 'اختر أجواءً', packs: 'الباقات', lowBalance: 'الرصيد منخفض — اعرض الباقات', noSessions: 'لا توجد جلسات.', backToStudio: 'العودة إلى الاستوديو', currentBadge: 'الحالي', packCurrent: 'الباقة الحالية', popular: 'الأكثر شيوعاً', surDevis: 'حسب الطلب', forever: 'للأبد', perMonth: '/ شهر', projectDefault: 'مشروع', spaceDeleted: 'تم حذف المساحة.', keepOneSpace: 'غير ممكن: احتفظ بمساحة واحدة على الأقل.', spaceCreated: 'تم إنشاء المساحة — جهّز هوية علامتها!', spaceActivated: 'مفعّلة — تم تطبيق هوية العلامة!', packLimitHit: 'مساحة كحد أقصى في باقتك. رقِّ باقتك لإضافة المزيد!', pricingBadge: 'الأسعار والباقات', pricingTitleA: 'اختر', pricingTitleB: 'باقتك', pricingTitleC: ' وأنشئ بحرية', yourBalance: 'رصيدك الحالي', chooseYourPack: 'اختر باقتك', tipsTitle: 'نصائح مهمة', brandTitle: 'المساحات وهوية العلامة', brandSub: 'لكل مساحة هويتها الخاصة: الشعار والاسم والمعرّف واللون تُطبق تلقائياً على كل تصميماتك.', mySpaces: 'مساحاتي', activeBadge: 'نشطة', unnamed: 'بدون اسم', deleteSpace: 'احذف هذه المساحة', newSpace: 'مساحة جديدة', limitReached: 'بلغت حد الباقة', limitReachedSub: 'رقِّ باقتك للحصول على مساحات أكثر', activeSpace: 'المساحة النشطة', savedAuto: 'محفوظ تلقائياً ✓', logoLabel: 'شعار العلامة', logoDrag: 'أسقط شعارك أو تصفح', logoHint: 'PNG, JPG, SVG — يفضّل مربع', logoImported: 'تم استيراد الشعار', logoReplace: 'انقر للاستبدال', remove: 'إزالة', brandNameLabel: 'اسم العلامة', brandHandleLabel: 'معرّف التواصل (@handle)', handleHint: 'يظهر أسفل كل تصميم مع علامة التوثيق.', brandColorLabel: 'لون التمييز', colorHint: 'يُستخدم للوسوم والأرقام المفتاحية والأزرار والحدود. الرمز:', previewLive: 'معاينة مباشرة', previewTag: 'مجموعة جديدة', previewPlaceholder: 'علامتك', previewCta: 'زر الإجراء هنا ➔', previewNote: 'تستخدم هذه المعاينة إعداداتك المباشرة. تُطبق على الشاشة وفي PNG HD وPDF وتصدير Canva متعدد الطبقات.', ambianceInfo: 'أجواء', freeBadge: 'مجاناً', refWelcome: 'تم اكتشاف رمز الدعوة {r} — 20 نقطة الترحيب الخاصة بك في انتظارك!', exportUnsupported: 'التصدير غير مدعوم في هذا المتصفح.', exportingSlide: 'جارٍ تصدير الشريحة {n}...', slideDownloaded: 'تم تنزيل الشريحة {n}!', exportingAll: 'جارٍ تصدير {n} شرائح...', exportingPdf: 'جارٍ تصدير PDF لـ{n} شريحة...', resizedTo: 'تم تحويل التصميم إلى {f} — مجاناً!', textCopied: 'تم نسخ النص!', linkCopiedClip: 'تم نسخ الرابط إلى الحافظة!', insufficient: 'الرصيد غير كافٍ: {n} نقطة مطلوبة (متبقٍ {c}).', pointsSpent: '−{n} نقطة · الرصيد: {c}', generatedMany: 'تم توليد {n} شرائح!', generatedOne: 'تم توليد تصميم جديد!', customColor: 'لون مخصص', hideSidebar: 'إخفاء الشريط الجانبي', showSidebar: 'فتح الشريط الجانبي', searchSessions: 'ابحث عن جلسة...', changeProject: 'تغيير المشروع / مساحة العمل', yourPack: 'باقتك', copyText: 'نسخ النص', exportAllPdf: 'تصدير كل الشرائح في PDF واحد', openInCanvaTip: 'افتح هذا التصميم القابل للتعديل في حسابك على Canva', removePhoto: 'إزالة الصورة', addPhotoOrVibe: 'أضف صورة أو أجواءً', carouselTip: 'عدد شرائح الكاروسيل', modelTip: 'نموذج التوليد', defaultBrand: 'علامتي', newProject: 'مشروع جديد', editBrandKit: 'تعديل هوية العلامة', referFriend: 'أحِل صديقاً', loggedOutTitle: 'تم تسجيل خروجك', loggedOutSub: 'إلى اللقاء على Aura Design.', relogin: 'إعادة الاتصال', resizeTitle: 'تحويل إلى', resizeHint: 'حوّل هذا التصميم إلى صيغة أخرى (مجاناً)', editOnCanva: 'تعديل في Canva', prevSlide: 'السابق', nextSlide: 'التالي', aiThinking: 'جارٍ توليد تصميمك...', slideProgress: 'الشريحة {i}/{n}…', engineError: 'لم يستجب محرك الذكاء الاصطناعي. لم تُخصم أي نقاط — أعد المحاولة.', partialGen: 'تم توليد {a}/{b} صورة — خُصم {p} نقطة.', aiIntroOne: 'إليك تصميمك الجديد بصيغة **{fmt}**', aiIntroMany: 'إليك الكاروسيل — **{n} شرائح** بصيغة **{fmt}**', aiStyleLight: 'ب**نمط فاتح**', aiPhotos: 'مع {n} صورة مدمجة', aiChips: '— أجواء: **{chips}**', aiCanvasTip: 'يسمح لك Canvas أدناه بعرضه وتصديره بجودة عالية.', sugRefine: 'حسّن نص الشريحة 1', sugRegenSlides: 'أعد التوليد بـ{n} شرائح', sugToCarousel: 'حوّل إلى كاروسيل 4:5', sugExportPng: 'صدّر PNG HD', sugExportPdf: 'صدّر PDF', photoAdded: 'تمت إضافة الصورة إلى الرسالة', canvaConnectedToast: 'تم ربط حساب Canva! التصدير القادم: إرسال تلقائي.', slideCopied: 'تم نسخ محتوى الشريحة!', canvaOpened: 'تم فتح التصميم في حسابك على Canva!', canvaExportFail: 'فشل تصدير Canva.', pdfUnsupported: 'تصدير PDF غير مدعوم في هذا المتصفح.', pdfFail: 'فشل تصدير PDF.', canvaFallback: 'الاستيراد التلقائي غير متاح — تم تنزيل الملف متعدد الطبقات.', feedbackThanks: 'شكراً على ملاحظاتك!', pdfDownloaded: 'تم تنزيل PDF!', pleaseWaitGenerating: 'انتظر، جارٍ التوليد...', personalizeIdea: 'خصّص فكرتك ثم أرسل', feedbackSaved: 'تم حفظ الملاحظة.', sessionDeleted: 'تم حذف الجلسة.', allSlidesDownloaded: 'تم تنزيل كل الشرائح!', canvaPreparing: 'جارٍ تحضير الملف متعدد الطبقات...', addTemplates: 'أضف قوالب', templatesTitle: 'مكتبة القوالب', templateSaved: 'تم حفظ القالب', tplSavedCount: 'تم حفظ {n} قالب', libFull: 'المكتبة ممتلئة (24 كحد أقصى) — احذف قالباً.', developMe: 'طوّر معي', developMeSub: 'أضف قوالبيك وصف منتجك وثيمك — الذكاء الاصطناعي يتعلّم عالمك ويلتزم به.', productTypeLabel: 'نوع المنتج', productTypePh: 'مثال: حلويات، ملابس، مستحضرات تجميل…', themeLabel: 'الثيم / الأسلوب البصري', themePh: 'مثال: دافئ وحرفي، فخامة بسيطة…', aiProductExact: 'مع منتجك مدمجاً كما هو تماماً', fontTitleLabel: 'خط العناوين', fontBodyLabel: 'خط النصوص', fontAuto: 'تلقائي — الذكاء الاصطناعي يختار', resizedMsg: 'إليك تصميمك **محوّلاً إلى {fmt}** — نفس المحتوى بأبعاد جديدة. إعادة التدوير بين الصيغ **مجانية**!', tplHint: 'قوالبيك مرجع للأسلوب: يستلهم منها الذكاء الاصطناعي في كل توليد ليقترب من هويتك.', useTplToggle: 'دع الذكاء الاصطناعي يتعلم من قوالبي', tplEmpty: 'لا توجد قوالب بعد. أضف أفضل تصميماتك!', removeTpl: 'احذف هذا القالب', aiRefUsed: '— مستوحاة من قوالبيك', photoSavedTpl: 'تم حفظ الصورة في قوالبيك', addPhotoShort: 'أضف صورة', designFormat: 'صيغة التصميم', formatSet: 'الصيغة النشطة:', slidesCount: 'عدد الشرائح', carouselSet: 'تم ضبط الكاروسيل على {n} شرائح', modelHeader: 'نموذج التوليد', modelSet: 'النموذج النشط: {m} · {p} نقطة/صورة', seePacks: 'عرض الباقات', aiRemark: 'يولّد Aura AI تصاميم محسّنة لـLinkedIn وInstagram وX. راجع النصوص قبل النشر.', firstName: 'الاسم الأول', canvaAccount: 'حساب Canva', connectedBadge: 'متصل', notConnectedBadge: 'غير متصل', clearHistory: 'مسح سجل الجلسات', historyCleared: 'تم مسح السجل.', aboutP1: 'هو مولّد تصاميم بالذكاء الاصطناعي: منشورات وستوريات للشبكات الاجتماعية، كاروسيل، مواقع، صور منتجات، ملصقات وعروض تقديمية.', aboutP2: 'صِف ما تريد، اختر صيغة، ثم صدّر تصميمك بجودة PNG عالية مع هوية علامتك.', version: 'الإصدار 1.0', canvaTitle: 'اربط حسابك في Canva', canvaIntroA: 'افتح تصاميمك', canvaIntroB: 'قابلة للتعديل 100%', canvaIntroC: '(نصوص وطبقات وألوان منفصلة) مباشرة في محرر Canva.', canvaStep1: 'أنشئ تطبيقاً مجانياً على', canvaStep2: 'انسخ رمز الوصول الشخصي.', canvaStep3: 'الصقه هنا: ستصل صادراتك القادمة', canvaStep3B: 'تلقائياً إلى حسابك في Canva', canvaOk: 'تم ربط حساب Canva — الإرسال التلقائي مفعّل.', canvaTokenLabel: 'رمز وصول Canva', canvaTokenPh: 'الصق رمزك هنا...', disconnect: 'قطع الاتصال', updateToken: 'تحديث الرمز', connectCanva: 'ربط Canva', canvaDisconnected: 'تم فصل حساب Canva.', referTitle: 'أحِل أصدقاءك', refStep1: 'شارك رابطك', refStep2: 'صديقك يحصل على 20 نقطة', refStep3: 'يشتري باقة → تربح 50 نقطة', yourCode: 'رمز الدعوة', copyLink: 'انسخ الرابط', linkCopied: 'تم نسخ رابط الدعوة!', copyFail: 'فشل النسخ.', shareWa: 'شارك على واتساب', waText: 'أنشئ تصاميم مذهلة بالذكاء الاصطناعي على Aura Design — 20 نقطة مجاناً عبر رابطي:', referNote: 'تُضاف النقاط الخمسون تلقائياً إلى رصيدك فور تفعيل المُحال أول باقة مدفوعة. بلا حدود: 3 إحالات = 150 نقطة!', },
+  fr: { newDesign: 'Nouveau design', search: 'Recherche', templates: 'Templates', recents: 'Récents', greeting: 'Bonjour', subtitle: "On travaille sur quoi aujourd'hui ?", placeholder: "Décrivez le design à créer...", share: 'Partager', settings: 'Paramètres', language: 'Langue', help: "Obtenir de l'aide", learnMore: 'En savoir plus', upgrade: 'Tarifs & Packs', logout: 'Se déconnecter', plan: 'Pack', commands: 'Commandes', styleGrp: 'Style', ambianceGrp: 'Ambiance', spacesGrp: 'Espaces', appliedToSend: "Appliqué à l'envoi", addToDesign: 'Ajouter au design', uploadPhoto: 'Uploader une photo', addAmbiance: 'Ajouter une ambiance', slashTip: 'Astuce : tapez « / » pour les commandes rapides.', ambianceAdded: 'Ambiance ajoutée', ambianceReplaced: 'Ambiance remplacée', ambianceRemoved: 'Ambiance retirée', maxChips: 'Maximum 3 ambiances par design.', appliedNext: 'appliqué à la prochaine génération', styleDark: 'Design sombre', styleLight: 'Design clair', chooseAmbiance: 'Choisir une ambiance', packs: 'Packs', lowBalance: 'Solde faible — voir les packs', noSessions: 'Aucune session trouvée.', backToStudio: "Retour à l'atelier", currentBadge: 'ACTUEL', packCurrent: 'Pack actuel', popular: 'LE PLUS POPULAIRE', surDevis: 'Sur devis', forever: 'pour toujours', perMonth: '/ mois', projectDefault: 'Projet', spaceDeleted: 'Espace supprimé.', keepOneSpace: 'Impossible : gardez au moins un espace.', spaceCreated: 'Espace créé — configurez son Brand Kit !', spaceActivated: 'activé — Brand Kit appliqué !', packLimitHit: 'projet(s) maximum dans votre pack. Passez à un pack supérieur !', pricingBadge: 'TARIFS & PACKS', pricingTitleA: 'Choisissez votre', pricingTitleB: 'pack', pricingTitleC: ', générez en liberté', yourBalance: 'Votre solde actuel', chooseYourPack: 'Choisissez votre pack', tipsTitle: 'BONS REFLEXES', brandTitle: 'Espaces & Brand Kit', brandSub: 'Chaque espace possède sa propre identité : logo, nom, @handle et couleur appliqués automatiquement à tous vos designs.', mySpaces: 'Mes espaces', activeBadge: 'ACTIF', unnamed: 'Sans nom', deleteSpace: 'Supprimer cet espace', newSpace: 'Nouvel espace', limitReached: 'Limite du pack atteinte', limitReachedSub: "Passez à un pack supérieur pour plus d'espaces", activeSpace: 'Espace actif', savedAuto: 'Enregistré automatiquement ✓', logoLabel: 'Logo de la marque', logoDrag: 'Glissez votre logo ou parcourez', logoHint: 'PNG, JPG, SVG — carré recommandé', logoImported: 'Logo importé', logoReplace: 'Cliquer pour remplacer', remove: 'Retirer', brandNameLabel: 'Nom de la marque', brandHandleLabel: 'Identifiant social (@handle)', handleHint: 'Affiché en bas de chaque design, avec une coche de vérification.', brandColorLabel: "Couleur d'accentuation", colorHint: "Utilisée pour les tags, chiffres clés, boutons et bordures. Code :", previewLive: 'Aperçu en direct', previewTag: 'Nouvelle collection', previewPlaceholder: 'Votre marque', previewCta: 'Votre CTA ici ➔', previewNote: "Cet aperçu utilise vos réglages en temps réel. Tout est appliqué à l'écran, en PNG HD, PDF et dans l'export multi-calques Canva.", ambianceInfo: 'Ambiance', freeBadge: 'GRATUIT', refWelcome: 'Code d’invitation {r} détecté — vos 20 points de bienvenue vous attendent !', exportUnsupported: 'Export impossible sur ce navigateur.', exportingSlide: 'Export du slide {n} en cours...', slideDownloaded: 'Slide {n} téléchargé !', exportingAll: 'Export de {n} slides en cours...', exportingPdf: 'Export PDF de {n} slide(s) en cours...', resizedTo: 'Design décliné en {f} — gratuit !', textCopied: 'Texte copié !', linkCopiedClip: 'Lien copié dans le presse-papier !', insufficient: 'Solde insuffisant : {n} points requis ({c} restants).', pointsSpent: '−{n} points · solde : {c} pts', generatedMany: '{n} slides générés !', generatedOne: 'Nouveau design généré !', customColor: 'Couleur personnalisée', hideSidebar: 'Masquer la barre latérale', showSidebar: 'Ouvrir la barre latérale', searchSessions: 'Rechercher une session...', changeProject: 'Changer de projet / espace de travail', yourPack: 'Votre pack', copyText: 'Copier le texte', exportAllPdf: 'Exporter tous les slides en un seul PDF', openInCanvaTip: 'Ouvrir ce design éditable dans votre compte Canva', removePhoto: 'Retirer la photo', addPhotoOrVibe: 'Ajouter une photo ou une ambiance', carouselTip: 'Nombre de slides du carrousel', modelTip: 'Modèle de génération', defaultBrand: 'Ma marque', newProject: 'Nouveau projet', editBrandKit: 'Modifier le Brand Kit', referFriend: 'Parrainer un ami', loggedOutTitle: 'Vous êtes déconnecté', loggedOutSub: 'À bientôt sur Aura Design.', relogin: 'Se reconnecter', resizeTitle: 'Décliner en', resizeHint: 'Décliner ce design dans un autre format (gratuit)', editOnCanva: 'Modifier sur Canva', prevSlide: 'Précédent', nextSlide: 'Suivant', aiThinking: 'Génération de votre design en cours...', slideProgress: 'Slide {i}/{n}…', engineError: 'Le moteur IA n’a pas répondu. Aucun point débité — réessaie.', partialGen: '{a}/{b} images générées — {p} points débités.', aiIntroOne: 'Voici votre nouveau design au format **{fmt}**', aiIntroMany: 'Voici votre carrousel de **{n} slides** au format **{fmt}**', aiStyleLight: 'en **style clair**', aiPhotos: 'avec {n} photo(s) intégrée(s)', aiChips: '— ambiance : **{chips}**', aiCanvasTip: 'Le Canvas ci-dessous vous permet de le visualiser et de l’exporter en haute résolution.', sugRefine: 'Affiner le texte du Slide 1', sugRegenSlides: 'Régénérer avec {n} slides', sugToCarousel: 'Passer en format Carrousel 4:5', sugExportPng: 'Exporter en PNG HD', sugExportPdf: 'Exporter en PDF', photoAdded: 'Photo ajoutée au message', canvaConnectedToast: 'Compte Canva connecté ! Prochain export : envoi automatique.', slideCopied: 'Contenu du slide copié !', canvaOpened: 'Design ouvert dans votre compte Canva !', canvaExportFail: 'Export Canva impossible.', pdfUnsupported: 'Export PDF impossible sur ce navigateur.', pdfFail: 'Export PDF impossible.', canvaFallback: 'Import automatique indisponible — fichier multi-calques téléchargé.', feedbackThanks: 'Merci pour votre retour !', pdfDownloaded: 'PDF téléchargé !', pleaseWaitGenerating: 'Patientez, génération en cours...', personalizeIdea: 'Personnalisez votre idée puis envoyez', feedbackSaved: 'Retour enregistré.', sessionDeleted: 'Session supprimée.', allSlidesDownloaded: 'Tous les slides sont téléchargés !', canvaPreparing: 'Préparation du fichier multi-calques...', addTemplates: 'Ajouter des modèles', templatesTitle: 'Bibliothèque de modèles', templateSaved: 'Modèle enregistré', tplSavedCount: '{n} modèle(s) enregistré(s)', libFull: 'Bibliothèque pleine (24 max) — supprime un modèle.', developMe: 'Fais-moi développer', developMeSub: 'Ajoute tes modèles, décris ton produit et ton thème — l’IA apprend ton univers et s’y tient.', productTypeLabel: 'Type de produit', productTypePh: 'Ex : pâtisserie, vêtements, cosmétiques…', themeLabel: 'Thème / style visuel', themePh: 'Ex : chaleureux et artisanal, luxe minimaliste…', aiProductExact: 'avec ton produit intégré à l’identique', fontTitleLabel: 'Police des titres', fontBodyLabel: 'Police des textes', fontAuto: 'Auto — l’IA choisit', resizedMsg: 'Voici votre design **décliné au format {fmt}** — même contenu, nouvelles proportions. Le recyclage entre formats est **gratuit** !', tplHint: 'Tes modèles servent de référence de style : l’IA s’en inspire à chaque génération pour se rapprocher de ton identité.', useTplToggle: 'Guider l’IA avec mes modèles', tplEmpty: 'Aucun modèle pour l’instant. Ajoute tes meilleures créations !', removeTpl: 'Supprimer ce modèle', aiRefUsed: '— inspirée de tes modèles', photoSavedTpl: 'Photo enregistrée dans tes modèles', addPhotoShort: 'Ajouter photo', designFormat: 'Format du design', formatSet: 'Format actif :', slidesCount: 'Nombre de slides', carouselSet: 'Carrousel configuré à {n} slides', modelHeader: 'Modèle de génération', modelSet: 'Modèle actif : {m} · {p} pts/image', seePacks: 'Voir les packs', aiRemark: 'Aura AI génère des visuels optimisés pour LinkedIn, Instagram et X. Vérifiez les textes avant publication.', firstName: 'Prénom', canvaAccount: 'Compte Canva', connectedBadge: 'CONNECTÉ', notConnectedBadge: 'NON CONNECTÉ', clearHistory: "Effacer l'historique des sessions", historyCleared: 'Historique effacé.', aboutP1: 'est un générateur de designs par IA : posts et stories pour les réseaux sociaux, carrousels, sites web, fiches produit, affiches et présentations.', aboutP2: 'Décrivez ce que vous voulez, choisissez un format, puis exportez votre création en PNG haute définition avec votre Brand Kit.', version: 'Version 1.0', canvaTitle: 'Connecter votre compte Canva', canvaIntroA: 'Ouvrez vos designs', canvaIntroB: '100% éditables', canvaIntroC: '(textes, calques et couleurs séparés) directement dans votre éditeur Canva.', canvaStep1: 'Créez une app gratuite sur', canvaStep2: "Copiez votre jeton d'accès personnel.", canvaStep3: 'Collez-le ici : vos prochains exports arriveront', canvaStep3B: 'automatiquement dans votre compte Canva', canvaOk: 'Compte Canva connecté — envoi automatique actif.', canvaTokenLabel: "Jeton d'accès Canva", canvaTokenPh: 'Collez votre jeton ici...', disconnect: 'Déconnecter', updateToken: 'Mettre à jour le jeton', connectCanva: 'Connecter Canva', canvaDisconnected: 'Compte Canva déconnecté.', referTitle: 'Parrainez vos amis', refStep1: 'Partagez votre lien', refStep2: 'Votre pote reçoit 20 pts', refStep3: 'Il paye un pack → vous gagnez 50 pts', yourCode: "Votre code d'invitation", copyLink: 'Copier le lien', linkCopied: 'Lien de parrainage copié !', copyFail: 'Copie impossible.', shareWa: 'Partager sur WhatsApp', waText: "Crée des designs de fou avec l'IA sur Aura Design — 20 points offerts avec mon lien :", authWelcomeBack: 'Bon retour', authCreateTitle: 'Crée ton compte', authLoginSub: 'Connecte-toi pour retrouver ton atelier et tes designs.', authSignupSub: '20 points offerts — crée ton premier visuel en quelques secondes.', authEmail: 'Email', authEmailPh: 'vous@exemple.com', authPassword: 'Mot de passe', authPasswordPh: '••••••••', authFirstName: 'Prénom', authLastName: 'Nom', authConfirm: 'Confirmer le mot de passe', authRemember: 'Se souvenir de moi', authForgot: 'Mot de passe oublié ?', authLoginBtn: 'Se connecter', authSignupBtn: 'Créer mon compte', authNoAccount: 'Pas encore de compte ?', authHasAccount: 'Déjà un compte ?', authGoSignup: 'Créer un compte', authGoLogin: 'Se connecter', authResetSent: 'Lien de réinitialisation envoyé à {e} — vérifie ta boîte mail (et tes spams).', authResetNeed: 'Entre ton email pour recevoir le lien de réinitialisation.', authLoading: 'Un instant...', authIllustrationAlt: 'Réseau de neurones doré formant un A', authFeat1: '20 points offerts à l’inscription', authFeat2: 'Export PNG HD, PDF et Canva', authFeat3: 'Ton Brand Kit appliqué automatiquement', authSecure: 'Connexion sécurisée — tes designs restent privés.', authErrEmail: 'Adresse email invalide.', authErrName: 'Prénom et nom : 2 caractères minimum.', authErrPwdShort: 'Mot de passe : 6 caractères minimum.', authErrPwdMatch: 'Les deux mots de passe ne sont pas identiques.', authErrCreds: 'Email ou mot de passe incorrect.', authErrEmailTaken: 'Un compte existe déjà avec cet email.', authErrRate: 'Trop de tentatives — réessaie dans une minute.', authErrGeneric: 'Connexion impossible pour le moment. Réessaie.', authErrNoSession: 'Compte créé mais session non ouverte — vérifie ta boîte mail pour confirmer ton adresse.', authOr: 'ou', referNote: "Les 50 points sont crédités automatiquement sur votre solde dès que votre filleul active son premier pack payant. Pas de limite : 3 filleuls = 150 points !", },
+  en: { newDesign: 'New design', search: 'Search', templates: 'Templates', recents: 'Recents', greeting: 'Hello', subtitle: 'What are we working on today?', placeholder: 'Describe the design to create...', share: 'Share', settings: 'Settings', language: 'Language', help: 'Get help', learnMore: 'Learn more', upgrade: 'Pricing & Packs', logout: 'Log out', plan: 'Pack', commands: 'Commands', styleGrp: 'Style', ambianceGrp: 'Vibe', spacesGrp: 'Spaces', appliedToSend: 'Applied to next send', addToDesign: 'Add to design', uploadPhoto: 'Upload a photo', addAmbiance: 'Add a vibe', slashTip: 'Tip: type "/" for quick commands.', ambianceAdded: 'Vibe added', ambianceReplaced: 'Vibe replaced', ambianceRemoved: 'Vibe removed', maxChips: 'Up to 3 vibes per design.', appliedNext: 'applied to the next generation', styleDark: 'Dark design', styleLight: 'Light design', chooseAmbiance: 'Choose a vibe', packs: 'Packs', lowBalance: 'Low balance — view packs', noSessions: 'No sessions found.', backToStudio: 'Back to studio', currentBadge: 'CURRENT', packCurrent: 'Current pack', popular: 'MOST POPULAR', surDevis: 'Custom quote', forever: 'forever', perMonth: '/ month', projectDefault: 'Project', spaceDeleted: 'Space deleted.', keepOneSpace: "Can't remove: keep at least one space.", spaceCreated: 'Space created — set up its Brand Kit!', spaceActivated: 'activated — Brand Kit applied!', packLimitHit: 'space(s) max in your pack. Upgrade to add more!', pricingBadge: 'PRICING & PACKS', pricingTitleA: 'Pick your', pricingTitleB: 'pack', pricingTitleC: ', create freely', yourBalance: 'Your current balance', chooseYourPack: 'Choose your pack', tipsTitle: 'GOOD TO KNOW', brandTitle: 'Spaces & Brand Kit', brandSub: 'Each space has its own identity: logo, name, @handle and accent color applied to all your designs.', mySpaces: 'My spaces', activeBadge: 'ACTIVE', unnamed: 'Unnamed', deleteSpace: 'Delete this space', newSpace: 'New space', limitReached: 'Pack limit reached', limitReachedSub: 'Upgrade to a higher pack for more spaces', activeSpace: 'Active space', savedAuto: 'Auto-saved ✓', logoLabel: 'Brand logo', logoDrag: 'Drag your logo or browse', logoHint: 'PNG, JPG, SVG — square recommended', logoImported: 'Logo imported', logoReplace: 'Click to replace', remove: 'Remove', brandNameLabel: 'Brand name', brandHandleLabel: 'Social handle (@handle)', handleHint: 'Shown at the bottom of every design, with a verified check.', brandColorLabel: 'Accent color', colorHint: 'Used for tags, key stats, buttons and borders. Code:', previewLive: 'Live preview', previewTag: 'New collection', previewPlaceholder: 'Your brand', previewCta: 'Your CTA here ➔', previewNote: 'This preview uses your live settings. Applied on screen, in PNG HD, PDF and the multi-layer Canva export.', ambianceInfo: 'Vibe', freeBadge: 'FREE', refWelcome: 'Invite code {r} detected — your 20 welcome points are waiting!', exportUnsupported: 'Export not supported in this browser.', exportingSlide: 'Exporting slide {n}...', slideDownloaded: 'Slide {n} downloaded!', exportingAll: 'Exporting {n} slides...', exportingPdf: 'PDF export of {n} slide(s) in progress...', resizedTo: 'Design resized to {f} — free!', textCopied: 'Text copied!', linkCopiedClip: 'Link copied to clipboard!', insufficient: 'Insufficient balance: {n} points required ({c} left).', pointsSpent: '−{n} points · balance: {c} pts', generatedMany: '{n} slides generated!', generatedOne: 'New design generated!', customColor: 'Custom color', hideSidebar: 'Hide sidebar', showSidebar: 'Open sidebar', searchSessions: 'Search a session...', changeProject: 'Switch project / workspace', yourPack: 'Your pack', copyText: 'Copy text', exportAllPdf: 'Export all slides as one PDF', openInCanvaTip: 'Open this editable design in your Canva account', removePhoto: 'Remove photo', addPhotoOrVibe: 'Add a photo or a vibe', carouselTip: 'Carousel slide count', modelTip: 'Generation model', defaultBrand: 'My brand', newProject: 'New project', editBrandKit: 'Edit Brand Kit', referFriend: 'Refer a friend', loggedOutTitle: 'You are logged out', loggedOutSub: 'See you soon on Aura Design.', relogin: 'Log back in', resizeTitle: 'Resize to', resizeHint: 'Resize this design to another format (free)', editOnCanva: 'Edit on Canva', prevSlide: 'Previous', nextSlide: 'Next', aiThinking: 'Generating your design...', slideProgress: 'Slide {i}/{n}…', engineError: 'The AI engine did not respond. No points charged — try again.', partialGen: '{a}/{b} images generated — {p} points charged.', aiIntroOne: 'Here is your new design in **{fmt}** format', aiIntroMany: 'Here is your carousel — **{n} slides** in **{fmt}** format', aiStyleLight: 'in **light style**', aiPhotos: 'with {n} photo(s) included', aiChips: '— vibe: **{chips}**', aiCanvasTip: 'The Canvas below lets you view it and export in high resolution.', sugRefine: 'Refine Slide 1 text', sugRegenSlides: 'Regenerate with {n} slides', sugToCarousel: 'Switch to 4:5 Carousel format', sugExportPng: 'Export as PNG HD', sugExportPdf: 'Export as PDF', photoAdded: 'Photo added to the message', canvaConnectedToast: 'Canva account connected! Next export: auto-send.', slideCopied: 'Slide content copied!', canvaOpened: 'Design opened in your Canva account!', canvaExportFail: 'Canva export failed.', pdfUnsupported: 'PDF export not supported in this browser.', pdfFail: 'PDF export failed.', canvaFallback: 'Auto-import unavailable — multi-layer file downloaded.', feedbackThanks: 'Thanks for your feedback!', pdfDownloaded: 'PDF downloaded!', pleaseWaitGenerating: 'Hold on, generation in progress...', personalizeIdea: 'Customize your idea then send', feedbackSaved: 'Feedback saved.', sessionDeleted: 'Session deleted.', allSlidesDownloaded: 'All slides downloaded!', canvaPreparing: 'Preparing the multi-layer file...', addTemplates: 'Add templates', templatesTitle: 'Template library', templateSaved: 'Template saved', tplSavedCount: '{n} template(s) saved', libFull: 'Library full (24 max) — delete a template.', developMe: 'Develop with me', developMeSub: 'Add your templates, describe your product and theme — the AI learns your universe and sticks to it.', productTypeLabel: 'Product type', productTypePh: 'E.g.: bakery, clothing, cosmetics…', themeLabel: 'Visual theme / style', themePh: 'E.g.: warm and artisanal, minimal luxury…', aiProductExact: 'with your product reproduced exactly', fontTitleLabel: 'Headline font', fontBodyLabel: 'Body font', fontAuto: 'Auto — the AI picks', resizedMsg: 'Here is your design **resized to {fmt}** — same content, new proportions. Recycling between formats is **free**!', tplHint: 'Your templates act as style references: the AI draws inspiration from them on every generation to match your identity.', useTplToggle: 'Let the AI learn from my templates', tplEmpty: 'No templates yet. Add your best creations!', removeTpl: 'Delete this template', aiRefUsed: '— inspired by your templates', photoSavedTpl: 'Photo saved to your templates', addPhotoShort: 'Add photo', designFormat: 'Design format', formatSet: 'Active format:', slidesCount: 'Number of slides', carouselSet: 'Carousel set to {n} slides', modelHeader: 'Generation model', modelSet: 'Active model: {m} · {p} pts/image', seePacks: 'View packs', aiRemark: 'Aura AI generates visuals optimized for LinkedIn, Instagram and X. Review texts before publishing.', firstName: 'First name', canvaAccount: 'Canva account', connectedBadge: 'CONNECTED', notConnectedBadge: 'NOT CONNECTED', clearHistory: 'Clear session history', historyCleared: 'History cleared.', aboutP1: 'is an AI design generator: social posts and stories, carousels, websites, product shots, posters and presentations.', aboutP2: 'Describe what you want, pick a format, then export your creation in high-definition PNG with your Brand Kit.', version: 'Version 1.0', canvaTitle: 'Connect your Canva account', canvaIntroA: 'Open your designs', canvaIntroB: '100% editable', canvaIntroC: '(texts, layers and colors separated) directly in your Canva editor.', canvaStep1: 'Create a free app on', canvaStep2: 'Copy your personal access token.', canvaStep3: 'Paste it here: your next exports will land', canvaStep3B: 'automatically in your Canva account', canvaOk: 'Canva account connected — auto-send active.', canvaTokenLabel: 'Canva access token', canvaTokenPh: 'Paste your token here...', disconnect: 'Disconnect', updateToken: 'Update token', connectCanva: 'Connect Canva', canvaDisconnected: 'Canva account disconnected.', referTitle: 'Refer your friends', refStep1: 'Share your link', refStep2: 'Your friend gets 20 pts', refStep3: 'They buy a pack → you earn 50 pts', yourCode: 'Your invite code', copyLink: 'Copy link', linkCopied: 'Referral link copied!', copyFail: 'Copy failed.', shareWa: 'Share on WhatsApp', waText: 'Create amazing AI designs on Aura Design — 20 free points with my link:', authWelcomeBack: 'Welcome back', authCreateTitle: 'Create your account', authLoginSub: 'Log in to get back to your studio and your designs.', authSignupSub: '20 free points — create your first visual in seconds.', authEmail: 'Email', authEmailPh: 'you@example.com', authPassword: 'Password', authPasswordPh: '••••••••', authFirstName: 'First name', authLastName: 'Last name', authConfirm: 'Confirm password', authRemember: 'Remember me', authForgot: 'Forgot password?', authLoginBtn: 'Log in', authSignupBtn: 'Create my account', authNoAccount: 'No account yet?', authHasAccount: 'Already have an account?', authGoSignup: 'Create an account', authGoLogin: 'Log in', authResetSent: 'Reset link sent to {e} — check your inbox (and spam folder).', authResetNeed: 'Enter your email to receive the reset link.', authLoading: 'One moment...', authIllustrationAlt: 'Golden neural network forming an A', authFeat1: '20 free points when you sign up', authFeat2: 'PNG HD, PDF and Canva export', authFeat3: 'Your Brand Kit applied automatically', authSecure: 'Secure sign-in — your designs stay private.', authErrEmail: 'Invalid email address.', authErrName: 'First and last name: 2 characters minimum.', authErrPwdShort: 'Password: 6 characters minimum.', authErrPwdMatch: 'The two passwords do not match.', authErrCreds: 'Incorrect email or password.', authErrEmailTaken: 'An account already exists with this email.', authErrRate: 'Too many attempts — try again in a minute.', authErrGeneric: 'Sign-in is unavailable right now. Please try again.', authErrNoSession: 'Account created but no session opened — check your inbox to confirm your address.', authOr: 'or', referNote: 'The 50 points are credited automatically to your balance as soon as your referral activates their first paid pack. No limit: 3 referrals = 150 points!', },
+  ar: { newDesign: 'تصميم جديد', search: 'بحث', brandKit: 'هوية العلامة', templates: 'قوالب', recents: 'الأخيرة', greeting: 'مرحباً', subtitle: 'على ماذا سنعمل اليوم؟', placeholder: 'صف التصميم المطلوب...', share: 'مشاركة', settings: 'الإعدادات', language: 'اللغة', help: 'احصل على مساعدة', learnMore: 'اعرف المزيد', upgrade: 'ترقية الباقة', logout: 'تسجيل الخروج', plan: 'الباقة', commands: 'الأوامر', styleGrp: 'النمط', ambianceGrp: 'الأجواء', spacesGrp: 'المساحات', appliedToSend: 'يُطبق عند الإرسال', addToDesign: 'أضف إلى التصميم', uploadPhoto: 'تحميل صورة', addAmbiance: 'أضف أجواءً', slashTip: 'نصيحة: اكتب "/" للأوامر السريعة.', ambianceAdded: 'تمت إضافة الأجواء', ambianceReplaced: 'تم استبدال الأجواء', ambianceRemoved: 'تمت إزالة الأجواء', maxChips: 'الحد الأقصى 3 أجواء لكل تصميم.', appliedNext: 'سيُطبق على التوليد التالي', styleDark: 'تصميم داكن', styleLight: 'تصميم فاتح', chooseAmbiance: 'اختر أجواءً', packs: 'الباقات', lowBalance: 'الرصيد منخفض — اعرض الباقات', noSessions: 'لا توجد جلسات.', backToStudio: 'العودة إلى الاستوديو', currentBadge: 'الحالي', packCurrent: 'الباقة الحالية', popular: 'الأكثر شيوعاً', surDevis: 'حسب الطلب', forever: 'للأبد', perMonth: '/ شهر', projectDefault: 'مشروع', spaceDeleted: 'تم حذف المساحة.', keepOneSpace: 'غير ممكن: احتفظ بمساحة واحدة على الأقل.', spaceCreated: 'تم إنشاء المساحة — جهّز هوية علامتها!', spaceActivated: 'مفعّلة — تم تطبيق هوية العلامة!', packLimitHit: 'مساحة كحد أقصى في باقتك. رقِّ باقتك لإضافة المزيد!', pricingBadge: 'الأسعار والباقات', pricingTitleA: 'اختر', pricingTitleB: 'باقتك', pricingTitleC: ' وأنشئ بحرية', yourBalance: 'رصيدك الحالي', chooseYourPack: 'اختر باقتك', tipsTitle: 'نصائح مهمة', brandTitle: 'المساحات وهوية العلامة', brandSub: 'لكل مساحة هويتها الخاصة: الشعار والاسم والمعرّف واللون تُطبق تلقائياً على كل تصميماتك.', mySpaces: 'مساحاتي', activeBadge: 'نشطة', unnamed: 'بدون اسم', deleteSpace: 'احذف هذه المساحة', newSpace: 'مساحة جديدة', limitReached: 'بلغت حد الباقة', limitReachedSub: 'رقِّ باقتك للحصول على مساحات أكثر', activeSpace: 'المساحة النشطة', savedAuto: 'محفوظ تلقائياً ✓', logoLabel: 'شعار العلامة', logoDrag: 'أسقط شعارك أو تصفح', logoHint: 'PNG, JPG, SVG — يفضّل مربع', logoImported: 'تم استيراد الشعار', logoReplace: 'انقر للاستبدال', remove: 'إزالة', brandNameLabel: 'اسم العلامة', brandHandleLabel: 'معرّف التواصل (@handle)', handleHint: 'يظهر أسفل كل تصميم مع علامة التوثيق.', brandColorLabel: 'لون التمييز', colorHint: 'يُستخدم للوسوم والأرقام المفتاحية والأزرار والحدود. الرمز:', previewLive: 'معاينة مباشرة', previewTag: 'مجموعة جديدة', previewPlaceholder: 'علامتك', previewCta: 'زر الإجراء هنا ➔', previewNote: 'تستخدم هذه المعاينة إعداداتك المباشرة. تُطبق على الشاشة وفي PNG HD وPDF وتصدير Canva متعدد الطبقات.', ambianceInfo: 'أجواء', freeBadge: 'مجاناً', refWelcome: 'تم اكتشاف رمز الدعوة {r} — 20 نقطة الترحيب الخاصة بك في انتظارك!', exportUnsupported: 'التصدير غير مدعوم في هذا المتصفح.', exportingSlide: 'جارٍ تصدير الشريحة {n}...', slideDownloaded: 'تم تنزيل الشريحة {n}!', exportingAll: 'جارٍ تصدير {n} شرائح...', exportingPdf: 'جارٍ تصدير PDF لـ{n} شريحة...', resizedTo: 'تم تحويل التصميم إلى {f} — مجاناً!', textCopied: 'تم نسخ النص!', linkCopiedClip: 'تم نسخ الرابط إلى الحافظة!', insufficient: 'الرصيد غير كافٍ: {n} نقطة مطلوبة (متبقٍ {c}).', pointsSpent: '−{n} نقطة · الرصيد: {c}', generatedMany: 'تم توليد {n} شرائح!', generatedOne: 'تم توليد تصميم جديد!', customColor: 'لون مخصص', hideSidebar: 'إخفاء الشريط الجانبي', showSidebar: 'فتح الشريط الجانبي', searchSessions: 'ابحث عن جلسة...', changeProject: 'تغيير المشروع / مساحة العمل', yourPack: 'باقتك', copyText: 'نسخ النص', exportAllPdf: 'تصدير كل الشرائح في PDF واحد', openInCanvaTip: 'افتح هذا التصميم القابل للتعديل في حسابك على Canva', removePhoto: 'إزالة الصورة', addPhotoOrVibe: 'أضف صورة أو أجواءً', carouselTip: 'عدد شرائح الكاروسيل', modelTip: 'نموذج التوليد', defaultBrand: 'علامتي', newProject: 'مشروع جديد', editBrandKit: 'تعديل هوية العلامة', referFriend: 'أحِل صديقاً', loggedOutTitle: 'تم تسجيل خروجك', loggedOutSub: 'إلى اللقاء على Aura Design.', relogin: 'إعادة الاتصال', resizeTitle: 'تحويل إلى', resizeHint: 'حوّل هذا التصميم إلى صيغة أخرى (مجاناً)', editOnCanva: 'تعديل في Canva', prevSlide: 'السابق', nextSlide: 'التالي', aiThinking: 'جارٍ توليد تصميمك...', slideProgress: 'الشريحة {i}/{n}…', engineError: 'لم يستجب محرك الذكاء الاصطناعي. لم تُخصم أي نقاط — أعد المحاولة.', partialGen: 'تم توليد {a}/{b} صورة — خُصم {p} نقطة.', aiIntroOne: 'إليك تصميمك الجديد بصيغة **{fmt}**', aiIntroMany: 'إليك الكاروسيل — **{n} شرائح** بصيغة **{fmt}**', aiStyleLight: 'ب**نمط فاتح**', aiPhotos: 'مع {n} صورة مدمجة', aiChips: '— أجواء: **{chips}**', aiCanvasTip: 'يسمح لك Canvas أدناه بعرضه وتصديره بجودة عالية.', sugRefine: 'حسّن نص الشريحة 1', sugRegenSlides: 'أعد التوليد بـ{n} شرائح', sugToCarousel: 'حوّل إلى كاروسيل 4:5', sugExportPng: 'صدّر PNG HD', sugExportPdf: 'صدّر PDF', photoAdded: 'تمت إضافة الصورة إلى الرسالة', canvaConnectedToast: 'تم ربط حساب Canva! التصدير القادم: إرسال تلقائي.', slideCopied: 'تم نسخ محتوى الشريحة!', canvaOpened: 'تم فتح التصميم في حسابك على Canva!', canvaExportFail: 'فشل تصدير Canva.', pdfUnsupported: 'تصدير PDF غير مدعوم في هذا المتصفح.', pdfFail: 'فشل تصدير PDF.', canvaFallback: 'الاستيراد التلقائي غير متاح — تم تنزيل الملف متعدد الطبقات.', feedbackThanks: 'شكراً على ملاحظاتك!', pdfDownloaded: 'تم تنزيل PDF!', pleaseWaitGenerating: 'انتظر، جارٍ التوليد...', personalizeIdea: 'خصّص فكرتك ثم أرسل', feedbackSaved: 'تم حفظ الملاحظة.', sessionDeleted: 'تم حذف الجلسة.', allSlidesDownloaded: 'تم تنزيل كل الشرائح!', canvaPreparing: 'جارٍ تحضير الملف متعدد الطبقات...', addTemplates: 'أضف قوالب', templatesTitle: 'مكتبة القوالب', templateSaved: 'تم حفظ القالب', tplSavedCount: 'تم حفظ {n} قالب', libFull: 'المكتبة ممتلئة (24 كحد أقصى) — احذف قالباً.', developMe: 'طوّر معي', developMeSub: 'أضف قوالبيك وصف منتجك وثيمك — الذكاء الاصطناعي يتعلّم عالمك ويلتزم به.', productTypeLabel: 'نوع المنتج', productTypePh: 'مثال: حلويات، ملابس، مستحضرات تجميل…', themeLabel: 'الثيم / الأسلوب البصري', themePh: 'مثال: دافئ وحرفي، فخامة بسيطة…', aiProductExact: 'مع منتجك مدمجاً كما هو تماماً', fontTitleLabel: 'خط العناوين', fontBodyLabel: 'خط النصوص', fontAuto: 'تلقائي — الذكاء الاصطناعي يختار', resizedMsg: 'إليك تصميمك **محوّلاً إلى {fmt}** — نفس المحتوى بأبعاد جديدة. إعادة التدوير بين الصيغ **مجانية**!', tplHint: 'قوالبيك مرجع للأسلوب: يستلهم منها الذكاء الاصطناعي في كل توليد ليقترب من هويتك.', useTplToggle: 'دع الذكاء الاصطناعي يتعلم من قوالبي', tplEmpty: 'لا توجد قوالب بعد. أضف أفضل تصميماتك!', removeTpl: 'احذف هذا القالب', aiRefUsed: '— مستوحاة من قوالبيك', photoSavedTpl: 'تم حفظ الصورة في قوالبيك', addPhotoShort: 'أضف صورة', designFormat: 'صيغة التصميم', formatSet: 'الصيغة النشطة:', slidesCount: 'عدد الشرائح', carouselSet: 'تم ضبط الكاروسيل على {n} شرائح', modelHeader: 'نموذج التوليد', modelSet: 'النموذج النشط: {m} · {p} نقطة/صورة', seePacks: 'عرض الباقات', aiRemark: 'يولّد Aura AI تصاميم محسّنة لـLinkedIn وInstagram وX. راجع النصوص قبل النشر.', firstName: 'الاسم الأول', canvaAccount: 'حساب Canva', connectedBadge: 'متصل', notConnectedBadge: 'غير متصل', clearHistory: 'مسح سجل الجلسات', historyCleared: 'تم مسح السجل.', aboutP1: 'هو مولّد تصاميم بالذكاء الاصطناعي: منشورات وستوريات للشبكات الاجتماعية، كاروسيل، مواقع، صور منتجات، ملصقات وعروض تقديمية.', aboutP2: 'صِف ما تريد، اختر صيغة، ثم صدّر تصميمك بجودة PNG عالية مع هوية علامتك.', version: 'الإصدار 1.0', canvaTitle: 'اربط حسابك في Canva', canvaIntroA: 'افتح تصاميمك', canvaIntroB: 'قابلة للتعديل 100%', canvaIntroC: '(نصوص وطبقات وألوان منفصلة) مباشرة في محرر Canva.', canvaStep1: 'أنشئ تطبيقاً مجانياً على', canvaStep2: 'انسخ رمز الوصول الشخصي.', canvaStep3: 'الصقه هنا: ستصل صادراتك القادمة', canvaStep3B: 'تلقائياً إلى حسابك في Canva', canvaOk: 'تم ربط حساب Canva — الإرسال التلقائي مفعّل.', canvaTokenLabel: 'رمز وصول Canva', canvaTokenPh: 'الصق رمزك هنا...', disconnect: 'قطع الاتصال', updateToken: 'تحديث الرمز', connectCanva: 'ربط Canva', canvaDisconnected: 'تم فصل حساب Canva.', referTitle: 'أحِل أصدقاءك', refStep1: 'شارك رابطك', refStep2: 'صديقك يحصل على 20 نقطة', refStep3: 'يشتري باقة → تربح 50 نقطة', yourCode: 'رمز الدعوة', copyLink: 'انسخ الرابط', linkCopied: 'تم نسخ رابط الدعوة!', copyFail: 'فشل النسخ.', shareWa: 'شارك على واتساب', waText: 'أنشئ تصاميم مذهلة بالذكاء الاصطناعي على Aura Design — 20 نقطة مجاناً عبر رابطي:', authWelcomeBack: 'مرحباً بعودتك', authCreateTitle: 'أنشئ حسابك', authLoginSub: 'سجّل الدخول للعودة إلى استوديوك وتصاميمك.', authSignupSub: '20 نقطة مجاناً — أنشئ أول تصميم لك في ثوانٍ.', authEmail: 'البريد الإلكتروني', authEmailPh: 'you@example.com', authPassword: 'كلمة المرور', authPasswordPh: '••••••••', authFirstName: 'الاسم الأول', authLastName: 'اسم العائلة', authConfirm: 'تأكيد كلمة المرور', authRemember: 'تذكرني', authForgot: 'هل نسيت كلمة المرور؟', authLoginBtn: 'تسجيل الدخول', authSignupBtn: 'إنشاء حسابي', authNoAccount: 'ليس لديك حساب؟', authHasAccount: 'لديك حساب بالفعل؟', authGoSignup: 'إنشاء حساب', authGoLogin: 'تسجيل الدخول', authResetSent: 'تم إرسال رابط إعادة التعيين إلى {e} — تحقق من بريدك ومجلد الرسائل المزعجة.', authResetNeed: 'أدخل بريدك الإلكتروني لاستلام رابط إعادة التعيين.', authLoading: 'لحظة...', authIllustrationAlt: 'شبكة عصبية ذهبية تشكّل حرف A', authFeat1: '20 نقطة مجاناً عند التسجيل', authFeat2: 'تصدير PNG HD وPDF وCanva', authFeat3: 'هوية علامتك تُطبَّق تلقائياً', authSecure: 'دخول آمن — تبقى تصاميمك خاصة.', authErrEmail: 'عنوان البريد الإلكتروني غير صالح.', authErrName: 'الاسم الأول واسم العائلة: حرفان على الأقل.', authErrPwdShort: 'كلمة المرور: 6 أحرف على الأقل.', authErrPwdMatch: 'كلمتا المرور غير متطابقتين.', authErrCreds: 'البريد الإلكتروني أو كلمة المرور غير صحيحة.', authErrEmailTaken: 'يوجد حساب مسجَّل بهذا البريد الإلكتروني.', authErrRate: 'محاولات كثيرة — أعد المحاولة بعد دقيقة.', authErrGeneric: 'تعذّر تسجيل الدخول حالياً. أعد المحاولة.', authErrNoSession: 'تم إنشاء الحساب لكن لم تُفتح جلسة — تحقق من بريدك لتأكيد عنوانك.', authOr: 'أو', referNote: 'تُضاف النقاط الخمسون تلقائياً إلى رصيدك فور تفعيل المُحال أول باقة مدفوعة. بلا حدود: 3 إحالات = 150 نقطة!', },
 };
 const LANGS: { id: Lang; label: string }[] = [
   { id: 'fr', label: 'Français' },
@@ -956,12 +966,16 @@ function LandingPage({
   credits,
   lang,
   onEnter,
+  onLogin,
+  onSignup,
   onPricing,
   onReferral,
 }: {
   credits: number;
   lang: Lang;
   onEnter: () => void;
+  onLogin: () => void;
+  onSignup: () => void;
   onPricing: () => void;
   onReferral: () => void;
 }) {
@@ -1000,7 +1014,7 @@ function LandingPage({
       refText: "Partagez votre lien d'invitation : votre ami démarre avec 20 points de bienvenue, et vous recevez 50 points dès qu'il active son premier pack payant.",
       refCta: "Obtenir mon lien d'invitation",
       finalTitle: 'Prêt à créer votre premier design ?', finalSub: '20 points offerts — de quoi générer vos 4 premiers visuels, sans payer.',
-      studio: 'Atelier', pricing: 'Tarifs & Packs', referral: 'Parrainage', madeIn: 'Créé en Algérie 🇩🇿',
+      login: 'Se connecter', studio: 'Atelier', pricing: 'Tarifs & Packs', referral: 'Parrainage', madeIn: 'Créé en Algérie 🇩🇿',
       slide1: 'Lancement', slide1T: "Votre marque mérite d'être vue.", slide1S: 'Des visuels pro, générés par l’IA en quelques secondes.', slide1C: 'Découvrir ➔',
       slide2Tag: 'Conseil #1', slide2T: 'Publiez tous les jours sans y passer vos soirées.', slide2B: ['Un visuel par jour, généré en 10s', 'Votre logo et vos couleurs', 'Export direct vers Canva'], slide2C: 'Enregistrer ➔',
       slide3Tag: 'Événement', slide3T: 'Vente flash ce week-end.', slide3S: 'Sur toute la boutique, samedi & dimanche seulement.', slide3C: 'Réserver ma place ➔',
@@ -1031,7 +1045,7 @@ function LandingPage({
       refText: 'Share your invite link: your friend starts with 20 welcome points, and you get 50 points as soon as they activate their first paid pack.',
       refCta: 'Get my invite link',
       finalTitle: 'Ready to create your first design?', finalSub: '20 free points — enough for your first 4 visuals, without paying.',
-      studio: 'Studio', pricing: 'Pricing & Packs', referral: 'Referral', madeIn: 'Made in Algeria 🇩🇿',
+      login: 'Log in', studio: 'Studio', pricing: 'Pricing & Packs', referral: 'Referral', madeIn: 'Made in Algeria 🇩🇿',
       slide1: 'Launch', slide1T: 'Your brand deserves to be seen.', slide1S: 'Pro visuals, AI-generated in seconds.', slide1C: 'Discover ➔',
       slide2Tag: 'Tip #1', slide2T: 'Post every day without spending your evenings.', slide2B: ['One visual a day, generated in 10s', 'Your logo and colors', 'Direct export to Canva'], slide2C: 'Save ➔',
       slide3Tag: 'Event', slide3T: 'Flash sale this weekend.', slide3S: 'Store-wide, Saturday & Sunday only.', slide3C: 'Book my spot ➔',
@@ -1062,7 +1076,7 @@ function LandingPage({
       refText: 'شارك رابط الدعوة: يبدأ صديقك بـ20 نقطة ترحيبية، وتحصل أنت على 50 نقطة فور تفعيله أول باقة مدفوعة.',
       refCta: 'احصل على رابط الدعوة',
       finalTitle: 'جاهز لإنشاء تصميمك الأول؟', finalSub: '20 نقطة مجاناً — تكفي لأول 4 تصاميم لك، بدون دفع.',
-      studio: 'الاستوديو', pricing: 'الأسعار والباقات', referral: 'دعوة الأصدقاء', madeIn: 'صُنع في الجزائر 🇩🇿',
+      login: 'تسجيل الدخول', studio: 'الاستوديو', pricing: 'الأسعار والباقات', referral: 'دعوة الأصدقاء', madeIn: 'صُنع في الجزائر 🇩🇿',
       slide1: 'إطلاق', slide1T: 'علامتك تستحق أن تُرى.', slide1S: 'تصاميم احترافية بتوليد الذكاء الاصطناعي في ثوانٍ.', slide1C: 'اكتشف ➔',
       slide2Tag: 'نصيحة #1', slide2T: 'انشر كل يوم دون أن تستهلك أمسياتك.', slide2B: ['تصميم يومي، يُولَّد في 10 ثوانٍ', 'شعارك وألوانك', 'تصدير مباشر إلى Canva'], slide2C: 'احفظ ➔',
       slide3Tag: 'حدث', slide3T: 'تخفيضات هذا الأسبوع.', slide3S: 'على المتجر كله، السبت والأحد فقط.', slide3C: 'احجز مكان ➔',
@@ -1100,8 +1114,11 @@ function LandingPage({
               <button type="button" onClick={onPricing} className="px-3.5 py-1.5 rounded-full text-xs font-bold text-gray-700 hover:bg-white/80 transition-colors cursor-pointer">
                 {T.pricing}
               </button>
-              <button type="button" onClick={onEnter} className="px-4 py-1.5 rounded-full bg-gray-900 hover:bg-black text-white text-xs font-bold transition-colors cursor-pointer shadow-sm">
-                {T.studio}
+              <button type="button" onClick={onLogin} className="px-3.5 py-1.5 rounded-full text-xs font-bold text-gray-700 hover:bg-white/80 transition-colors cursor-pointer">
+                {T.login}
+              </button>
+              <button type="button" onClick={onSignup} className="px-4 py-1.5 rounded-full bg-gray-900 hover:bg-black text-white text-xs font-bold transition-colors cursor-pointer shadow-sm">
+                {T.cta1}
               </button>
             </div>
           </div>
@@ -1118,7 +1135,7 @@ function LandingPage({
           </h1>
           <p className="text-sm sm:text-base text-gray-600 max-w-xl mx-auto leading-relaxed">{T.sub}</p>
           <div className="flex flex-wrap items-center justify-center gap-3">
-            <button type="button" onClick={onEnter} className="px-6 py-3 rounded-full bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-white text-sm font-bold shadow-lg shadow-amber-200/70 transition-all cursor-pointer">
+            <button type="button" onClick={onSignup} className="px-6 py-3 rounded-full bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-white text-sm font-bold shadow-lg shadow-amber-200/70 transition-all cursor-pointer">
               {T.cta1}
             </button>
             <button type="button" onClick={onPricing} className="px-6 py-3 rounded-full bg-white border border-gray-200 hover:border-amber-300 text-gray-800 text-sm font-bold transition-all cursor-pointer">
@@ -1276,7 +1293,7 @@ function LandingPage({
         <section className="max-w-6xl mx-auto px-4 sm:px-6 py-14 text-center space-y-4">
           <h2 className="text-xl sm:text-2xl font-semibold tracking-tight">{T.finalTitle}</h2>
           <p className="text-sm text-gray-500">{T.finalSub}</p>
-          <button type="button" onClick={onEnter} className="px-7 py-3 rounded-full bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-white text-sm font-bold shadow-lg shadow-amber-200/70 transition-all cursor-pointer">
+          <button type="button" onClick={onSignup} className="px-7 py-3 rounded-full bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-white text-sm font-bold shadow-lg shadow-amber-200/70 transition-all cursor-pointer">
             {T.cta1}
           </button>
         </section>
@@ -1286,6 +1303,7 @@ function LandingPage({
             <span>© 2026 Aura Design — {T.madeIn}</span>
             <div className="flex items-center gap-4 font-semibold">
               <button type="button" onClick={onEnter} className="hover:text-gray-900 cursor-pointer transition-colors">{T.studio}</button>
+              <button type="button" onClick={onLogin} className="hover:text-gray-900 cursor-pointer transition-colors">{T.login}</button>
               <button type="button" onClick={onPricing} className="hover:text-gray-900 cursor-pointer transition-colors">{T.pricing}</button>
               <button type="button" onClick={onReferral} className="hover:text-gray-900 cursor-pointer transition-colors">{T.referral}</button>
             </div>
@@ -1665,7 +1683,313 @@ function BrandPage({
   );
 }
 
+// ============================================================
+// PAGE D'AUTH — LOGIN / SIGNUP (pleine page, obligatoire)
+// ============================================================
+// Remplace toute autre vue tant que `isSupabaseConfigured && authReady && !authUser`.
+// /login ouvre l'onglet connexion, /signup l'onglet inscription (illustration à gauche).
+function AuthField({
+  icon: Icon,
+  label,
+  value,
+  onChange,
+  type = 'text',
+  placeholder,
+  autoComplete,
+  trailing,
+}: {
+  icon: React.ComponentType<{ className?: string }>;
+  label: string;
+  value: string;
+  onChange: (v: string) => void;
+  type?: string;
+  placeholder?: string;
+  autoComplete?: string;
+  trailing?: React.ReactNode;
+}) {
+  return (
+    <label className="block">
+      <span className="mb-1.5 block text-[11px] font-semibold uppercase tracking-wide text-zinc-500">{label}</span>
+      <span className="flex items-center gap-2.5 rounded-2xl border border-zinc-700 bg-zinc-900 px-3.5 py-2.5 transition-colors focus-within:border-amber-500">
+        <Icon className="h-4 w-4 shrink-0 text-zinc-500" />
+        <input
+          type={type}
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          placeholder={placeholder}
+          autoComplete={autoComplete}
+          className="min-w-0 flex-1 bg-transparent text-sm text-white placeholder-zinc-600 focus:outline-none"
+        />
+        {trailing}
+      </span>
+    </label>
+  );
+}
+
+function AuthPage({ lang, mode, onSwitchMode }: { lang: Lang; mode: 'login' | 'signup'; onSwitchMode: (m: 'login' | 'signup') => void }) {
+  const t = (k: string) => I18N[lang][k] ?? I18N.fr[k] ?? k;
+  const [authFirstName, setAuthFirstName] = useState('');
+  const [authLastName, setAuthLastName] = useState('');
+  const [authEmail, setAuthEmail] = useState('');
+  const [authPassword, setAuthPassword] = useState('');
+  const [authConfirm, setAuthConfirm] = useState('');
+  const [authRemember, setAuthRemember] = useState(readAuthRemember);
+  const [authResetSent, setAuthResetSent] = useState(false);
+  const [authError, setAuthError] = useState<string | null>(null);
+  const [authLoading, setAuthLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [illustrationOk, setIllustrationOk] = useState(true);
+
+  const isSignup = mode === 'signup';
+  const emailOk = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(authEmail.trim());
+
+  /** Erreurs Supabase → messages traduits FR/EN/AR. */
+  const translateError = (message: string): string => {
+    const m = (message || '').toLowerCase();
+    if (/invalid login credentials|invalid_grant|invalid credentials/.test(m)) return t('authErrCreds');
+    if (/already registered|already exists|user_already_exists|email.*(taken|registered)/.test(m)) return t('authErrEmailTaken');
+    if (/password should be at least|weak password|password.*at least/.test(m)) return t('authErrPwdShort');
+    if (/rate limit|too many requests|over_email_send_rate_limit|for security purposes/.test(m)) return t('authErrRate');
+    return t('authErrGeneric');
+  };
+
+  const submit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!supabase) return;
+    setAuthError(null);
+
+    if (!emailOk) return setAuthError(t('authErrEmail'));
+    if (isSignup) {
+      if (authFirstName.trim().length < 2 || authLastName.trim().length < 2) return setAuthError(t('authErrName'));
+      if (authPassword.length < 6) return setAuthError(t('authErrPwdShort'));
+      if (authPassword !== authConfirm) return setAuthError(t('authErrPwdMatch'));
+    } else if (authPassword.length < 6) {
+      return setAuthError(t('authErrPwdShort'));
+    }
+
+    // Le flag est lu à la création du client Supabase (chargement de page) :
+    // décoché = session en sessionStorage, effacée à la fermeture de l'onglet.
+    writeAuthRemember(authRemember);
+    setAuthLoading(true);
+    try {
+      if (isSignup) {
+        const { data, error } = await supabase.auth.signUp({
+          email: authEmail.trim(),
+          password: authPassword,
+          options: { data: { first_name: authFirstName.trim(), last_name: authLastName.trim() } },
+        });
+        if (error) throw error;
+        // Pas de email de confirmation côté Supabase → data.session existe et
+        // l'utilisateur entre directement dans l'atelier.
+        if (!data.session) setAuthError(t('authErrNoSession'));
+      } else {
+        const { error } = await supabase.auth.signInWithPassword({
+          email: authEmail.trim(),
+          password: authPassword,
+        });
+        if (error) throw error;
+      }
+    } catch (err) {
+      setAuthError(translateError(err instanceof Error ? err.message : String(err)));
+    } finally {
+      setAuthLoading(false);
+    }
+  };
+
+  const forgotPassword = async () => {
+    if (!supabase) return;
+    setAuthError(null);
+    if (!emailOk) return setAuthError(t('authResetNeed'));
+    setAuthLoading(true);
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(authEmail.trim(), {
+        redirectTo: `${window.location.origin}/login`,
+      });
+      if (error) throw error;
+      setAuthResetSent(true);
+    } catch (err) {
+      setAuthError(translateError(err instanceof Error ? err.message : String(err)));
+    } finally {
+      setAuthLoading(false);
+    }
+  };
+
+  return (
+    <div
+      dir={lang === 'ar' ? 'rtl' : 'ltr'}
+      className="relative flex min-h-screen w-full items-center justify-center overflow-hidden bg-zinc-950 p-3 font-sans antialiased sm:p-6"
+    >
+      <div aria-hidden="true" className="pointer-events-none absolute -left-40 -top-40 h-[36rem] w-[36rem] rounded-full bg-amber-500/15 blur-3xl" />
+      <div aria-hidden="true" className="pointer-events-none absolute -bottom-40 -right-32 h-[32rem] w-[32rem] rounded-full bg-orange-600/15 blur-3xl" />
+
+      <div className="relative z-10 grid w-full max-w-5xl overflow-hidden rounded-[2rem] border border-zinc-800/80 bg-zinc-950 shadow-2xl shadow-black/70 lg:grid-cols-2">
+        {/* ---------- Colonne illustration (à gauche en inscription) ---------- */}
+        <div className={`relative hidden min-h-[36rem] overflow-hidden bg-gradient-to-br from-zinc-900 via-zinc-950 to-black lg:block ${isSignup ? 'order-first' : 'lg:order-last'}`}>
+          {illustrationOk ? (
+            <img
+              src={imgAuthNeural}
+              alt={t('authIllustrationAlt')}
+              onError={() => setIllustrationOk(false)}
+              className="absolute inset-0 h-full w-full object-cover"
+            />
+          ) : (
+            <div aria-hidden="true" className="absolute inset-0 bg-gradient-to-br from-amber-600/30 via-orange-700/20 to-zinc-950">
+              <span className="absolute left-12 top-16 h-24 w-24 animate-pulse rounded-full bg-gradient-to-br from-amber-400 to-orange-600 opacity-40 blur-2xl" />
+              <span className="absolute bottom-28 right-14 h-32 w-32 rotate-12 rounded-3xl bg-gradient-to-tr from-amber-500/40 to-orange-500/10" />
+              <span className="absolute left-1/3 top-1/2 h-16 w-16 -rotate-12 rounded-2xl bg-amber-400/30" />
+            </div>
+          )}
+          <div aria-hidden="true" className="absolute inset-0 bg-gradient-to-t from-zinc-950 via-zinc-950/25 to-transparent" />
+          <div className="relative flex h-full flex-col justify-end gap-3 p-8">
+            {([
+              { Icon: Sparkles, label: t('authFeat1') },
+              { Icon: FileImage, label: t('authFeat2') },
+              { Icon: Palette, label: t('authFeat3') },
+            ]).map((f) => (
+              <div key={f.label} className="flex items-center gap-3 rounded-2xl border border-white/10 bg-white/5 px-3.5 py-2.5 backdrop-blur-sm">
+                <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-gradient-to-br from-amber-400 to-orange-600">
+                  <f.Icon className="h-4 w-4 text-white" />
+                </span>
+                <span className="text-xs font-medium text-zinc-200">{f.label}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* ---------- Colonne formulaire ---------- */}
+        <div className="flex flex-col justify-center p-6 sm:p-10">
+          <div className="flex items-center gap-3">
+            <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-gradient-to-br from-amber-400 to-orange-600 shadow-lg shadow-amber-900/40">
+              <span className="text-xl font-black leading-none text-white">A</span>
+            </div>
+            <div>
+              <p className="font-semibold tracking-tight text-white">Aura Design</p>
+              <p className="text-[11px] text-zinc-500">{t('authSecure')}</p>
+            </div>
+          </div>
+
+          <h1 className="mt-7 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+            {isSignup ? t('authCreateTitle') : t('authWelcomeBack')}
+          </h1>
+          <p className="mt-2 text-sm text-zinc-400">{isSignup ? t('authSignupSub') : t('authLoginSub')}</p>
+
+          <form onSubmit={submit} className="mt-6 space-y-3.5">
+            {isSignup && (
+              <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-2">
+                <AuthField icon={User} label={t('authFirstName')} value={authFirstName} onChange={setAuthFirstName} autoComplete="given-name" />
+                <AuthField icon={User} label={t('authLastName')} value={authLastName} onChange={setAuthLastName} autoComplete="family-name" />
+              </div>
+            )}
+
+            <AuthField
+              icon={Mail}
+              label={t('authEmail')}
+              type="email"
+              value={authEmail}
+              onChange={setAuthEmail}
+              placeholder={t('authEmailPh')}
+              autoComplete="email"
+            />
+
+            <AuthField
+              icon={Lock}
+              label={t('authPassword')}
+              type={showPassword ? 'text' : 'password'}
+              value={authPassword}
+              onChange={setAuthPassword}
+              placeholder={t('authPasswordPh')}
+              autoComplete={isSignup ? 'new-password' : 'current-password'}
+              trailing={
+                <button
+                  type="button"
+                  onClick={() => setShowPassword((v) => !v)}
+                  className="shrink-0 cursor-pointer text-zinc-500 transition-colors hover:text-zinc-300"
+                  aria-label="toggle password"
+                >
+                  {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </button>
+              }
+            />
+
+            {isSignup && (
+              <AuthField
+                icon={Lock}
+                label={t('authConfirm')}
+                type={showPassword ? 'text' : 'password'}
+                value={authConfirm}
+                onChange={setAuthConfirm}
+                placeholder={t('authPasswordPh')}
+                autoComplete="new-password"
+              />
+            )}
+
+            {!isSignup && (
+              <div className="flex items-center justify-between gap-3">
+                <label className="flex cursor-pointer select-none items-center gap-2 text-xs text-zinc-400">
+                  <input
+                    type="checkbox"
+                    checked={authRemember}
+                    onChange={(e) => {
+                      setAuthRemember(e.target.checked);
+                      writeAuthRemember(e.target.checked);
+                    }}
+                    className="h-4 w-4 cursor-pointer rounded border-zinc-700 bg-zinc-900 accent-amber-500"
+                  />
+                  {t('authRemember')}
+                </label>
+                <button
+                  type="button"
+                  onClick={forgotPassword}
+                  className="cursor-pointer text-xs font-semibold text-amber-400 transition-colors hover:text-amber-300"
+                >
+                  {t('authForgot')}
+                </button>
+              </div>
+            )}
+
+            {authError && (
+              <div className="rounded-2xl border border-red-500/30 bg-red-500/10 px-3.5 py-2.5 text-xs leading-relaxed text-red-300">{authError}</div>
+            )}
+            {authResetSent && (
+              <div className="rounded-2xl border border-emerald-500/30 bg-emerald-500/10 px-3.5 py-2.5 text-xs leading-relaxed text-emerald-300">
+                {t('authResetSent').replace('{e}', authEmail.trim())}
+              </div>
+            )}
+
+            <button
+              type="submit"
+              disabled={authLoading}
+              className="flex w-full cursor-pointer items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-amber-500 to-orange-600 py-3 text-sm font-semibold text-white shadow-lg shadow-amber-900/30 transition-all hover:from-amber-400 hover:to-orange-500 disabled:cursor-default disabled:opacity-60"
+            >
+              {authLoading ? t('authLoading') : isSignup ? t('authSignupBtn') : t('authLoginBtn')}
+              {!authLoading && <ArrowRight className="h-4 w-4 rtl:rotate-180" />}
+            </button>
+          </form>
+
+          <div className="mt-6 border-t border-zinc-800 pt-5 text-sm text-zinc-400">
+            {isSignup ? t('authHasAccount') : t('authNoAccount')}{' '}
+            <button
+              type="button"
+              onClick={() => {
+                setAuthError(null);
+                setAuthResetSent(false);
+                onSwitchMode(isSignup ? 'login' : 'signup');
+              }}
+              className="cursor-pointer font-semibold text-amber-400 transition-colors hover:text-amber-300"
+            >
+              {isSignup ? t('authGoLogin') : t('authGoSignup')}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function App() {
+  // ===== AUTH OBLIGATOIRE (Supabase) =====
+  const [authUser, setAuthUser] = useState<SupabaseUser | null>(null);
+  const [authReady, setAuthReady] = useState(!isSupabaseConfigured);
   // Sidebar state
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [activeSessionId, setActiveSessionId] = useState('sess_draft');
@@ -1751,6 +2075,37 @@ export default function App() {
     window.addEventListener('popstate', onPop);
     return () => window.removeEventListener('popstate', onPop);
   }, []);
+
+  // ===== SESSION SUPABASE =====
+  // Source de vérité de l'auth : getSession() au démarrage + écoute des changements.
+  useEffect(() => {
+    if (!supabase) return;
+    let alive = true;
+    supabase.auth
+      .getSession()
+      .then(({ data }) => {
+        if (!alive) return;
+        setAuthUser(data.session?.user ?? null);
+        setAuthReady(true);
+      })
+      .catch(() => {
+        if (alive) setAuthReady(true);
+      });
+    const { data: sub } = supabase.auth.onAuthStateChange((_event, session) => {
+      setAuthUser(session?.user ?? null);
+      setAuthReady(true);
+    });
+    return () => {
+      alive = false;
+      sub.subscription.unsubscribe();
+    };
+  }, []);
+
+  // /login et /signup : déjà connecté (ou Supabase non configuré) → direction /app.
+  useEffect(() => {
+    if (route !== '/login' && route !== '/signup') return;
+    if (authUser || !isSupabaseConfigured) navigate('/app');
+  }, [authUser, route]);
   const accountRef = useRef<HTMLDivElement>(null);
   const t = (k: string) => I18N[lang][k] ?? I18N.fr[k] ?? k;
   const pname = (n: string) => n || t('defaultBrand');
@@ -1778,6 +2133,38 @@ export default function App() {
     }
     return 'Malek';
   });
+
+  // Le prénom du compte (metadata `first_name`, sinon dérivé de l'email)
+  // alimente « Bonjour {prénom} » et le profil de la sidebar.
+  const accountLastName =
+    typeof (authUser?.user_metadata as Record<string, unknown> | undefined)?.last_name === 'string'
+      ? ((authUser?.user_metadata as Record<string, unknown>).last_name as string).trim()
+      : '';
+  useEffect(() => {
+    if (!authUser) return;
+    const meta = (authUser.user_metadata || {}) as Record<string, unknown>;
+    const metaFirst = typeof meta.first_name === 'string' ? meta.first_name.trim() : '';
+    const fromEmail =
+      (authUser.email || '')
+        .split('@')[0]
+        .replace(/[._\-+]+/g, ' ')
+        .trim()
+        .split(/\s+/)[0] || '';
+    const first = (metaFirst || fromEmail).slice(0, 40);
+    if (!first) return;
+    const pretty = first.charAt(0).toUpperCase() + first.slice(1);
+    setUserFirstName(pretty);
+    try {
+      localStorage.setItem('aura_user_firstname', pretty);
+    } catch {}
+  }, [authUser]);
+  const accountFullName = [accountLastName, userFirstName].filter(Boolean).join(' ') || userFirstName || 'Aura';
+  const accountInitials =
+    (accountFullName
+      .split(/\s+/)
+      .map((w) => w.charAt(0))
+      .join('')
+      .slice(0, 2) || 'A').toUpperCase();
 
   // ===== ESPACES (PROJETS) + BRAND KIT state =====
   const [projects, setProjects] = useState<BrandProject[]>(getInitialProjects);
@@ -2527,7 +2914,10 @@ export default function App() {
       );
       productImages = attachedRefs.filter(Boolean) as string[];
     } catch {}
-    const refImages: string[] = productImages.length > 0 ? productImages : tplRefs;
+    // Inspiration par modèles GARANTIE : quand le toggle est ON, les templates
+    // sont toujours envoyés comme références (les photos produit voyagent déjà
+    // séparément via `productImages`, fidélité 100 %).
+    const refImages: string[] = useTpl ? tplRefs : [];
 
     // Polices effectives : Brand Kit > choix IA > défaut
     let effectiveEngineFonts: FontPair = { ...DEFAULT_FONTS };
@@ -2993,6 +3383,8 @@ export default function App() {
           credits={credits}
           lang={lang}
           onEnter={() => navigate('/app')}
+          onLogin={() => navigate('/login')}
+          onSignup={() => navigate('/signup')}
           onPricing={() => navigate('/pricing')}
           onReferral={() => {
             navigate('/app');
@@ -3065,6 +3457,28 @@ export default function App() {
     );
   }
 
+  // ===== AUTH PLEINE PAGE (remplace toute autre vue tant que non connecté) =====
+  // Seule exception volontaire : la landing marketing publique '/' et '/home',
+  // dont les CTA renvoient vers /login et /signup. Atelier, packs, Brand Kit :
+  // session obligatoire.
+  const isPublicLanding = route === '/' || route === '/home';
+  if (isSupabaseConfigured && !authReady) {
+    return (
+      <div dir={lang === 'ar' ? 'rtl' : 'ltr'} className="flex h-screen w-screen items-center justify-center bg-zinc-950">
+        <div className="h-10 w-10 animate-spin rounded-full border-2 border-zinc-800 border-t-amber-500" />
+      </div>
+    );
+  }
+  if (isSupabaseConfigured && authReady && !authUser && !isPublicLanding) {
+    return (
+      <AuthPage
+        lang={lang}
+        mode={route === '/signup' ? 'signup' : 'login'}
+        onSwitchMode={(m) => navigate(m === 'signup' ? '/signup' : '/login')}
+      />
+    );
+  }
+
   if (loggedOut) {
     return (
       <div className="relative flex h-screen w-screen items-center justify-center overflow-hidden p-4">
@@ -3087,6 +3501,7 @@ export default function App() {
                 localStorage.removeItem('aura_logged_out');
               } catch {}
               setLoggedOut(false);
+              navigate(isSupabaseConfigured ? '/login' : '/app');
             }}
             className="w-full px-4 py-2.5 rounded-full bg-gray-900 hover:bg-black text-white text-sm font-semibold transition-colors cursor-pointer"
           >
@@ -3383,6 +3798,8 @@ export default function App() {
                   } catch {}
                   setAccountMenuOpen(false);
                   setLoggedOut(true);
+                  // Ferme la session Supabase → la page d'auth reprend la main.
+                  if (supabase) void supabase.auth.signOut().catch(() => {});
                 }}
                 className="w-full flex items-center gap-3 px-3 py-2 rounded-xl text-sm text-red-600 hover:bg-red-50 transition-colors cursor-pointer"
               >
@@ -3399,10 +3816,10 @@ export default function App() {
           >
             <div className="flex items-center gap-2.5 min-w-0">
               <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-gray-900 to-gray-700 text-white font-bold text-xs flex items-center justify-center shrink-0 shadow-xs">
-                L{userFirstName.charAt(0).toUpperCase()}
+                {accountInitials}
               </div>
               <div className="min-w-0">
-                <p className="text-xs font-bold text-gray-900 truncate leading-tight">Labbaci {userFirstName}</p>
+                <p className="text-xs font-bold text-gray-900 truncate leading-tight">{accountFullName}</p>
                 <p className="text-[11px] text-gray-500 truncate">
                   {t('plan')} {PRICING.find((x) => x.id === plan)?.name[lang]}
                 </p>
@@ -3504,7 +3921,7 @@ export default function App() {
                       <div className="flex items-start gap-3.5">
                         {isUser ? (
                           <div className="w-7 h-7 rounded-full bg-gray-900 text-white font-bold text-xs flex items-center justify-center shrink-0 mt-0.5 shadow-xs">
-                            L{userFirstName.charAt(0).toUpperCase()}
+                            {accountInitials}
                           </div>
                         ) : (
                           <div className="w-7 h-7 rounded-full bg-gradient-to-br from-amber-400 to-orange-500 text-white flex items-center justify-center shrink-0 mt-0.5 shadow-xs">
@@ -3515,7 +3932,7 @@ export default function App() {
                         <div className="flex-1 min-w-0 pt-0.5">
                           <div className="flex items-center gap-2 mb-1">
                             <span className="text-xs font-bold text-gray-900">
-                              {isUser ? `Labbaci ${userFirstName}` : 'Aura Design AI'}
+                              {isUser ? accountFullName : 'Aura Design AI'}
                             </span>
                             <span className="text-[11px] text-gray-400 ">{msg.timestamp}</span>
                           </div>
