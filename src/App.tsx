@@ -2680,7 +2680,10 @@ export default function App() {
           );
           const img = typeof imgRes.json?.image === 'string' ? (imgRes.json.image as string) : null;
           if (imgRes.ok && img) received.push({ idx: i, dataUrl: img });
-          else break;
+          else {
+            console.error('[Aura] image engine error', imgRes.status, imgRes.json);
+            break;
+          }
         }
         setGenProgress(null);
 
