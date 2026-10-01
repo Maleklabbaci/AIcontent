@@ -115,12 +115,22 @@ async function handleCopy(apiKey: string, body: Record<string, unknown>): Promis
     return json({ error: 'invalid_payload' }, 400);
   }
 
-  const textPrompt = `Tu es Aura Design AI, directeur artistique spécialisé en réseaux sociaux.
-Génère le copywriting d'un design au format ${format} composé de ${slidesCount} slide(s).
-Sujet fourni par l'utilisateur : "${prompt}".
-Consignes de style : design ${style === 'light' ? 'CLAIR (fond blanc, textes foncés, sobre)' : 'SOMBRE (fond sombre, contraste élevé, premium)'}, ton professionnel et percutant, textes courts qui tiennent dans un visuel.
+  const textPrompt = `Tu es le directeur de création d'Aura Design, studio de contenu social media de niveau agence. Tu écris le copywriting d'un visuel qui doit arrêter le scroll.
 
-Réponds UNIQUEMENT avec un JSON valide, sans texte autour, de la forme exacte :
+BRIEF
+- Sujet utilisateur : "${prompt}"
+- Format : ${format} — ${slidesCount} slide(s) — thème ${style === 'light' ? 'CLAIR (fond blanc, textes foncés)' : 'SOMBRE (fond sombre, contraste premium)'}
+- Langue obligatoire : ${LANG_NAMES[lang] ?? 'français'}.
+
+RÈGLES D'ÉCRITURE (niveau expert)
+- Slide 1 = HOOK : max 8 mots, curiosity gap ou promesse concrète. Jamais de généralité creuse.
+- 1 slide = 1 seule idée. Progression logique : accroche → preuve/mécanisme → objection → action.
+- Titres : max 8 mots, verbes d'action ou chiffres concrets. Sous-titres : max 18 mots, bénéfice tangible.
+- tag : 2 à 4 mots en MAJUSCULES. ctaText : verbe + bénéfice (max 6 mots).
+- Statistiques et exemples plausibles et spécifiques (chiffres précis > adjectifs).
+- Aucun emoji. Aucun jargon creux (« innovant », « révolutionnaire » interdits). Style direct, tutoiement ou vouvoiement cohérent.
+
+RÉPONDS UNIQUEMENT avec ce JSON valide, sans texte autour :
 {
   "title": "Titre court du projet",
   "slides": [
@@ -136,12 +146,12 @@ Réponds UNIQUEMENT avec un JSON valide, sans texte autour, de la forme exacte :
   ]
 }
 
-RÈGLES :
-- Exactement ${slidesCount} slide(s) dans le tableau "slides".
-- Écris TOUS les textes en ${LANG_NAMES[lang] ?? 'français'}.
-- Si slidesCount === 1, la slide doit être autonome (hook + valeur + CTA).
-- Les bulletPoints sont obligatoires uniquement pour les carrousels/présentations ; pour une slide unique, renvoie un tableau vide.
-- Pas d'emojis, pas de guillemets non échappés dans les chaînes.`;
+CONTRAINTES DE SORTIE
+- Exactement ${slidesCount} slide(s) dans le tableau "slides", numérotées 1..N.
+- Si slidesCount === 1 : slide autonome (hook + valeur + CTA), bulletPoints = tableau vide.
+- bulletPoints (3 max) uniquement pour les carrousels/présentations.
+- highlightWord : un mot qui existe dans le titre.
+- Pas d'emojis, pas de guillemets non échappés dans les chaînes JSON.`;
 
   const res = await fetchWithTimeout(
     'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent',
@@ -180,32 +190,98 @@ RÈGLES :
 // ============================================================
 // STAGE 'image' : 1 image (API Interactions, Nano Banana)
 // ============================================================
+
+// ---------- Anti-répétition : 5 traitements photo rotationnés par numéro de slide ----------
+// Nano Banana a tendance à produire des images quasi identiques pour des prompts
+// similaires : on force un archétype de scène différent à chaque slide du deck.
+const SCENE_TREATMENTS = [
+  {
+    scene:
+      'An editorial studio still-life: art-directed props related to the subject arranged on sculpted plaster or paper forms, layered heights, one hero material (brushed metal, raw ceramic, frosted glass or textured paper).',
+    camera: 'shot on a full-frame camera with an 85mm lens at f/5.6, slight three-quarter angle',
+    light: 'one large softbox from the upper left plus a faint rim light from behind, a single deliberate hard shadow edge',
+  },
+  {
+    scene:
+      'An extreme macro of a tactile material evoking the subject (fabric weave, stone grain, liquid surface, brushed metal, paper texture or botanical detail) filling the frame with rich micro-detail.',
+    camera: 'shot with a 100mm macro lens at f/8, focus stacked, razor-sharp micro-detail in the focal plane',
+    light: 'raking side light skimming across the surface to reveal every micro-texture, deep controlled falloff',
+  },
+  {
+    scene:
+      'A candid environmental scene evoking the subject\'s real world: a lived-in place with natural asymmetry and imperfect, unstaged arrangements that feel captured, not arranged.',
+    camera: 'shot on a 35mm lens at f/2.8 from standing eye level, documentary framing',
+    light: 'available light only — low golden-hour sun or a soft north-facing window, real shadows with correct direction and depth',
+  },
+  {
+    scene:
+      'A minimal architectural composition: strong lines, one dominant shape, concrete, glass and matte surfaces, museum-like calm.',
+    camera: 'shot on a 50mm lens at f/8, precise two-point perspective, perfectly level horizon',
+    light: 'hard directional sunlight at a low angle creating long clean shadows and crisp specular edges',
+  },
+  {
+    scene:
+      'A refined organic arrangement: natural elements (stone, wood, plants, sand, water) composed with quiet intention, calm and premium.',
+    camera: 'shot on a 50mm lens at f/4, medium distance, gentle foreground depth',
+    light: 'soft overcast daylight with one subtle warm bounce, delicate natural shadows',
+  },
+];
+
 function buildImagePrompt(body: Record<string, unknown>, lang: string): string | null {
   const slide = body.slide as Record<string, unknown> | undefined;
-  const brand = body.brand as Record<string, unknown> | undefined;
   const style = body.style === 'light' ? 'light' : 'dark';
   const format = typeof body.format === 'string' ? body.format : '';
   if (!slide || !VALID_FORMATS.has(format)) return null;
   const aspect = FORMAT_ASPECT[format];
+  const slideNumber = asInt(slide.slideNumber, 1, 50) ?? 1;
 
   const title = asStr(slide.title, 0, 120) ?? '';
   const tag = asStr(slide.tag, 0, 60) ?? '';
   const subtitle = asStr(slide.subtitle, 0, 220) ?? '';
 
+  const brand = body.brand as Record<string, unknown> | undefined;
   const brandColor = /^#[0-9a-fA-F]{6}$/.test(String(brand?.color ?? '')) ? String(brand?.color) : '#F59E0B';
+  const tr = SCENE_TREATMENTS[(slideNumber - 1) % SCENE_TREATMENTS.length];
 
   const lines = [
-    'Create ONE premium BACKGROUND ARTWORK for a social media design.',
-    'CRITICAL: this artwork is used as a dimmed backdrop behind a text overlay — it must NOT contain any text, letters, numbers, words, typography or logos.',
-    `Visual subject (inspiration only, no copy of it): ${tag ? `${tag} — ` : ''}${title}${subtitle ? `. Context: ${subtitle}` : ''}`,
+    // ---- RÔLE & MISSION ----
+    'You are the photographer and art director of a premium brand shoot. Deliver ONE single photographic image: a BACKGROUND ARTWORK for a social media design.',
+    'The artwork will be dimmed to ~15-20% opacity and placed BEHIND a text overlay. It is pure backdrop.',
+    '',
+    // ---- SUJET (inspiration, pas illustration littérale) ----
+    `Subject inspiration (evoke, do not illustrate literally): ${tag ? `${tag} — ` : ''}${title}${subtitle ? `. Context: ${subtitle}` : ''}`,
+    '',
+    // ---- TRAITEMENT PHOTO ROTATIONNÉ (anti-répétition) ----
+    `Photographic treatment for this frame: ${tr.scene}`,
+    tr.camera,
+    tr.light,
+    '',
+    // ---- THÈME ----
     style === 'light'
-      ? 'Style: LIGHT theme — clean white/ivory base, soft airy composition, delicate shadows, premium editorial look.'
-      : 'Style: DARK theme — deep charcoal/black base, dramatic lighting, elegant premium look, subtle glow accents.',
-    `Accent color: ${brandColor} woven into the artwork tastefully.`,
-    'Composition: one strong focal point, generous negative space in the lower half (text will be overlaid there), professional social-media aesthetic.',
-    `Exact aspect ratio: ${aspect} (enforced by the API). No watermark, no border, no frame.`,
+      ? 'Theme: LIGHT editorial. Bright, airy, luminous composition; whites that stay clean white (never gray or washed out); soft daylight mood; low-contrast elegance.'
+      : 'Theme: DARK editorial. Deep true blacks that keep rich shadow detail (never muddy gray); one confident light source; restrained specular highlights; luxurious night-shoot mood.',
+    '',
+    // ---- CONTRAT RÉALISME (anti look-IA) ----
+    'Realism contract — this MUST look like a real photograph taken by a human photographer:',
+    '- Rendered like a frame from a professional shoot on Kodak Portra 400 film: natural muted palette, gentle contrast curve, fine organic film grain.',
+    '- True optical physics: physically correct shadow directions, natural light falloff, honest reflections, slight natural softness at frame edges.',
+    '- Human imperfection: subtle asymmetry, micro dust or fiber details, materials with real wear. Nothing sterile, nothing plastic, nothing waxy.',
+    '- Neutral true-to-life white balance (no yellow or teal cast), restrained saturation. No HDR, no bloom, no glow, no over-sharpening halos.',
+    '- It must NOT look like CGI, a 3D render, a video game screenshot, AI art, vector art or an illustration.',
+    '',
+    // ---- COMPOSITION (contraintes de fond-de-texte) ----
+    'Composition rules:',
+    '- Exactly ONE focal point, placed off-center on a rule-of-thirds intersection. Never dead-center, never mirrored symmetry.',
+    '- Maximum 1-3 visual elements. Zero clutter, zero repeated patterns.',
+    '- The lower 45% of the frame stays visually calm (soft surface or gradient) so overlaid headlines remain readable.',
+    '',
+    // ---- COULEUR D'ACCENT ----
+    `Weave the accent color ${brandColor} into ONE small detail only (a reflection, an object, a subtle light tint) — never as a dominant color.`,
+    '',
+    // ---- INTERDITS ABSOLUS ----
+    'Strictly forbidden: any text, letters, numbers, typography, captions, signatures, logos, watermarks, UI elements, borders, frames, split screens, collages, image grids, distorted faces, extra fingers, plastic skin, vignettes, light leaks, lens flares, fisheye distortion.',
   ];
-  return lines.filter(Boolean).join('\n');
+  return lines.join('\n');
 }
 
 async function handleImage(apiKey: string, body: Record<string, unknown>): Promise<Response> {

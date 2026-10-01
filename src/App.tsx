@@ -2363,6 +2363,7 @@ export default function App() {
               lang,
               brand: { name: brandName, handle: brandHandle, color: brandColor },
               slide: {
+                slideNumber: sl.slideNumber,
                 tag: sl.tag,
                 title: sl.title,
                 subtitle: sl.subtitle,
