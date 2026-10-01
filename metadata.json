@@ -1,0 +1,6 @@
+{
+  "name": "Aura Studio - Social Media AI Canvas",
+  "description": "Interface SaaS IA conversationnelle dédiée à la génération en temps réel de designs pour réseaux sociaux : carrousels, stories et posters.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

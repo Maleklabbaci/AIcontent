@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Aura Studio - Social Media AI Canvas</title>
+    <meta name="description" content="Interface SaaS IA conversationnelle dédiée à la génération en temps réel de designs pour réseaux sociaux : carrousels, stories et posters." />
+    <meta property="og:title" content="Aura Studio - Social Media AI Canvas" />
+    <meta property="og:description" content="Interface SaaS IA conversationnelle dédiée à la génération en temps réel de designs pour réseaux sociaux : carrousels, stories et posters." />
+    <meta property="og:type" content="website" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <script>
+      // Fix for "Cannot set property fetch of #<Window> which has only a getter"
+      // In some iframe/browser environments, window.fetch only has a getter on Window.prototype.
+      // If an injected script, proxy, or polyfill assigns to window.fetch, it throws.
+      // By defining a setter, we ensure assignments to window.fetch succeed seamlessly.
+      (function() {
+        try {
+          var originalFetch = window.fetch;
+          var fetchHolder = originalFetch;
+
+          Object.defineProperty(window, 'fetch', {
+            get: function() {
+              return fetchHolder;
+            },
+            set: function(newFetch) {
+              fetchHolder = newFetch;
+            },
+            configurable: true,
+            enumerable: true
+          });
+
+          if (typeof Window !== 'undefined' && Window.prototype) {
+            try {
+              Object.defineProperty(Window.prototype, 'fetch', {
+                get: function() {
+                  return fetchHolder;
+                },
+                set: function(newFetch) {
+                  fetchHolder = newFetch;
+                },
+                configurable: true,
+                enumerable: true
+              });
+            } catch (_) {}
+          }
+        } catch (e) {
+          // Ignore
+        }
+      })();
+    </script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@300;400;500;600;700;800&family=Poppins:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  </head>
+  <body class="bg-white text-gray-900 antialiased selection:bg-gray-200">
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
+
