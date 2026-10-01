@@ -921,35 +921,70 @@ function LandingPage({
           </div>
         </section>
 
-        {/* --- Comment ça marche --- */}
+        {/* --- Comment ça marche (étapes connectées) --- */}
         <section className="max-w-6xl mx-auto px-4 sm:px-6 py-12">
-          <h2 className="text-xl sm:text-2xl font-semibold text-center tracking-tight">Comment ça marche ?</h2>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-7">
-            {steps.map((st) => (
-              <div key={st.n} className="rounded-3xl border border-gray-200 bg-white/80 backdrop-blur p-5 space-y-2">
-                <div className="w-9 h-9 rounded-full bg-gradient-to-br from-amber-400 to-orange-500 text-white font-bold text-sm flex items-center justify-center shadow-sm">
-                  {st.n}
+          <div className="text-center space-y-2.5">
+            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/80 border border-amber-200/70 text-[11px] font-bold text-amber-700 shadow-xs">
+              <Sparkles className="w-3 h-3" />
+              SIMPLE COMME BONJOUR
+            </span>
+            <h2 className="text-xl sm:text-2xl font-semibold tracking-tight">Comment ça marche ?</h2>
+          </div>
+          <div className="relative mt-10">
+            {/* Ligne de connexion entre les étapes (desktop) */}
+            <div className="hidden sm:block absolute top-7 left-[16%] right-[16%] h-0.5 rounded-full bg-gradient-to-r from-amber-300/0 via-orange-300 to-amber-300/0" />
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-8 sm:gap-6">
+              {steps.map((st) => (
+                <div key={st.n} className="relative group text-center">
+                  {/* Badge numéroté qui chevauche la carte */}
+                  <div className="relative z-10 mx-auto w-14 h-14 rounded-2xl bg-gradient-to-br from-amber-400 to-orange-500 text-white font-bold text-lg flex items-center justify-center shadow-lg shadow-amber-300/50 rotate-3 group-hover:rotate-6 group-hover:scale-110 transition-transform duration-300">
+                    {st.n}
+                    <span className="absolute -bottom-1.5 left-1/2 -translate-x-1/2 w-3 h-3 bg-white rounded-full border-2 border-orange-300" />
+                  </div>
+                  <div className="-mt-8 rounded-3xl border border-gray-200/80 bg-white/90 backdrop-blur pt-11 pb-6 px-6 space-y-2 shadow-sm group-hover:shadow-xl group-hover:shadow-amber-100/70 group-hover:border-amber-300/60 group-hover:-translate-y-1 transition-all duration-300">
+                    <h3 className="font-semibold text-gray-900">{st.title}</h3>
+                    <p className="text-xs text-gray-500 leading-relaxed max-w-[26ch] mx-auto">{st.text}</p>
+                  </div>
                 </div>
-                <h3 className="font-semibold text-gray-900 text-sm">{st.title}</h3>
-                <p className="text-xs text-gray-500 leading-relaxed">{st.text}</p>
-              </div>
-            ))}
+              ))}
+            </div>
           </div>
         </section>
 
-        {/* --- Fonctionnalités --- */}
+        {/* --- Fonctionnalités (cartes premium) --- */}
         <section className="max-w-6xl mx-auto px-4 sm:px-6 py-12">
-          <h2 className="text-xl sm:text-2xl font-semibold text-center tracking-tight">
-            Tout ce qu'il faut pour <span className="text-transparent bg-clip-text bg-gradient-to-r from-amber-500 to-orange-500">briller</span> sur les réseaux
-          </h2>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mt-7">
-            {features.map((f) => (
-              <div key={f.title} className="rounded-3xl border border-gray-200 bg-white/80 backdrop-blur p-5 space-y-2 hover:border-amber-300/70 hover:shadow-md transition-all">
-                <div className="w-9 h-9 rounded-2xl bg-amber-100 text-amber-600 flex items-center justify-center">
-                  <f.icon className="w-[18px] h-[18px]" />
+          <div className="text-center space-y-2.5">
+            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/80 border border-amber-200/70 text-[11px] font-bold text-amber-700 shadow-xs">
+              <Zap className="w-3 h-3" />
+              POURQUOI AURA DESIGN
+            </span>
+            <h2 className="text-xl sm:text-2xl font-semibold tracking-tight">
+              Tout ce qu'il faut pour <span className="text-transparent bg-clip-text bg-gradient-to-r from-amber-500 to-orange-500">briller</span> sur les réseaux
+            </h2>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 mt-8">
+            {features.map((f, i) => (
+              <div
+                key={f.title}
+                className="group relative rounded-3xl bg-white/90 backdrop-blur border border-gray-200/80 p-6 overflow-hidden hover:-translate-y-1.5 hover:shadow-xl hover:shadow-amber-100/70 hover:border-amber-300/60 transition-all duration-300"
+              >
+                {/* Lueur décorative au survol */}
+                <div className="absolute -top-12 -right-12 w-32 h-32 rounded-full bg-gradient-to-br from-amber-200/60 to-orange-200/40 blur-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                {/* Liseré dégradé en haut de carte */}
+                <div className="absolute top-0 left-6 right-6 h-0.5 rounded-full bg-gradient-to-r from-amber-400/0 via-amber-400 to-orange-500/0 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+
+                <div className="relative">
+                  <div className="flex items-start justify-between">
+                    <div className="w-11 h-11 rounded-2xl bg-gradient-to-br from-amber-400 to-orange-500 text-white flex items-center justify-center shadow-md shadow-amber-200/70 group-hover:scale-110 group-hover:-rotate-6 transition-transform duration-300">
+                      <f.icon className="w-5 h-5 stroke-[2.2]" />
+                    </div>
+                    <span className="text-[11px] font-bold tracking-wider text-gray-200 group-hover:text-amber-300 transition-colors duration-300">
+                      0{i + 1}
+                    </span>
+                  </div>
+                  <h3 className="mt-4 font-semibold text-gray-900 text-sm">{f.title}</h3>
+                  <p className="mt-1.5 text-xs text-gray-500 leading-relaxed">{f.text}</p>
                 </div>
-                <h3 className="font-semibold text-gray-900 text-sm">{f.title}</h3>
-                <p className="text-xs text-gray-500 leading-relaxed">{f.text}</p>
               </div>
             ))}
           </div>
