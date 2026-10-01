@@ -1,8 +1,5 @@
-// Cloudflare Pages Function : POST /api/generate
-// Route les 3 modèles de la plateforme vers les 3 variantes Nano Banana de Google Gemini API :
-// - flash (5 pts)  -> gemini-2.5-flash-image (Nano Banana 1)
-// - studio (10 pts) -> gemini-3.1-flash-image-preview (Nano Banana 2)
-// - pro (20 pts)   -> gemini-3-pro-image-preview (Nano Banana Pro)
+// Cloudflare Pages Function: POST /api/generate
+// Gemini remains server-side: the browser never receives GEMINI_API_KEY.
 
 interface Env {
   GEMINI_API_KEY?: string;
@@ -14,30 +11,42 @@ const MODEL_MAP: Record<string, string> = {
   pro: 'gemini-3-pro-image-preview',
 };
 
+interface GenerateBody {
+  prompt?: string;
+  modelId?: 'flash' | 'studio' | 'pro';
+  format?: string;
+  slidesCount?: number;
+}
+
+const json = (body: unknown, status = 200) =>
+  new Response(JSON.stringify(body), {
+    status,
+    headers: { 'Content-Type': 'application/json; charset=utf-8' },
+  });
+
 export const onRequestPost = async (context: { request: Request; env: Env }): Promise<Response> => {
   const { request, env } = context;
-  const apiKey = env.GEMINI_API_KEY;
-
-  if (!apiKey) {
-    return new Response(
-      JSON.stringify({ configured: false, error: 'GEMINI_API_KEY non configurée sur Cloudflare' }),
-      { status: 200, headers: { 'Content-Type': 'application/json' } }
-    );
+  if (!env.GEMINI_API_KEY) {
+    return json({ configured: false, error: 'GEMINI_API_KEY non configurée sur Cloudflare' });
   }
 
+  let body: GenerateBody;
   try {
-    const body = (await request.json()) as {
-      prompt: string;
-      modelId: 'flash' | 'studio' | 'pro';
-      format: string;
-      slidesCount: number;
-    };
+    body = (await request.json()) as GenerateBody;
+  } catch {
+    return json({ configured: false, error: 'Corps JSON invalide' }, 400);
+  }
 
-    const geminiImageModel = MODEL_MAP[body.modelId] || MODEL_MAP.flash;
+  const prompt = body.prompt?.trim();
+  if (!prompt) return json({ configured: false, error: 'Le prompt est obligatoire' }, 400);
 
-    // 1. Générer la structure copywriting JSON via gemini-2.5-flash
+  const format = body.format || 'scroller';
+  const slidesCount = Math.min(Math.max(Number(body.slidesCount) || 1, 1), 12);
+  const engine = MODEL_MAP[body.modelId || 'flash'] || MODEL_MAP.flash;
+
+  try {
     const textRes = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`,
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${encodeURIComponent(env.GEMINI_API_KEY)}`,
       {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -46,8 +55,8 @@ export const onRequestPost = async (context: { request: Request; env: Env }): Pr
             {
               parts: [
                 {
-                  text: `Tu es Aura Design AI. Génère un JSON strict pour le sujet suivant : "${body.prompt}".
-Format: ${body.format}, Nombre de slides: ${body.slidesCount}.
+                  text: `Tu es Aura Design AI. Génère un JSON strict pour le sujet suivant : "${prompt.slice(0, 4000)}".
+Format: ${format}, Nombre de slides: ${slidesCount}.
 Retourne uniquement un objet JSON valide de la forme:
 {
   "title": "Titre court du projet",
@@ -67,34 +76,37 @@ Retourne uniquement un objet JSON valide de la forme:
               ],
             },
           ],
-          generationConfig: { responseMimeType: 'application/json' },
+          generationConfig: {
+            responseMimeType: 'application/json',
+            temperature: 0.8,
+          },
         }),
       }
     );
 
-    let slideData = null;
-    if (textRes.ok) {
-      const textJson = (await textRes.json()) as {
-        candidates?: { content?: { parts?: { text?: string }[] } }[];
-      };
-      const rawText = textJson.candidates?.[0]?.content?.parts?.[0]?.text;
-      if (rawText) {
-        slideData = JSON.parse(rawText);
-      }
+    if (!textRes.ok) {
+      const providerError = await textRes.text();
+      return json({ configured: true, engine, error: providerError.slice(0, 1000) }, 502);
     }
 
-    return new Response(
-      JSON.stringify({
-        configured: true,
-        engine: geminiImageModel,
-        design: slideData,
-      }),
-      { status: 200, headers: { 'Content-Type': 'application/json' } }
-    );
+    const textJson = (await textRes.json()) as {
+      candidates?: { content?: { parts?: { text?: string }[] } }[];
+    };
+    const rawText = textJson.candidates?.[0]?.content?.parts?.[0]?.text;
+    if (!rawText) return json({ configured: true, engine, error: 'Réponse Gemini vide' }, 502);
+
+    let design: unknown;
+    try {
+      design = JSON.parse(rawText);
+    } catch {
+      return json({ configured: true, engine, error: 'Réponse Gemini non JSON' }, 502);
+    }
+
+    return json({ configured: true, engine, design });
   } catch (err) {
-    return new Response(
-      JSON.stringify({ configured: false, error: err instanceof Error ? err.message : 'Erreur IA' }),
-      { status: 500, headers: { 'Content-Type': 'application/json' } }
+    return json(
+      { configured: false, error: err instanceof Error ? err.message : 'Erreur interne Gemini' },
+      500
     );
   }
 };

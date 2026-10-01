@@ -52,6 +52,8 @@ import {
 } from 'lucide-react';
 import { createEditableCanvaPptx } from './utils/canvaExport';
 import { createPdfFromJpegs, pxToPt } from './utils/pdfExport';
+import { isSupabaseConfigured } from './lib/supabase';
+import { deleteRemoteSession, loadRemoteSessions, saveRemoteSession } from './utils/remoteStorage';
 import imgAbstract from './assets/images/social_abstract_accent_1790812839231.jpg';
 import imgMarketing from './assets/images/social_marketing_visual_1790812851560.jpg';
 
@@ -1215,6 +1217,66 @@ export default function App() {
     }
   }, [sessionMessagesMap]);
 
+  // Supabase is the durable store when configured; localStorage remains the
+  // offline fallback so the editor still works if anonymous Auth is disabled.
+  useEffect(() => {
+    if (!isSupabaseConfigured) return;
+    let cancelled = false;
+
+    void loadRemoteSessions()
+      .then((remoteSessions) => {
+        if (cancelled || remoteSessions.length === 0) return;
+        const remoteIds = new Set(remoteSessions.map((session) => session.id));
+        const toFormat = (format: string): FormatType =>
+          FORMAT_ORDER.includes(format as FormatType) ? (format as FormatType) : 'scroller';
+
+        setRecentSessions((localSessions) => {
+          const localOnly = localSessions.filter((session) => !remoteIds.has(session.id));
+          return [
+            ...remoteSessions.map((session) => ({
+              id: session.id,
+              title: session.title,
+              format: toFormat(session.format),
+            })),
+            ...localOnly,
+          ];
+        });
+        setSessionMessagesMap((current) => ({
+          ...current,
+          ...Object.fromEntries(remoteSessions.map((session) => [session.id, session.messages as Message[]])),
+        }));
+      })
+      .catch(() => {
+        // Keep the local editor fully usable when remote persistence is unavailable.
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!isSupabaseConfigured) return;
+    const session = recentSessions.find((item) => item.id === activeSessionId);
+    const sessionMessages = sessionMessagesMap[activeSessionId];
+    if (!session || !sessionMessages) return;
+
+    const timer = window.setTimeout(() => {
+      void saveRemoteSession({
+        id: session.id,
+        title: session.title,
+        format: session.format,
+        previewText: sessionMessages.at(-1)?.text?.slice(0, 120) || '',
+        lastUpdated: new Date().toISOString(),
+        messages: sessionMessages,
+      }).catch(() => {
+        // Local persistence remains the source of truth when Supabase is offline.
+      });
+    }, 500);
+
+    return () => window.clearTimeout(timer);
+  }, [activeSessionId, recentSessions, sessionMessagesMap]);
+
   // Salutation dynamique Gemini
   const greetingSalutation = t('greeting');
 
@@ -1390,31 +1452,34 @@ export default function App() {
       });
 
       const token = getCanvaToken();
-      if (token) {
-        // 1. Envoi automatique dans le compte Canva via Canva Connect (backend Cloudflare)
-        try {
-          const res = await fetch('/api/canva/import', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/octet-stream',
-              'X-Canva-Token': token,
-              'X-Design-Title': design.title,
-            },
-            body: blob,
-          });
-          const data = await res.json();
-          if (data.edit_url) {
-            window.open(data.edit_url as string, '_blank', 'noopener');
-            showToast('Design ouvert dans votre compte Canva !');
-            setCanvaExporting(false);
-            return;
-          }
-          showToast('Import automatique indisponible — fichier multi-calques téléchargé.');
-        } catch {
-          showToast('Import automatique indisponible — fichier multi-calques téléchargé.');
+      // Always call the same-origin Cloudflare Function. It uses the optional
+      // per-user token when present, otherwise the encrypted CANVA_ACCESS_TOKEN
+      // configured on the Pages Worker.
+      let imported = false;
+      let cloudConfigured = false;
+      try {
+        const headers: Record<string, string> = {
+          'Content-Type': 'application/octet-stream',
+          'X-Design-Title': design.title,
+        };
+        if (token) headers['X-Canva-Token'] = token;
+        const res = await fetch('/api/canva/import', {
+          method: 'POST',
+          headers,
+          body: blob,
+        });
+        const data = (await res.json()) as { edit_url?: string; configured?: boolean };
+        cloudConfigured = Boolean(data.configured);
+        if (data.edit_url) {
+          window.open(data.edit_url, '_blank', 'noopener');
+          showToast('Design ouvert dans votre compte Canva !');
+          imported = true;
         }
-      } else {
-        // 2. Pas de compte connecté : téléchargement du fichier + fenêtre de connexion
+      } catch {
+        // Fall through to the editable local download below.
+      }
+
+      if (!imported) {
         const url = URL.createObjectURL(blob);
         const link = document.createElement('a');
         link.href = url;
@@ -1423,8 +1488,12 @@ export default function App() {
         link.click();
         document.body.removeChild(link);
         setTimeout(() => URL.revokeObjectURL(url), 1500);
-        setCanvaModalOpen(true);
-        showToast('Fichier multi-calques téléchargé — connectez Canva pour l\'envoi automatique.');
+        if (!token && !cloudConfigured) setCanvaModalOpen(true);
+        showToast(
+          cloudConfigured
+            ? 'Import Canva indisponible — fichier multi-calques téléchargé.'
+            : 'Fichier multi-calques téléchargé — connectez Canva pour l\'envoi automatique.'
+        );
       }
     } catch {
       showToast('Export Canva impossible.');
@@ -1594,7 +1663,46 @@ export default function App() {
     setAttachedImages([]);
     setIsGenerating(true);
 
-    setTimeout(() => {
+    setTimeout(async () => {
+      let remoteDesign: DesignContent | null = null;
+      try {
+        const response = await fetch('/api/generate', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            prompt: promptText,
+            modelId: activeModelId,
+            format: resolvedFmt,
+            slidesCount: resolvedCount,
+          }),
+        });
+        const payload = (await response.json()) as {
+          configured?: boolean;
+          design?: { title?: string; slides?: Partial<Slide>[] };
+        };
+        if (response.ok && payload.configured && payload.design?.slides?.length) {
+          remoteDesign = {
+            format: resolvedFmt,
+            title: payload.design.title || 'Design généré par Gemini',
+            activeSlideIndex: 0,
+            slides: payload.design.slides.map((slide, index) => ({
+              id: `gemini_${Date.now()}_${index}`,
+              slideNumber: slide.slideNumber || index + 1,
+              tag: slide.tag || 'CONTENU GÉNÉRÉ PAR IA',
+              title: slide.title || promptText,
+              subtitle: slide.subtitle || '',
+              highlightWord: slide.highlightWord,
+              bulletPoints: slide.bulletPoints,
+              stat: slide.stat,
+              image: slide.image || currentPhotos[index % Math.max(currentPhotos.length, 1)],
+              ctaText: slide.ctaText,
+            })),
+          };
+        }
+      } catch {
+        // Keep the deterministic local generator as an offline fallback.
+      }
+
       setIsGenerating(false);
 
       const activeFmt: FormatType = resolvedFmt;
@@ -1737,12 +1845,13 @@ export default function App() {
         ];
       }
 
-      const generatedDesign: DesignContent = {
-        format: activeFmt,
-        title: promptText.length < 35 ? promptText : 'Post Social Media Optimisé',
-        activeSlideIndex: 0,
-        slides: slidesToBuild,
-      };
+      const generatedDesign: DesignContent =
+        remoteDesign || {
+          format: activeFmt,
+          title: promptText.length < 35 ? promptText : 'Post Social Media Optimisé',
+          activeSlideIndex: 0,
+          slides: slidesToBuild,
+        };
 
       const fmtLabel = FORMATS[activeFmt].label;
       const isCarousel = FORMATS[activeFmt].kind === 'carousel';
@@ -1812,6 +1921,11 @@ export default function App() {
       delete next[sessionId];
       return next;
     });
+    if (isSupabaseConfigured) {
+      void deleteRemoteSession(sessionId).catch(() => {
+        // The local delete is still applied if the remote store is unavailable.
+      });
+    }
     if (sessionId === activeSessionId) handleNewDesign();
     showToast('Session supprimée.');
   };
