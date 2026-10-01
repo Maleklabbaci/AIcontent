@@ -574,7 +574,82 @@ export default function App() {
   };
 
   return (
-    <div className="flex h-screen w-screen bg-white text-gray-900 font-sans overflow-hidden antialiased select-none">
+    <div className="relative flex h-screen w-screen bg-transparent text-gray-900 font-sans overflow-hidden antialiased select-none">
+
+      {/* ── Ambient background blobs (behind everything) ── */}
+      <div className="fixed inset-0 pointer-events-none overflow-hidden">
+        {/* Grand diffuseur orange doux — haut gauche */}
+        <div
+          className="bg-ambient-blob animate-blob-a"
+          style={{
+            width: '700px',
+            height: '700px',
+            top: '-15%',
+            left: '-12%',
+            background: 'radial-gradient(circle, rgba(245,158,11,0.22) 0%, rgba(234,88,12,0.10) 40%, transparent 72%)',
+          }}
+        />
+        {/* Blob jaune ambré — centre droit */}
+        <div
+          className="bg-ambient-blob animate-blob-b"
+          style={{
+            width: '550px',
+            height: '550px',
+            top: '35%',
+            right: '10%',
+            background: 'radial-gradient(circle, rgba(250,204,21,0.20) 0%, rgba(245,158,11,0.09) 45%, transparent 72%)',
+          }}
+        />
+        {/* Diffuseur orange profond — bas droite */}
+        <div
+          className="bg-ambient-blob animate-blob-c"
+          style={{
+            width: '600px',
+            height: '600px',
+            bottom: '0%',
+            right: '-8%',
+            background: 'radial-gradient(circle, rgba(249,115,22,0.18) 0%, rgba(245,158,11,0.08) 40%, transparent 72%)',
+          }}
+        />
+        {/* Petit pic de jaune vif — haut droit */}
+        <div
+          className="bg-ambient-blob animate-blob-d"
+          style={{
+            width: '320px',
+            height: '320px',
+            top: '8%',
+            right: '25%',
+            background: 'radial-gradient(circle, rgba(250,204,21,0.25) 0%, rgba(245,158,11,0.10) 35%, transparent 68%)',
+            opacity: 0.75,
+          }}
+        />
+        {/* Diffuseur orange doux — bas gauche */}
+        <div
+          className="bg-ambient-blob animate-blob-pulse"
+          style={{
+            width: '400px',
+            height: '400px',
+            bottom: '12%',
+            left: '5%',
+            background: 'radial-gradient(circle, rgba(245,158,11,0.15) 0%, rgba(234,88,12,0.05) 45%, transparent 70%)',
+            opacity: 0.6,
+          }}
+        />
+        {/* Grand glow central très diffus (warm amber) */}
+        <div
+          className="bg-ambient-blob animate-blob-pulse"
+          style={{
+            width: '1000px',
+            height: '800px',
+            top: '50%',
+            left: '50%',
+            transform: 'translate(-50%, -50%)',
+            background: 'radial-gradient(ellipse, rgba(245,158,11,0.07) 0%, rgba(250,204,21,0.03) 35%, transparent 68%)',
+            filter: 'blur(140px)',
+            opacity: 0.75,
+          }}
+        />
+      </div>
       {/* ========================================================= */}
       {/* 1. PANNEAU GAUCHE (SIDEBAR - MENU & HISTORIQUE STYLE GEMINI) */}
       {/* ========================================================= */}
