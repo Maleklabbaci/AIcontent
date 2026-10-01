@@ -24,7 +24,7 @@ const JSON_HEADERS = { 'Content-Type': 'application/json' } as const;
 
 const MODEL_CANDIDATES: Record<string, string[]> = {
   flash: ['gemini-2.5-flash-image'],
-  studio: ['gemini-3.1-flash-image'],
+  studio: ['gemini-3.1-flash-image', 'gemini-3.1-flash-image-preview'],
   pro: ['gemini-3-pro-image', 'gemini-3-pro-image-preview'],
 };
 
@@ -343,6 +343,13 @@ function buildImagePrompt(body: Record<string, unknown>, lang: string, hasRefs: 
   return lines.join('\n');
 }
 
+
+// Extrait { mime, data } d'un data URL (le vrai MIME, pas un jpeg codé en dur)
+function parseDataUrl(r: string): { mime: string; data: string } {
+  const m = /^data:(image\/[a-zA-Z0-9.+-]+);base64,/.exec(r);
+  return { mime: m ? m[1] : 'image/jpeg', data: r.slice(r.indexOf(',') + 1) };
+}
+
 async function handleImage(apiKey: string, body: Record<string, unknown>): Promise<Response> {
   const modelId = asStr(body.modelId, 3, 10) || 'flash';
   const format = asStr(body.format, 1, 20) || '';
@@ -376,9 +383,33 @@ async function handleImage(apiKey: string, body: Record<string, unknown>): Promi
   // On essaie les noms de modèles candidats. Un 404 (modèle introuvable)
   // permet de passer au candidat suivant — une requête 404 ne génère rien
   // et n'est pas facturée. Aucun autre retry.
+  const inputImages = [...products, ...(products.length > 0 ? styleRefs.slice(0, 2) : styleRefs)].map(parseDataUrl);
+  // image_size n'est supporté que par les modèles Gemini 3 (pas gemini-2.5-flash-image)
+  const sendSize = modelId !== 'flash';
+
+  const extractB64 = (data: any): string | undefined => {
+    if (data?.output_image?.data) return data.output_image.data;
+    if (Array.isArray(data?.steps)) {
+      for (const step of data.steps) {
+        const f = step?.content?.find((c: any) => c?.type === 'image' && typeof c?.data === 'string' && c.data.length > 0);
+        if (f?.data) return f.data;
+      }
+    }
+    const parts = data?.candidates?.[0]?.content?.parts;
+    if (Array.isArray(parts)) {
+      for (const p of parts) {
+        const d = p?.inlineData?.data || p?.inline_data?.data;
+        if (typeof d === 'string' && d.length > 0) return d;
+      }
+    }
+    return undefined;
+  };
+
   let lastStatus = 502;
+  let lastDetail = '';
   for (const model of candidates) {
-    const res = await fetchWithTimeout(
+    // --- Tentative 1 : API Interactions ---
+    let res = await fetchWithTimeout(
       'https://generativelanguage.googleapis.com/v1beta/interactions',
       {
         method: 'POST',
@@ -386,47 +417,65 @@ async function handleImage(apiKey: string, body: Record<string, unknown>): Promi
         body: JSON.stringify({
           model,
           input: [
-            ...products.map((r) => ({ type: 'image', mime_type: 'image/jpeg', data: r.slice(r.indexOf(',') + 1) })),
-            ...(products.length > 0 ? styleRefs.slice(0, 2) : []).map((r) => ({ type: 'image', mime_type: 'image/jpeg', data: r.slice(r.indexOf(',') + 1) })),
+            ...inputImages.map((im) => ({ type: 'image', mime_type: im.mime, data: im.data })),
             { type: 'text', text: imagePrompt },
           ],
-          response_format: { type: 'image', mime_type: 'image/png', aspect_ratio: aspect, image_size: size },
+          response_format: { type: 'image', aspect_ratio: aspect, ...(sendSize ? { image_size: size } : {}) },
         }),
       },
       90000
     );
 
+    // --- Tentative 2 (400/404 = requête rejetée, non facturée) : endpoint classique generateContent ---
+    if (res.status === 400 || res.status === 404) {
+      const firstErr = (await res.text().catch(() => '')).slice(0, 400);
+      console.error('interactions rejected', model, res.status, firstErr);
+      lastDetail = firstErr;
+      res = await fetchWithTimeout(
+        `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'x-goog-api-key': apiKey },
+          body: JSON.stringify({
+            contents: [
+              {
+                parts: [
+                  ...inputImages.map((im) => ({ inline_data: { mime_type: im.mime, data: im.data } })),
+                  { text: imagePrompt },
+                ],
+              },
+            ],
+            generationConfig: {
+              responseModalities: ['IMAGE'],
+              imageConfig: { aspectRatio: aspect, ...(sendSize ? { imageSize: size } : {}) },
+            },
+          }),
+        },
+        90000
+      );
+    }
+
     if (res.ok) {
-      let data: {
-        output_image?: { data?: string };
-        steps?: { content?: { type?: string; data?: string }[] }[];
-      };
+      let data: unknown;
       try {
         data = await res.json();
       } catch {
         return json({ error: 'image_invalid_response' }, 502);
       }
-      let b64: string | undefined = data.output_image?.data;
-      if (!b64 && Array.isArray(data.steps)) {
-        for (const step of data.steps) {
-          const found = step.content?.find((c) => c.type === 'image' && typeof c.data === 'string' && c.data.length > 0);
-          if (found?.data) {
-            b64 = found.data;
-            break;
-          }
-        }
-      }
+      const b64 = extractB64(data);
       if (!b64) return json({ error: 'image_missing' }, 502);
       return json({ configured: true, stage: 'image', model, image: `data:image/png;base64,${b64}` });
     }
 
     lastStatus = res.status;
     const errText = await res.text().catch(() => '');
-    const notFound = res.status === 404 || /not found|not_found|unsupported/i.test(errText.slice(0, 500));
+    lastDetail = errText.slice(0, 400);
+    console.error('image upstream error', model, res.status, lastDetail);
+    const notFound = res.status === 404 || /not found|not_found/i.test(lastDetail);
     if (!notFound) break; // vraie erreur (quota, safety, timeout) : on ne force pas
   }
 
-  return json({ error: 'image_upstream', status: lastStatus }, 502);
+  return json({ error: 'image_upstream', status: lastStatus, detail: lastDetail }, 502);
 }
 
 // ============================================================
