@@ -32,6 +32,8 @@ import {
   UploadCloud,
   Globe,
   ShoppingBag,
+  BadgePercent,
+  Quote,
   Presentation,
   Languages,
   CircleHelp,
@@ -39,6 +41,7 @@ import {
   Zap,
   LogOut,
   FileImage,
+  FileText,
   ArrowLeft,
   Lightbulb,
   Rocket,
@@ -46,6 +49,7 @@ import {
   RefreshCw
 } from 'lucide-react';
 import { createEditableCanvaPptx } from './utils/canvaExport';
+import { createPdfFromJpegs, pxToPt } from './utils/pdfExport';
 import imgAbstract from './assets/images/social_abstract_accent_1790812839231.jpg';
 import imgMarketing from './assets/images/social_marketing_visual_1790812851560.jpg';
 
@@ -116,9 +120,9 @@ const FORMATS: Record<
 const FORMAT_ORDER: FormatType[] = ['scroller', 'story', 'square', 'website', 'product', 'poster', 'presentation'];
 
 const I18N: Record<Lang, Record<string, string>> = {
-  fr: { newDesign: 'Nouveau design', search: 'Recherche', brandKit: 'Brand Kit', templates: 'Templates', recents: 'Récents', greeting: 'Bonjour', subtitle: "On travaille sur quoi aujourd'hui ?", placeholder: "Décrivez le design à créer... (site web, produit, story, carrousel, affiche)", share: 'Partager', settings: 'Paramètres', language: 'Langue', help: "Obtenir de l'aide", learnMore: 'En savoir plus', upgrade: 'Tarifs & Packs', logout: 'Se déconnecter', plan: 'Pack' },
-  en: { newDesign: 'New design', search: 'Search', brandKit: 'Brand Kit', templates: 'Templates', recents: 'Recents', greeting: 'Hello', subtitle: 'What are we working on today?', placeholder: 'Describe the design to create... (website, product, story, carousel, poster)', share: 'Share', settings: 'Settings', language: 'Language', help: 'Get help', learnMore: 'Learn more', upgrade: 'Pricing & Packs', logout: 'Log out', plan: 'Pack' },
-  ar: { newDesign: 'تصميم جديد', search: 'بحث', brandKit: 'هوية العلامة', templates: 'قوالب', recents: 'الأخيرة', greeting: 'مرحباً', subtitle: 'على ماذا سنعمل اليوم؟', placeholder: 'صف التصميم المطلوب... (موقع، منتج، ستوري، كاروسيل، ملصق)', share: 'مشاركة', settings: 'الإعدادات', language: 'اللغة', help: 'احصل على مساعدة', learnMore: 'اعرف المزيد', upgrade: 'ترقية الباقة', logout: 'تسجيل الخروج', plan: 'الباقة' },
+  fr: { newDesign: 'Nouveau design', search: 'Recherche', brandKit: 'Brand Kit', templates: 'Templates', recents: 'Récents', greeting: 'Bonjour', subtitle: "On travaille sur quoi aujourd'hui ?", placeholder: "Décrivez le design à créer...", share: 'Partager', settings: 'Paramètres', language: 'Langue', help: "Obtenir de l'aide", learnMore: 'En savoir plus', upgrade: 'Tarifs & Packs', logout: 'Se déconnecter', plan: 'Pack' },
+  en: { newDesign: 'New design', search: 'Search', brandKit: 'Brand Kit', templates: 'Templates', recents: 'Recents', greeting: 'Hello', subtitle: 'What are we working on today?', placeholder: 'Describe the design to create...', share: 'Share', settings: 'Settings', language: 'Language', help: 'Get help', learnMore: 'Learn more', upgrade: 'Pricing & Packs', logout: 'Log out', plan: 'Pack' },
+  ar: { newDesign: 'تصميم جديد', search: 'بحث', brandKit: 'هوية العلامة', templates: 'قوالب', recents: 'الأخيرة', greeting: 'مرحباً', subtitle: 'على ماذا سنعمل اليوم؟', placeholder: 'صف التصميم المطلوب...', share: 'مشاركة', settings: 'الإعدادات', language: 'اللغة', help: 'احصل على مساعدة', learnMore: 'اعرف المزيد', upgrade: 'ترقية الباقة', logout: 'تسجيل الخروج', plan: 'الباقة' },
 };
 const LANGS: { id: Lang; label: string }[] = [
   { id: 'fr', label: 'Français' },
@@ -162,7 +166,8 @@ async function slideToPngBlob(
   slide: Slide,
   format: FormatType,
   total: number,
-  brand: { name: string; handle: string; color: string }
+  brand: { name: string; handle: string; color: string },
+  opts?: { watermark?: boolean; mime?: 'image/png' | 'image/jpeg' }
 ): Promise<Blob | null> {
   const { w, h } = FORMATS[format];
   const canvas = document.createElement('canvas');
@@ -290,7 +295,35 @@ async function slideToPngBlob(
     ctx.textAlign = 'left';
   }
 
-  return new Promise((resolve) => canvas.toBlob((b) => resolve(b), 'image/png'));
+  // Filigrane pack Gratuit
+  if (opts?.watermark) {
+    const wmText = 'Fait avec Aura Design';
+    ctx.font = F(600, 24);
+    const tw = ctx.measureText(wmText).width;
+    const pw = tw + 80;
+    const ph = 50;
+    const px0 = (w - pw) / 2;
+    const py0 = h - 74;
+    ctx.fillStyle = 'rgba(255,255,255,0.14)';
+    ctx.beginPath();
+    ctx.roundRect(px0, py0, pw, ph, 25);
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(255,255,255,0.28)';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+    ctx.fillStyle = 'rgba(255,255,255,0.85)';
+    ctx.beginPath();
+    ctx.arc(px0 + 30, py0 + ph / 2, 8, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = 'rgba(255,255,255,0.92)';
+    ctx.textAlign = 'left';
+    ctx.fillText(wmText, px0 + 50, py0 + ph / 2 + 8);
+    ctx.textAlign = 'left';
+  }
+
+  return new Promise((resolve) =>
+    canvas.toBlob((b) => resolve(b), opts?.mime || 'image/png', opts?.mime === 'image/jpeg' ? 0.92 : undefined)
+  );
 }
 
 const copyText = async (text: string) => {
@@ -352,6 +385,15 @@ try {
     localStorage.setItem('aura_pricing_v2', '1');
   }
 } catch {}
+
+const loadJson = <T,>(key: string, fallback: T): T => {
+  try {
+    const raw = localStorage.getItem(key);
+    return raw ? (JSON.parse(raw) as T) : fallback;
+  } catch {
+    return fallback;
+  }
+};
 
 export type ModelId = 'flash' | 'studio' | 'pro';
 const MODELS: { id: ModelId; name: string; points: number; desc: string; badge?: string }[] = [
@@ -524,11 +566,20 @@ function PricingPage({
               <h2 className="text-2xl sm:text-3xl font-semibold text-gray-900 tracking-tight">
                 Choisissez votre <span className="text-transparent bg-clip-text bg-gradient-to-r from-amber-500 to-orange-500">pack</span>, générez en liberté
               </h2>
-              <p className="text-sm text-gray-500 leading-relaxed">
-                1 image générée = <span className="font-bold text-gray-700">5 pts</span> avec <span className="font-semibold">Aura Flash</span> ·{' '}
-                <span className="font-bold text-gray-700">10 pts</span> avec <span className="font-semibold">Aura Studio</span> ·{' '}
-                <span className="font-bold text-gray-700">20 pts</span> avec <span className="font-semibold">Aura Pro Max</span>.
-              </p>
+              <div className="flex flex-wrap items-center justify-center gap-2">
+                <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white border border-gray-200/80 shadow-xs text-xs font-semibold text-gray-700">
+                  Aura Flash
+                  <span className="font-bold text-amber-600 bg-amber-100/80 px-1.5 py-0.5 rounded-full">5 pts</span>
+                </span>
+                <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white border border-gray-200/80 shadow-xs text-xs font-semibold text-gray-700">
+                  Aura Studio
+                  <span className="font-bold text-amber-600 bg-amber-100/80 px-1.5 py-0.5 rounded-full">10 pts</span>
+                </span>
+                <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white border border-gray-200/80 shadow-xs text-xs font-semibold text-gray-700">
+                  Aura Pro Max
+                  <span className="font-bold text-amber-600 bg-amber-100/80 px-1.5 py-0.5 rounded-full">20 pts</span>
+                </span>
+              </div>
               <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white border border-gray-200 shadow-xs text-xs font-semibold text-gray-700">
                 <Sparkles className="w-3.5 h-3.5 text-amber-500" />
                 Votre solde actuel :
@@ -803,6 +854,7 @@ export default function App() {
   const [selectedFormat, setSelectedFormat] = useState<FormatType>('scroller');
   const [isFormatDropdownOpen, setIsFormatDropdownOpen] = useState(false);
   const [isComposerModelOpen, setIsComposerModelOpen] = useState(false);
+  const [resizeOpenId, setResizeOpenId] = useState<string | null>(null);
   const [carouselSlidesCount, setCarouselSlidesCount] = useState<number>(4);
   const [isSlidesDropdownOpen, setIsSlidesDropdownOpen] = useState(false);
   const [attachedImages, setAttachedImages] = useState<string[]>([]);
@@ -836,26 +888,41 @@ export default function App() {
   };
 
   // Sessions list
-  const [recentSessions, setRecentSessions] = useState<RecentSession[]>([]);
+  const [recentSessions, setRecentSessions] = useState<RecentSession[]>(() => loadJson<RecentSession[]>('aura_sessions_v1', []));
 
   // Messages list - starts empty so user immediately lands on the Gemini greeting screen!
   const [messages, setMessages] = useState<Message[]>([]);
-  const [sessionMessagesMap, setSessionMessagesMap] = useState<Record<string, Message[]>>({});
+  const [sessionMessagesMap, setSessionMessagesMap] = useState<Record<string, Message[]>>(() => loadJson<Record<string, Message[]>>('aura_session_messages_v1', {}));
+  // Persistance de l'historique (survit au rafraîchissement)
+  useEffect(() => {
+    try {
+      localStorage.setItem('aura_sessions_v1', JSON.stringify(recentSessions));
+    } catch {}
+  }, [recentSessions]);
+  useEffect(() => {
+    try {
+      localStorage.setItem('aura_session_messages_v1', JSON.stringify(sessionMessagesMap));
+    } catch {
+      // Quota dépassé (photos volumineuses) : on retire les images base64
+      try {
+        const stripped = JSON.stringify(sessionMessagesMap, (_k, v) =>
+          typeof v === 'string' && v.startsWith('data:') ? undefined : v
+        );
+        localStorage.setItem('aura_session_messages_v1', stripped);
+      } catch {}
+    }
+  }, [sessionMessagesMap]);
 
   // Salutation dynamique Gemini
   const greetingSalutation = t('greeting');
 
   // Suggestions d'inspiration sur la page d'accueil style Gemini
   const welcomeSuggestions = [
-    { title: 'Lancement de ma boutique', prompt: 'Crée un visuel de lancement percutant pour l\'ouverture de ma nouvelle boutique en ligne.' },
-    { title: 'Promotion -30%', prompt: 'Génère un visuel promotionnel pour une réduction de -30% valable ce week-end seulement.' },
-    { title: 'Conseils pour ma clientèle', prompt: 'Crée un contenu éducatif donnant 5 conseils pratiques à mes clients pour progresser rapidement.' },
-    { title: 'Citation inspirante', prompt: 'Crée un visuel avec une citation inspirante sur la réussite et la discipline pour LinkedIn.' },
-  ].map((c) => {
-    const inferred = inferOpts(c.prompt);
-    const F = FORMATS[inferred.format || 'square'].Icon;
-    return { ...c, icon: <F className="w-4 h-4 text-orange-600" /> };
-  });
+    { title: 'Lancement de ma boutique', prompt: 'Crée un visuel de lancement percutant pour l\'ouverture de ma nouvelle boutique en ligne.', SIcon: ShoppingBag },
+    { title: 'Promotion -30%', prompt: 'Génère un visuel promotionnel pour une réduction de -30% valable ce week-end seulement.', SIcon: BadgePercent },
+    { title: 'Conseils pour ma clientèle', prompt: 'Crée un contenu éducatif donnant 5 conseils pratiques à mes clients pour progresser rapidement.', SIcon: Lightbulb },
+    { title: 'Citation inspirante', prompt: 'Crée un visuel avec une citation inspirante sur la réussite et la discipline pour LinkedIn.', SIcon: Quote },
+  ].map((c) => ({ ...c, icon: <c.SIcon className="w-4 h-4 text-orange-600" /> }));
 
   const showToast = (msg: string) => {
     setToastMessage(msg);
@@ -937,11 +1004,17 @@ export default function App() {
   // Export slide as real PNG
   const downloadSlide = async (design: DesignContent, index: number) => {
     const slide = design.slides[index];
-    const blob = await slideToPngBlob(slide, design.format, design.slides.length, {
-      name: brandName,
-      handle: brandHandle,
-      color: brandColor,
-    });
+    const blob = await slideToPngBlob(
+      slide,
+      design.format,
+      design.slides.length,
+      {
+        name: brandName,
+        handle: brandHandle,
+        color: brandColor,
+      },
+      { watermark: plan === 'free' }
+    );
     if (!blob) {
       showToast("Export impossible sur ce navigateur.");
       return false;
@@ -1045,6 +1118,67 @@ export default function App() {
     setCanvaExporting(false);
   };
 
+  // ===== EXPORT PDF (tous les slides en un seul fichier) =====
+  const handleExportPdf = async (design: DesignContent) => {
+    showToast(`Export PDF de ${design.slides.length} slide(s) en cours...`);
+    try {
+      const fmt = FORMATS[design.format];
+      const pages = [];
+      for (const slide of design.slides) {
+        const blob = await slideToPngBlob(
+          slide,
+          design.format,
+          design.slides.length,
+          { name: brandName, handle: brandHandle, color: brandColor },
+          { mime: 'image/jpeg', watermark: plan === 'free' }
+        );
+        if (!blob) {
+          showToast('Export PDF impossible sur ce navigateur.');
+          return;
+        }
+        pages.push({
+          jpegBytes: new Uint8Array(await blob.arrayBuffer()),
+          widthPt: pxToPt(fmt.w),
+          heightPt: pxToPt(fmt.h),
+          widthPx: fmt.w,
+          heightPx: fmt.h,
+        });
+      }
+      const pdfBlob = createPdfFromJpegs(pages);
+      const url = URL.createObjectURL(pdfBlob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `${design.title.replace(/[^\w\-]+/g, '_')}.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      setTimeout(() => URL.revokeObjectURL(url), 1500);
+      showToast('PDF téléchargé !');
+    } catch {
+      showToast('Export PDF impossible.');
+    }
+  };
+
+  // ===== MAGIC RESIZE : décliner le design dans un autre format (gratuit) =====
+  const handleResizeDesign = (design: DesignContent, newFormat: FormatType) => {
+    const resized: DesignContent = {
+      format: newFormat,
+      title: design.title,
+      activeSlideIndex: 0,
+      slides: design.slides.map((sl, i) => ({ ...sl, id: `rsz_${i}_${Date.now()}` })),
+    };
+    const resizeMsg: Message = {
+      id: `ast_${Date.now()}`,
+      sender: 'assistant',
+      text: `Voici votre design **décliné au format ${FORMATS[newFormat].label}** — même contenu, nouvelles proportions. Le recyclage entre formats est **gratuit** !`,
+      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      design: resized,
+      suggestions: ['Exporter en PDF', 'Exporter tout le carrousel en PNG HD'],
+    };
+    setMessages((prev) => [...prev, resizeMsg]);
+    showToast(`Design décliné en ${FORMATS[newFormat].label} — gratuit !`);
+  };
+
   const handleCanvaConnect = () => {
     const tok = canvaTokenInput.trim();
     if (!tok) {
@@ -1086,6 +1220,10 @@ export default function App() {
     const lastUser = [...messages].reverse().find((m) => m.sender === 'user')?.text;
     if (lower.includes('png') && msg.design) {
       handleExportAll(msg.design);
+      return;
+    }
+    if (lower.includes('pdf') && msg.design) {
+      handleExportPdf(msg.design);
       return;
     }
     const opts = inferOpts(sug);
@@ -1308,6 +1446,7 @@ export default function App() {
           'Affiner le texte du Slide 1',
           isCarousel ? `Régénérer avec ${resolvedCount === 5 ? 7 : 5} slides` : 'Passer en format Carrousel 4:5',
           'Exporter tout le carrousel en PNG HD',
+          'Exporter en PDF',
         ],
       };
 
@@ -1698,17 +1837,17 @@ export default function App() {
 
           <div className="flex items-center gap-2">
             {/* Points façon Manus : Packs | points */}
-            <div className="hidden sm:flex items-center gap-2.5 px-3.5 py-1.5 rounded-full bg-white border border-gray-200/80 text-xs font-semibold shadow-2xs">
+            <div className="flex items-center gap-2.5 px-3.5 py-1.5 rounded-full bg-white border border-gray-200/80 text-xs font-semibold shadow-2xs">
               <button
                 type="button"
                 onClick={() => navigate('/pricing')}
-                className="text-amber-600 font-bold cursor-pointer hover:text-amber-700 transition-colors"
+                className="hidden md:inline text-amber-600 font-bold cursor-pointer hover:text-amber-700 transition-colors"
               >
                 Packs
               </button>
               <span className="w-px h-3.5 bg-gray-200" />
-              <span className={`flex items-center gap-1 font-bold ${credits < 20 ? 'text-red-600' : 'text-gray-900'}`}>
-                <Zap className={`w-3.5 h-3.5 ${credits < 20 ? 'text-red-500' : 'text-amber-500'}`} />
+              <span className={`flex items-center gap-1 font-bold ${credits < 5 ? 'text-red-600' : 'text-gray-900'}`}>
+                <Zap className={`w-3.5 h-3.5 ${credits < 5 ? 'text-red-500' : 'text-amber-500'}`} />
                 {credits}
               </span>
             </div>
@@ -1723,7 +1862,7 @@ export default function App() {
         </header>
 
         {/* Flux de discussion (Au centre) */}
-        <div className={`flex-1 overflow-y-auto px-4 sm:px-6 pt-4 flex flex-col ${messages.length === 0 ? 'pb-[calc(54vh+1rem)]' : 'pb-36'}`}>
+        <div className={`flex-1 overflow-y-auto px-4 sm:px-6 pt-4 flex flex-col ${messages.length === 0 ? 'pb-[calc(56vh+1rem)]' : 'pb-36'}`}>
           {messages.length === 0 ? (
             /* ========================================================= */
             /* PAGE D'ACCUEIL NOUVEAU DESIGN STYLE GEMINI */
@@ -1814,7 +1953,7 @@ export default function App() {
                                 </div>
 
                                 {/* Actions d'export & copie */}
-                                <div className="flex items-center gap-1.5">
+                                <div className="flex flex-wrap items-center justify-end gap-1.5">
                                   <button
                                     onClick={() =>
                                       handleCopySlideText(msg.design!.slides[msg.design!.activeSlideIndex || 0])
@@ -1827,6 +1966,54 @@ export default function App() {
                                     ) : (
                                       <Copy className="w-3.5 h-3.5" />
                                     )}
+                                  </button>
+
+                                  <div className="relative">
+                                    <button
+                                      onClick={() => setResizeOpenId(resizeOpenId === msg.id ? null : msg.id)}
+                                      title="Décliner ce design dans un autre format (gratuit)"
+                                      className="p-1.5 rounded-full hover:bg-zinc-800 text-zinc-400 hover:text-white transition-colors cursor-pointer"
+                                    >
+                                      <Maximize2 className="w-3.5 h-3.5" />
+                                    </button>
+                                    {resizeOpenId === msg.id && (
+                                      <div className="absolute right-0 bottom-10 w-56 rounded-2xl bg-white border border-gray-200 shadow-xl p-1.5 z-30 space-y-0.5">
+                                        <div className="px-2.5 py-1 text-[10px] font-bold text-gray-400 uppercase tracking-wider">
+                                          Décliner en
+                                        </div>
+                                        {FORMAT_ORDER.filter((f) => f !== msg.design!.format).map((f) => {
+                                          const F = FORMATS[f];
+                                          return (
+                                            <button
+                                              key={f}
+                                              type="button"
+                                              onClick={() => {
+                                                setResizeOpenId(null);
+                                                handleResizeDesign(msg.design!, f);
+                                              }}
+                                              className="w-full flex items-center justify-between px-2.5 py-1.5 rounded-xl text-xs font-semibold text-gray-700 hover:bg-gray-100 cursor-pointer transition-colors"
+                                            >
+                                              <span className="flex items-center gap-2">
+                                                <F.Icon className="w-3.5 h-3.5 text-gray-500" />
+                                                {F.label}
+                                              </span>
+                                              <span className="text-[9px] font-bold text-emerald-600 bg-emerald-50 border border-emerald-200 px-1.5 py-0.5 rounded-full">
+                                                GRATUIT
+                                              </span>
+                                            </button>
+                                          );
+                                        })}
+                                      </div>
+                                    )}
+                                  </div>
+
+                                  <button
+                                    onClick={() => handleExportPdf(msg.design!)}
+                                    title="Exporter tous les slides en un seul PDF"
+                                    className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-white border border-gray-200 hover:border-amber-400 hover:bg-amber-50/60 text-gray-800 font-semibold text-xs tracking-wide transition-all cursor-pointer"
+                                  >
+                                    <FileText className="w-3.5 h-3.5 text-gray-600" />
+                                    <span>PDF</span>
                                   </button>
 
                                   <button
@@ -2093,9 +2280,13 @@ export default function App() {
                   </div>
                   <div className="space-y-2">
                     <p className="text-xs font-bold text-gray-900">Aura Design AI</p>
-                    <div className="flex items-center gap-2 text-sm text-gray-500">
-                      <span className="w-2 h-2 rounded-full bg-amber-500 animate-ping" />
-                      <span>Génération et mise en page du visuel dans le Canvas...</span>
+                    <div className="flex items-center gap-2.5 text-sm text-gray-500">
+                      <span className="flex items-center gap-1">
+                        <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-bounce" style={{ animationDelay: '0ms' }} />
+                        <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-bounce" style={{ animationDelay: '150ms' }} />
+                        <span className="w-1.5 h-1.5 rounded-full bg-orange-500 animate-bounce" style={{ animationDelay: '300ms' }} />
+                      </span>
+                      <span>Génération de votre design en cours...</span>
                     </div>
                   </div>
                 </motion.div>
@@ -2353,7 +2544,18 @@ export default function App() {
                     </div>
                   )}
                 </div>
-                <span className="text-[10px] font-semibold text-gray-400">{credits} points disponibles</span>
+                {credits < 5 ? (
+                  <button
+                    type="button"
+                    onClick={() => navigate('/pricing')}
+                    className="flex items-center gap-1 text-[10px] font-bold text-red-600 hover:text-red-700 bg-red-50 border border-red-200 px-2 py-0.5 rounded-full cursor-pointer transition-colors"
+                  >
+                    <Zap className="w-3 h-3" />
+                    Solde faible — voir les packs
+                  </button>
+                ) : (
+                  <span className="text-[10px] font-semibold text-gray-400">{credits} points disponibles</span>
+                )}
               </div>
             </div>
 
@@ -2533,7 +2735,7 @@ export default function App() {
                     Couleur d'accentuation
                   </label>
                   <div className="flex items-center gap-2">
-                    {['#F59E0B', '#EA580C', '#EAB308', '#F97316'].map((color) => (
+                    {['#F59E0B', '#EA580C', '#EAB308', '#F97316', '#2563EB', '#059669', '#7C3AED', '#DC2626'].map((color) => (
                       <button
                         key={color}
                         onClick={() => setBrandColor(color)}
