@@ -574,7 +574,70 @@ export default function App() {
   };
 
   return (
-    <div className="flex h-screen w-screen bg-white text-gray-900 font-sans overflow-hidden antialiased select-none">
+    <div className="relative flex h-screen w-screen bg-transparent text-gray-900 font-sans overflow-hidden antialiased select-none">
+
+      {/* ── Ambient background blobs (behind everything) ── */}
+      <div className="fixed inset-0 pointer-events-none overflow-hidden">
+        {/* Large deep-blue ambient base blob */}
+        <div
+          className="bg-ambient-blob animate-blob-1"
+          style={{
+            width: '650px',
+            height: '650px',
+            top: '-10%',
+            left: '-8%',
+            background: 'radial-gradient(circle, rgba(59,130,246,0.20) 0%, rgba(30,58,86,0.08) 50%, transparent 70%)',
+          }}
+        />
+        {/* Warm amber accent blob (right side) */}
+        <div
+          className="bg-ambient-blob animate-blob-2"
+          style={{
+            width: '500px',
+            height: '500px',
+            bottom: '5%',
+            right: '-5%',
+            background: 'radial-gradient(circle, rgba(245,158,11,0.13) 0%, rgba(234,88,12,0.05) 40%, transparent 70%)',
+          }}
+        />
+        {/* Soft sky-blue mid-tone blob (center-right) */}
+        <div
+          className="bg-ambient-blob animate-blob-3"
+          style={{
+            width: '450px',
+            height: '450px',
+            top: '40%',
+            right: '20%',
+            background: 'radial-gradient(circle, rgba(14,165,233,0.12) 0%, rgba(30,58,86,0.05) 45%, transparent 70%)',
+          }}
+        />
+        {/* Subtle warm rose/mauve blob (bottom-left) */}
+        <div
+          className="bg-ambient-blob animate-blob-pulse"
+          style={{
+            width: '350px',
+            height: '350px',
+            bottom: '15%',
+            left: '10%',
+            background: 'radial-gradient(circle, rgba(244,63,94,0.08) 0%, rgba(15,23,42,0.03) 50%, transparent 70%)',
+            opacity: 0.6,
+          }}
+        />
+        {/* Diffuse ambient glow behind main chat area (center) */}
+        <div
+          className="bg-ambient-blob animate-blob-pulse"
+          style={{
+            width: '900px',
+            height: '700px',
+            top: '50%',
+            left: '50%',
+            transform: 'translate(-50%, -50%)',
+            background: 'radial-gradient(ellipse, rgba(59,130,246,0.06) 0%, transparent 65%)',
+            filter: 'blur(120px)',
+            opacity: 0.8,
+          }}
+        />
+      </div>
       {/* ========================================================= */}
       {/* 1. PANNEAU GAUCHE (SIDEBAR - MENU & HISTORIQUE STYLE GEMINI) */}
       {/* ========================================================= */}

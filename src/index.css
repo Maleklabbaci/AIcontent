@@ -3,10 +3,53 @@
 @layer base {
   body {
     font-family: 'Manrope', 'Poppins', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+    /* Deep ambient gradient — covers the full viewport */
+    background: radial-gradient(ellipse 140% 80% at 20% 10%, rgba(15, 23, 42, 0.92) 0%, transparent 60%),
+                radial-gradient(ellipse 100% 70% at 85% 90%, rgba(245, 158, 11, 0.07) 0%, transparent 55%),
+                radial-gradient(ellipse 90% 90% at 50% 50%, rgba(30, 58, 86, 0.60) 0%, rgba(15, 23, 42, 0.90) 100%);
+    background-attachment: fixed;
+    background-color: #0f172a;
   }
 }
 
-/* Custom subtle scrollbars */
+/* ─── Ambient background blobs (App container layer) ─── */
+
+/* Blob utility classes */
+.bg-ambient-blob {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(80px);
+  pointer-events: none;
+  will-change: transform, opacity;
+}
+
+/* Slow ambient drift animation */
+@keyframes blob-drift-1 {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  33%       { transform: translate(40px, -30px) scale(1.08); }
+  66%       { transform: translate(-20px, 20px) scale(0.95); }
+}
+@keyframes blob-drift-2 {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  33%       { transform: translate(-35px, 25px) scale(1.06); }
+  66%       { transform: translate(25px, -15px) scale(0.97); }
+}
+@keyframes blob-drift-3 {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  50%       { transform: translate(30px, 35px) scale(1.10); }
+}
+
+@keyframes blob-pulse {
+  0%, 100% { opacity: 0.45; }
+  50%       { opacity: 0.70; }
+}
+
+.animate-blob-1 { animation: blob-drift-1 22s ease-in-out infinite; }
+.animate-blob-2 { animation: blob-drift-2 28s ease-in-out infinite; }
+.animate-blob-3 { animation: blob-drift-3 18s ease-in-out infinite; }
+.animate-blob-pulse { animation: blob-pulse 6s ease-in-out infinite; }
+
+/* ─── Custom subtle scrollbars ─── */
 ::-webkit-scrollbar {
   width: 6px;
   height: 6px;
@@ -17,11 +60,10 @@
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #e5e7eb;
+  background: rgba(148, 163, 184, 0.35);
   border-radius: 9999px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #d1d5db;
+  background: rgba(148, 163, 184, 0.55);
 }
-
