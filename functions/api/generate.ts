@@ -18,12 +18,20 @@
 
 interface Env {
   GEMINI_API_KEY?: string;
+  // Bibliothèque de templates partagée (lecture/écriture UNIQUEMENT côté serveur)
+  SUPABASE_SERVICE_ROLE_KEY?: string;
+  SUPABASE_URL?: string;
+  VITE_SUPABASE_URL?: string;
+  VITE_SUPABASE_ANON_KEY?: string;
 }
 
 const JSON_HEADERS = { 'Content-Type': 'application/json' } as const;
 
+// Modèles texte (copywriting + description des templates) : le 1er est utilisé, le suivant sert de repli si Google retire le 1er
+const TEXT_MODELS = ['gemini-2.5-flash', 'gemini-3.1-flash-lite'];
+
 const MODEL_CANDIDATES: Record<string, string[]> = {
-  flash: ['gemini-2.5-flash-image'],
+  flash: ['gemini-2.5-flash-image', 'gemini-3.1-flash-lite-image'],
   studio: ['gemini-3.1-flash-image'],
   pro: ['gemini-3-pro-image'],
 };
@@ -251,18 +259,24 @@ CONTRAINTES DE SORTIE
 - "fonts" : title ET body doivent être copiés EXACTEMENT depuis le menu (majuscules identiques).
 - Pas d'emojis, pas de guillemets non échappés dans les chaînes JSON.`;
 
-  const res = await fetchWithTimeout(
-    'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent',
-    {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'x-goog-api-key': apiKey },
-      body: JSON.stringify({
-        contents: [{ parts: [{ text: textPrompt }] }],
-        generationConfig: { responseMimeType: 'application/json', maxOutputTokens: 3000, temperature: 0.8 },
-      }),
-    },
-    30000
-  );
+  // Modèle texte : 2.5 Flash, avec repli automatique si Google le retire (404)
+  let res: Response | null = null;
+  for (const textModel of TEXT_MODELS) {
+    res = await fetchWithTimeout(
+      `https://generativelanguage.googleapis.com/v1beta/models/${textModel}:generateContent`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-goog-api-key': apiKey },
+        body: JSON.stringify({
+          contents: [{ parts: [{ text: textPrompt }] }],
+          generationConfig: { responseMimeType: 'application/json', maxOutputTokens: 3000, temperature: 0.8 },
+        }),
+      },
+      30000
+    );
+    if (res.status !== 404) break;
+  }
+  if (!res) return json({ error: 'copy_upstream', status: 502 }, 502);
 
   if (!res.ok) {
     const detail = summarizeUpstreamError(await res.text().catch(() => ''));
@@ -596,6 +610,10 @@ function pickDirection(seed: number, domain: string, lang: string): { name: stri
   return { name, look, type };
 }
 
+// Placeholders du Brand Kit : jamais écrits dans le visuel final
+const DEFAULT_BRAND_NAMES = new Set(['aura studio', 'ma marque', 'my brand', 'علامتي', 'votre marque', 'your brand']);
+const DEFAULT_BRAND_HANDLES = new Set(['@aurastudio.ai', '@aurastudio', '@marque', '@brand']);
+
 function buildImagePrompt(body: Record<string, unknown>, lang: string, hasRefs: boolean, hasProduct: boolean): string | null {
   const slide = body.slide as Record<string, unknown> | undefined;
   const style = body.style === 'light' ? 'light' : 'dark';
@@ -603,89 +621,97 @@ function buildImagePrompt(body: Record<string, unknown>, lang: string, hasRefs: 
   if (!slide || !VALID_FORMATS.has(format)) return null;
   const aspect = FORMAT_ASPECT[format];
   const slideNumber = asInt(slide.slideNumber, 1, 50) ?? 1;
+  const total = asInt(body.total, 1, 50) ?? 1;
+  const brief = asStr(body.brief, 0, 400) ?? '';
 
-  const title = asStr(slide.title, 0, 120) ?? '';
+  const title = asStr(slide.title, 0, 140) ?? '';
   const tag = asStr(slide.tag, 0, 60) ?? '';
-  const subtitle = asStr(slide.subtitle, 0, 220) ?? '';
+  const subtitle = asStr(slide.subtitle, 0, 260) ?? '';
+  const highlight = asStr(slide.highlightWord, 0, 40) ?? '';
+  const cta = asStr(slide.ctaText, 0, 60) ?? '';
+  const bullets = Array.isArray(slide.bulletPoints)
+    ? (slide.bulletPoints as unknown[]).map((x) => asStr(x, 1, 120)).filter((x): x is string => !!x).slice(0, 3)
+    : [];
 
   const brand = body.brand as Record<string, unknown> | undefined;
   const brandColor = /^#[0-9a-fA-F]{6}$/.test(String(brand?.color ?? '')) ? String(brand?.color) : '#F59E0B';
+  const rawName = asStr(brand?.name, 1, 40) ?? '';
+  const rawHandle = asStr(brand?.handle, 1, 40) ?? '';
+  const brandName = rawName && !DEFAULT_BRAND_NAMES.has(rawName.toLowerCase()) ? rawName : '';
+  const brandHandle = rawHandle && !DEFAULT_BRAND_HANDLES.has(rawHandle.toLowerCase()) ? rawHandle : '';
 
-  // ---- DIRECTION ARTISTIQUE COMBINATOIRE (tirée côté serveur, le client ne choisit rien) ----
-  const domain = detectDomain(`${body.prompt ?? ''} ${body.brief ?? ''} ${tag} ${title} ${subtitle}`);
-  const variant = (hashStr(`${tag}|${title}|${subtitle}|${format}|${style}`) + slideNumber * 0x9e3779b1) >>> 0;
+  // ---- DIRECTION ARTISTIQUE COMBINATOIRE ----
+  // Le client envoie un tirage aléatoire par génération (identique pour toutes les slides d'un carrousel
+  // => cohérence visuelle, et « régénérer » change vraiment de style). Repli : hash du contenu.
+  const domain = detectDomain(`${body.prompt ?? ''} ${brief} ${tag} ${title} ${subtitle}`);
+  const clientVariant = asInt(body.variant, 0, 2_000_000_000);
+  const variant = clientVariant !== null ? clientVariant : (hashStr(`${tag}|${title}|${subtitle}|${format}|${style}`) + slideNumber * 0x9e3779b1) >>> 0;
   const dir = pickDirection(variant, domain, lang);
 
-  const lines = [
-    // ---- RÔLE & MISSION ----
-    'You are the photographer and art director of a premium brand shoot. Deliver ONE single photographic image: a BACKGROUND ARTWORK for a social media design.',
-    'The artwork will be dimmed to ~15-20% opacity and placed BEHIND a text overlay. It is pure backdrop.',
+  const q = (v: string) => JSON.stringify(v);
+  const rtl = lang === 'ar';
+  const prof = body.profile as Record<string, unknown> | undefined;
+  const pt = asStr(prof?.productType, 1, 120);
+  const th = asStr(prof?.theme, 1, 120);
+
+  const lines: string[] = [
+    'You are a world-class art director and graphic designer. Deliver ONE single, FINISHED, ready-to-publish social media design as a flat image, aspect ratio ' + aspect + '. It is the final deliverable: ALL the text below must be rendered inside the image, perfectly spelled and legible.',
+    ...(brief ? ['', 'CLIENT BRIEF (highest priority — if it states a style, mood, colors or visual idea, follow it over the art direction below): ' + q(brief)] : []),
     '',
-    // ---- SUJET (inspiration, pas illustration littérale) ----
-    `Subject inspiration (evoke, do not illustrate literally): ${tag ? `${tag} — ` : ''}${title}${subtitle ? `. Context: ${subtitle}` : ''}`,
-    ...(() => {
-      const prof = body.profile as Record<string, unknown> | undefined;
-      const pt = asStr(prof?.productType, 1, 120);
-      const th = asStr(prof?.theme, 1, 120);
-      return pt || th ? [`Brand universe: ${pt ? `product type ${pt}` : ''}${pt && th ? ', ' : ''}${th ? `${th} aesthetic` : ''} — stay perfectly consistent with this identity.`] : [];
-    })(),
-    '',
-    // ---- DIRECTION ARTISTIQUE (combinatoire, déterministe, anti-répétition) ----
-    `ART DIRECTION for this frame — "${dir.name}"${domain ? ` (domain: ${domain})` : ''}. Follow it precisely:`,
+    `=== ART DIRECTION: "${dir.name}"${domain ? ` (domain: ${domain})` : ''} ===`,
     dir.look,
-    `${dir.type} This typography direction is a briefing for the overlay that will be added later — do NOT render any text in the image.`,
+    'Execute this art direction fully and make it unmistakable — whether it calls for photography, 3D, illustration, collage, graphic shapes or pure typography, follow its own medium. Do NOT fall back to a generic dark rounded card.',
     '',
-    // ---- THÈME ----
+    '=== TEXT TO RENDER (exact, character for character, in ' + (LANG_NAMES[lang] ?? 'français') + (rtl ? ', right-to-left, correctly connected Arabic letters' : '') + ') ===',
+    ...(brandName ? ['- Brand name (small): ' + q(brandName)] : []),
+    ...(total > 1 ? ['- Slide counter (small): ' + q(String(slideNumber).padStart(2, '0') + ' / ' + String(total).padStart(2, '0'))] : []),
+    ...(tag ? ['- Small label above the headline (uppercase, accent color): ' + q(tag)] : []),
+    '- HEADLINE (largest text, maximum 3 lines): ' + q(title) + (highlight && title.includes(highlight) ? ' — render the word ' + q(highlight) + ' in the accent color' : ''),
+    ...(subtitle ? ['- Subtitle (medium, highly readable): ' + q(subtitle)] : []),
+    ...(bullets.length ? ['- Short checklist, one line each, with a small check icon: ' + bullets.map(q).join(' | ')] : []),
+    ...(cta ? ['- Call-to-action button (accent color fill, bold): ' + q(cta)] : []),
+    ...(brandHandle ? ['- Handle (small): ' + q(brandHandle)] : []),
+    'Do not add, translate, abbreviate or invent ANY other text, number, brand name, logo or watermark' + (brandName ? '' : ' (in particular no brand name or studio name anywhere)') + '.',
+    '',
+    '=== TYPOGRAPHY ===',
+    dir.type + ' Use the closest look-alike typefaces. Clear hierarchy: headline > subtitle > checklist > small labels' + (rtl ? '; text right-aligned' : '') + '.',
+    '',
+    '=== COMPOSITION & COLOR ===',
+    '- Safe margin of at least 8% on every side: no text touches or crosses the frame edge.',
+    '- Strong contrast between text and its background everywhere (use a calm zone, soft gradient or solid shape behind text when needed).',
     style === 'light'
-      ? 'Theme: LIGHT editorial. Bright, airy, luminous composition; whites that stay clean white (never gray or washed out); soft daylight mood; low-contrast elegance.'
-      : 'Theme: DARK editorial. Deep true blacks that keep rich shadow detail (never muddy gray); one confident light source; restrained specular highlights; luxurious night-shoot mood.',
+      ? '- Theme: LIGHT. Bright, luminous overall impression, dark text.'
+      : '- Theme: DARK. Deep, rich overall impression, light text.',
+    `- Accent color ${brandColor}: use it for the label, the highlighted word, the icons and the button; the art direction's palette supports it.`,
+    '- Include ONE strong visual that evokes the subject (never literal clip-art) placed so it never covers the text.',
     '',
-    // ---- CONTRAT RÉALISME (anti look-IA) ----
-    'Realism contract — this MUST look like a real photograph taken by a human photographer:',
-    '- Rendered like a frame from a professional shoot on Kodak Portra 400 film: natural muted palette, gentle contrast curve, fine organic film grain.',
-    '- True optical physics: physically correct shadow directions, natural light falloff, honest reflections, slight natural softness at frame edges.',
-    '- Human imperfection: subtle asymmetry, micro dust or fiber details, materials with real wear. Nothing sterile, nothing plastic, nothing waxy.',
-    '- Neutral true-to-life white balance (no yellow or teal cast), restrained saturation. No HDR, no bloom, no glow, no over-sharpening halos.',
-    '- It must NOT look like CGI, a 3D render, a video game screenshot, AI art, vector art or an illustration.',
-    '',
-    // ---- COMPOSITION (contraintes de fond-de-texte) ----
-    'Composition rules:',
-    '- Exactly ONE focal point, placed off-center on a rule-of-thirds intersection. Never dead-center, never mirrored symmetry.',
-    '- Maximum 1-3 visual elements. Zero clutter, zero repeated patterns.',
-    '- The lower 45% of the frame stays visually calm (soft surface or gradient) so overlaid headlines remain readable.',
-    '',
-    // ---- COULEUR D'ACCENT ----
-    `Weave the accent color ${brandColor} into ONE small detail only (a reflection, an object, a subtle light tint) — never as a dominant color.`,
-    '',
-    // ---- INTERDITS ABSOLUS ----
+    'Subject of the design: ' + [tag, title, subtitle].filter(Boolean).join(' — '),
+    ...(pt || th ? ['Brand universe: ' + (pt ? 'product type ' + pt : '') + (pt && th ? ', ' : '') + (th ? th + ' aesthetic' : '') + ' — stay consistent with this identity.'] : []),
     ...(hasProduct
       ? [
+          '',
           'PRODUCT FIDELITY CONTRACT — the FIRST attached image(s) show a REAL product from the user\'s shop:',
-          '- Show THIS EXACT product in your scene. Preserve it 100%: exact shape, exact proportions, exact colors, exact label text and logo placement, exact materials and finish.',
-          '- Do NOT redraw, redesign, restyle, warp, blur, recolor or reinterpret the product in any way. No invented packaging details, no distorted text on the label.',
-          '- Integrate it as the hero of the composition with a soft realistic contact shadow and correct scale — professional commercial product photography.',
+          '- Show THIS EXACT product as the hero visual. Preserve it 100%: exact shape, proportions, colors, label text, logo placement, materials and finish.',
+          '- Do NOT redraw, redesign, recolor or distort the product. Integrate it with a soft realistic contact shadow and correct scale.',
         ]
       : []),
     ...(hasRefs
       ? [
-          "REFERENCE DESIGN CONTRACT — the attached images are the client's previous designs (their templates):",
-          '- Extract their exact design DNA: layout grammar, color palette, typography feel, textures, framing, logo and handle placement.',
-          '- Carry that DNA into this frame: same color language (hue family, contrast level, accent usage), same material and texture sensibility, same compositional rhythm (where the subject sits, how much empty space is kept, which zone stays visually calm for the overlay), same photographic mood and grade.',
-          '- Reserve the same zones the templates use for the brand mark and the @handle (typically a small logo lockup and a bottom signature line) — keep them free of clutter so the mark lands exactly where it does on the client\'s existing designs.',
-          '- These references are DESIGN GUIDANCE ONLY — never copy any text, face or exact logo artwork from them, and never introduce legible text into the output.',
+          '',
+          "REFERENCE DESIGN CONTRACT — the attached template image(s) were selected as the closest match to this brief (they come after the product photos, if any):",
+          '- The FIRST template is the PRIMARY reference; a second one, if present, is secondary support.',
+          '- Extract their design DNA: layout grammar, color language, typography feel, textures, framing and mood, and carry it into this design while adapting it to the subject and the texts listed above.',
+          '- DESIGN GUIDANCE ONLY — never copy their text, faces or exact logo artwork; the only text in the output is the text listed above.',
         ]
       : []),
-    ...(lang === 'ar'
-      ? [
-          'ABSOLUTE SCRIPT LOCK: every text is in ARABIC ONLY, real Arabic script (the Arabic Unicode block), never Latin letters, never transliteration, right-to-left direction, correctly shaped and connected letterforms with proper contextual forms.',
-        ]
+    ...(rtl
+      ? ['ABSOLUTE SCRIPT LOCK: every text is in ARABIC ONLY, real Arabic script, right-to-left, correctly shaped and connected letterforms with proper contextual forms, never Latin letters or transliteration.']
       : []),
-    'Strictly forbidden: any text, letters, numbers, typography, captions, signatures, logos, watermarks, UI elements, borders, frames, split screens, collages, image grids, distorted faces, extra fingers, plastic skin, vignettes, light leaks, lens flares, fisheye distortion.',
   ];
   return lines.join('\n');
 }
 
-async function handleImage(apiKey: string, body: Record<string, unknown>): Promise<Response> {
+async function handleImage(apiKey: string, body: Record<string, unknown>, tpl?: { sb: Sb; uid: string } | null): Promise<Response> {
   const modelId = asStr(body.modelId, 3, 10) || 'flash';
   const format = asStr(body.format, 1, 20) || '';
   const style = body.style === 'light' ? 'light' : 'dark';
@@ -701,11 +727,20 @@ async function handleImage(apiKey: string, body: Record<string, unknown>): Promi
         .filter((r): r is string => typeof r === 'string' && r.startsWith('data:image/') && r.length <= 300_000)
         .slice(0, 2)
     : [];
-  const styleRefs = Array.isArray(body.references)
+  let styleRefs = Array.isArray(body.references)
     ? (body.references as unknown[])
         .filter((r): r is string => typeof r === 'string' && r.startsWith('data:image/') && r.length <= 2_000_000)
         .slice(0, 3)
     : [];
+  // Templates choisis par le moteur (les tiens + ceux de la communauté, selon le sujet) :
+  // récupérés ici côté serveur, jamais exposés aux navigateurs. Le 1er = référence principale.
+  const tplIds = Array.isArray(body.templateIds)
+    ? (body.templateIds as unknown[]).filter((x): x is string => typeof x === 'string' && UUID_RE.test(x)).slice(0, 2)
+    : [];
+  if (tpl && tplIds.length > 0) {
+    const thumbs = await fetchTemplateThumbs(tpl.sb, tpl.uid, tplIds);
+    if (thumbs.length > 0) styleRefs = thumbs;
+  }
   // Les modèles (templates) accompagnent TOUJOURS la génération, y compris avec
   // des photos produit : produit(s) d'abord (contrat de fidélité), puis modèles.
   const attachmentRefs = [...products, ...styleRefs];
@@ -782,6 +817,264 @@ async function handleImage(apiKey: string, body: Record<string, unknown>): Promi
 }
 
 // ============================================================
+// BIBLIOTHÈQUE DE TEMPLATES PARTAGÉE
+//   tpl_add    : un template est décrit par l'IA (domaine, style, palette…), vectorisé, puis stocké
+//   tpl_match  : pour un sujet donné, choisit le meilleur template parmi les siens + ceux de la communauté
+//   image      : reçoit templateIds, récupère les images CÔTÉ SERVEUR (jamais exposées aux navigateurs)
+// ============================================================
+const UUID_RE = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/;
+const TEMPLATE_LIB_MAX = 24;
+const OWN_BONUS = 0.06; // préférence légère pour ses propres templates
+const MIN_COMMUNITY_SIM = 0.4; // un template d'un autre n'est utilisé que s'il est vraiment pertinent
+
+interface Sb {
+  url: string;
+  service: string;
+  anon: string;
+}
+
+function sbConfig(env: Env): Sb | null {
+  const url = (env.SUPABASE_URL || env.VITE_SUPABASE_URL || '').replace(/\/+$/, '');
+  const service = env.SUPABASE_SERVICE_ROLE_KEY || '';
+  if (!url || !service) return null;
+  return { url, service, anon: env.VITE_SUPABASE_ANON_KEY || service };
+}
+
+function sbHeaders(sb: Sb, extra: Record<string, string> = {}): Record<string, string> {
+  const h: Record<string, string> = { apikey: sb.service, 'Content-Type': 'application/json', ...extra };
+  if (sb.service.startsWith('eyJ')) h.Authorization = `Bearer ${sb.service}`; // clé legacy JWT
+  return h;
+}
+
+/** Vérifie le jeton Supabase envoyé par le navigateur et renvoie l'id utilisateur. */
+async function sbUserId(sb: Sb, request: Request): Promise<string | null> {
+  const m = /^Bearer\s+(.+)$/i.exec(request.headers.get('Authorization') || '');
+  if (!m) return null;
+  const res = await fetchWithTimeout(
+    `${sb.url}/auth/v1/user`,
+    { headers: { apikey: sb.anon, Authorization: `Bearer ${m[1]}` } },
+    8000
+  );
+  if (!res.ok) return null;
+  const u = (await res.json().catch(() => null)) as { id?: string } | null;
+  return u && typeof u.id === 'string' && UUID_RE.test(u.id) ? u.id : null;
+}
+
+async function embedText(apiKey: string, text: string, taskType: 'RETRIEVAL_DOCUMENT' | 'RETRIEVAL_QUERY'): Promise<number[] | null> {
+  const res = await fetchWithTimeout(
+    'https://generativelanguage.googleapis.com/v1beta/models/gemini-embedding-001:embedContent',
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-goog-api-key': apiKey },
+      body: JSON.stringify({
+        model: 'models/gemini-embedding-001',
+        content: { parts: [{ text: text.slice(0, 2000) }] },
+        taskType,
+        outputDimensionality: 768,
+      }),
+    },
+    15000
+  );
+  if (!res.ok) {
+    console.error('[Aura] embedding failed', res.status, (await res.text().catch(() => '')).slice(0, 300));
+    return null;
+  }
+  const data = (await res.json().catch(() => null)) as { embedding?: { values?: number[] } } | null;
+  const v = data?.embedding?.values;
+  return Array.isArray(v) && v.length === 768 ? v : null;
+}
+
+/** L'IA « regarde » le template : sécurité + domaine + tags + description (pour la recherche sémantique). */
+async function describeTemplate(
+  apiKey: string,
+  dataUrl: string
+): Promise<{ safe: boolean; domain: string; tags: string[]; description: string } | null> {
+  const mm = /^data:(image\/[a-zA-Z0-9.+-]+);base64,/.exec(dataUrl);
+  const mime = mm ? mm[1] : 'image/jpeg';
+  let res: Response | null = null;
+  for (const textModel of TEXT_MODELS) {
+    res = await fetchWithTimeout(
+    `https://generativelanguage.googleapis.com/v1beta/models/${textModel}:generateContent`,
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-goog-api-key': apiKey },
+      body: JSON.stringify({
+        contents: [
+          {
+            parts: [
+              { inline_data: { mime_type: mime, data: dataUrl.slice(dataUrl.indexOf(',') + 1) } },
+              {
+                text:
+                  'You index design templates for a retrieval system. Look at this social-media design / template image and answer ONLY with JSON: ' +
+                  '{"safe": boolean (false if it contains nudity, sexual content, graphic violence, hate symbols or anything unsuitable to share with other users), ' +
+                  '"domain": one short lowercase English word for the business domain (fashion, food, beauty, tech, education, real-estate, sport, health, finance, events, craft, kids, travel, automotive, generic), ' +
+                  '"tags": up to 8 lowercase English keywords (visual style, mood, dominant colors, medium, layout), ' +
+                  '"description": max 60 words in English describing layout, visual style, color palette, typography feel, mood and subject. No brand names.}',
+              },
+            ],
+          },
+        ],
+        generationConfig: { responseMimeType: 'application/json', maxOutputTokens: 2000, temperature: 0.2 },
+      }),
+    },
+    30000
+  );
+    if (res.status !== 404) break;
+  }
+  if (!res) return null;
+  if (!res.ok) {
+    console.error('[Aura] template describe failed', res.status, (await res.text().catch(() => '')).slice(0, 300));
+    return null;
+  }
+  const data = (await res.json().catch(() => null)) as { candidates?: { content?: { parts?: { text?: string }[] } }[] } | null;
+  const raw = data?.candidates?.[0]?.content?.parts?.[0]?.text;
+  if (!raw) return null;
+  try {
+    const j = JSON.parse(raw) as { safe?: unknown; domain?: unknown; tags?: unknown; description?: unknown };
+    return {
+      safe: j.safe !== false,
+      domain: typeof j.domain === 'string' ? j.domain.toLowerCase().slice(0, 40) : '',
+      tags: Array.isArray(j.tags) ? j.tags.filter((t): t is string => typeof t === 'string').map((t) => t.toLowerCase().slice(0, 30)).slice(0, 8) : [],
+      description: typeof j.description === 'string' ? j.description.slice(0, 500) : '',
+    };
+  } catch {
+    return null;
+  }
+}
+
+const vecLiteral = (v: number[]) => `[${v.join(',')}]`;
+
+/** Images des templates choisis (les siens ou partagés), dans l'ordre demandé. Jamais renvoyées au navigateur. */
+async function fetchTemplateThumbs(sb: Sb, uid: string, ids: string[]): Promise<string[]> {
+  const res = await fetchWithTimeout(
+    `${sb.url}/rest/v1/aura_template_library?select=id,thumb&id=in.(${ids.join(',')})&or=(owner_id.eq.${uid},shared.eq.true)`,
+    { headers: sbHeaders(sb) },
+    10000
+  );
+  if (!res.ok) return [];
+  const rows = ((await res.json().catch(() => [])) as { id: string; thumb: string }[]) || [];
+  const byId = new Map(rows.map((r) => [r.id, r.thumb]));
+  return ids.map((id) => byId.get(id)).filter((t): t is string => typeof t === 'string' && t.startsWith('data:image/') && t.length <= 400_000);
+}
+
+async function handleTemplates(
+  stage: string,
+  apiKey: string,
+  sb: Sb | null,
+  request: Request,
+  body: Record<string, unknown>
+): Promise<Response> {
+  if (!sb) return json({ configured: false, error: 'tpl_unavailable' }, 503);
+  const uid = await sbUserId(sb, request);
+  if (!uid) return json({ error: 'auth_required' }, 401);
+
+  if (stage === 'tpl_add') {
+    if (!rateLimit(`tpl:${uid}`, 20, 60_000)) return json({ error: 'rate_limited' }, 429);
+    const image = typeof body.image === 'string' && body.image.startsWith('data:image/') && body.image.length <= 300_000 ? body.image : null;
+    if (!image) return json({ error: 'invalid_payload' }, 400);
+    const name = (asStr(body.name, 0, 40) ?? '').replace(/[\u0000-\u001f]/g, '');
+    const shared = body.shared !== false;
+
+    // Limite par utilisateur
+    const cnt = await fetchWithTimeout(
+      `${sb.url}/rest/v1/aura_template_library?select=id&owner_id=eq.${uid}`,
+      { headers: sbHeaders(sb, { Prefer: 'count=exact', Range: '0-0' }) },
+      8000
+    );
+    const total = Number((cnt.headers.get('content-range') || '').split('/')[1]);
+    if (Number.isFinite(total) && total >= TEMPLATE_LIB_MAX) return json({ error: 'tpl_full' }, 409);
+
+    const info = await describeTemplate(apiKey, image);
+    if (!info) return json({ error: 'tpl_describe' }, 502);
+    if (!info.safe) return json({ error: 'tpl_unsafe' }, 422);
+
+    const vec = await embedText(apiKey, `${info.domain}. ${info.tags.join(', ')}. ${info.description}`, 'RETRIEVAL_DOCUMENT');
+    if (!vec) return json({ error: 'tpl_embed' }, 502);
+
+    const ins = await fetchWithTimeout(
+      `${sb.url}/rest/v1/aura_template_library`,
+      {
+        method: 'POST',
+        headers: sbHeaders(sb, { Prefer: 'return=representation' }),
+        body: JSON.stringify({
+          owner_id: uid,
+          name,
+          thumb: image,
+          description: info.description,
+          tags: info.tags,
+          domain: info.domain,
+          embedding: vecLiteral(vec),
+          shared,
+        }),
+      },
+      10000
+    );
+    if (!ins.ok) {
+      console.error('[Aura] template insert failed', ins.status, (await ins.text().catch(() => '')).slice(0, 300));
+      return json({ error: 'tpl_store' }, 502);
+    }
+    const rows = (await ins.json().catch(() => [])) as { id?: string }[];
+    const id = rows?.[0]?.id;
+    if (!id) return json({ error: 'tpl_store' }, 502);
+    return json({ ok: true, id, domain: info.domain, tags: info.tags });
+  }
+
+  if (stage === 'tpl_remove') {
+    const id = typeof body.id === 'string' && UUID_RE.test(body.id) ? body.id : null;
+    if (!id) return json({ error: 'invalid_payload' }, 400);
+    const del = await fetchWithTimeout(
+      `${sb.url}/rest/v1/aura_template_library?id=eq.${id}&owner_id=eq.${uid}`,
+      { method: 'DELETE', headers: sbHeaders(sb) },
+      8000
+    );
+    return json({ ok: del.ok }, del.ok ? 200 : 502);
+  }
+
+  if (stage === 'tpl_share') {
+    const shared = body.shared !== false;
+    const upd = await fetchWithTimeout(
+      `${sb.url}/rest/v1/aura_template_library?owner_id=eq.${uid}`,
+      { method: 'PATCH', headers: sbHeaders(sb), body: JSON.stringify({ shared }) },
+      8000
+    );
+    return json({ ok: upd.ok }, upd.ok ? 200 : 502);
+  }
+
+  if (stage === 'tpl_match') {
+    if (!rateLimit(`tplm:${uid}`, 30, 60_000)) return json({ error: 'rate_limited' }, 429);
+    const query = asStr(body.query, 1, 1500);
+    if (!query) return json({ error: 'invalid_payload' }, 400);
+    const vec = await embedText(apiKey, query, 'RETRIEVAL_QUERY');
+    if (!vec) return json({ ids: [] });
+
+    const rpc = await fetchWithTimeout(
+      `${sb.url}/rest/v1/rpc/aura_match_templates`,
+      { method: 'POST', headers: sbHeaders(sb), body: JSON.stringify({ query_embedding: vecLiteral(vec), p_user: uid, p_k: 6 }) },
+      10000
+    );
+    if (!rpc.ok) {
+      console.error('[Aura] template match failed', rpc.status, (await rpc.text().catch(() => '')).slice(0, 300));
+      return json({ ids: [] });
+    }
+    const rows = ((await rpc.json().catch(() => [])) as { id: string; similarity: number; is_own: boolean }[]) || [];
+    const scored = rows
+      .filter((r) => UUID_RE.test(r.id) && (r.is_own || r.similarity >= MIN_COMMUNITY_SIM))
+      .map((r) => ({ ...r, adj: r.similarity + (r.is_own ? OWN_BONUS : 0) }))
+      .sort((a, b) => b.adj - a.adj);
+    if (scored.length === 0) return json({ ids: [] });
+
+    // Variété : parmi les quasi-ex æquo du meilleur score, on en tire un au hasard comme template principal
+    const near = scored.filter((r) => r.adj >= scored[0].adj - 0.03);
+    const primary = near[Math.floor(Math.random() * near.length)];
+    const secondary = scored.find((r) => r.id !== primary.id && r.adj >= primary.adj - 0.08);
+    const picked = [primary, ...(secondary ? [secondary] : [])];
+    return json({ ids: picked.map((r) => r.id), community: picked.some((r) => !r.is_own), similarity: Math.round(primary.similarity * 100) / 100 });
+  }
+
+  return json({ error: 'unknown_stage' }, 400);
+}
+
+// ============================================================
 // Entrée unique
 // ============================================================
 export const onRequestPost = async (context: { request: Request; env: Env }): Promise<Response> => {
@@ -813,7 +1106,14 @@ export const onRequestPost = async (context: { request: Request; env: Env }): Pr
     }
     if (stage === 'image') {
       if (!rateLimit(ip, 30, 60_000)) return json({ error: 'rate_limited' }, 429);
-      return await handleImage(apiKey, body);
+      // Templates choisis par le moteur : résolus côté serveur pour l'utilisateur authentifié
+      const sb = sbConfig(env);
+      const uid = sb && Array.isArray(body.templateIds) && body.templateIds.length > 0 ? await sbUserId(sb, request) : null;
+      return await handleImage(apiKey, body, sb && uid ? { sb, uid } : null);
+    }
+    if (typeof stage === 'string' && stage.startsWith('tpl_')) {
+      if (!rateLimit(ip, 60, 60_000)) return json({ error: 'rate_limited' }, 429);
+      return await handleTemplates(stage, apiKey, sbConfig(env), request, body);
     }
     return json({ error: 'unknown_stage' }, 400);
   } catch (err) {
