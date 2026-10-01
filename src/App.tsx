@@ -143,27 +143,27 @@ const FORMAT_SLASH: { id: FormatType; keys: string[] }[] = [
 ];
 
 // ===== CHIPS D'AMBIANCE (dizaines de styles pour différencier les prompts) =====
-const STYLE_CHIPS: { cmd: string; label: string; emoji: string }[] = [
-  { cmd: 'minimaliste', label: 'Minimaliste', emoji: '⬜' },
-  { cmd: 'luxe', label: 'Luxe & premium', emoji: '👑' },
-  { cmd: 'vintage', label: 'Vintage rétro', emoji: '📻' },
-  { cmd: 'neon', label: 'Néon cyberpunk', emoji: '🌆' },
-  { cmd: 'pastel', label: 'Pastel doux', emoji: '🍬' },
-  { cmd: 'corporate', label: 'Corporate pro', emoji: '💼' },
-  { cmd: 'fun', label: 'Fun & coloré', emoji: '🎉' },
-  { cmd: 'elegant', label: 'Élégant', emoji: '🥂' },
-  { cmd: 'audacieux', label: 'Audacieux', emoji: '🔥' },
-  { cmd: 'dramatique', label: 'Dramatique', emoji: '🎬' },
-  { cmd: 'dore', label: 'Doré scintillant', emoji: '✨' },
-  { cmd: 'naturel', label: 'Naturel organique', emoji: '🌿' },
-  { cmd: 'tech', label: 'Tech futuriste', emoji: '🤖' },
-  { cmd: 'romantique', label: 'Romantique', emoji: '🌹' },
-  { cmd: 'sportif', label: 'Sportif énergique', emoji: '⚡' },
-  { cmd: 'food', label: 'Food appétissant', emoji: '🍽️' },
-  { cmd: 'boho', label: 'Boho chic', emoji: '🪶' },
-  { cmd: 'gradient', label: 'Dégradés vifs', emoji: '🌈' },
-  { cmd: 'monochrome', label: 'Monochrome', emoji: '◼️' },
-  { cmd: 'collage', label: 'Collage magazine', emoji: '📰' },
+const STYLE_CHIPS: { cmd: string; label: string }[] = [
+  { cmd: 'minimaliste', label: 'Minimaliste' },
+  { cmd: 'luxe', label: 'Luxe & premium' },
+  { cmd: 'vintage', label: 'Vintage rétro' },
+  { cmd: 'neon', label: 'Néon cyberpunk' },
+  { cmd: 'pastel', label: 'Pastel doux' },
+  { cmd: 'corporate', label: 'Corporate pro' },
+  { cmd: 'fun', label: 'Fun & coloré' },
+  { cmd: 'elegant', label: 'Élégant' },
+  { cmd: 'audacieux', label: 'Audacieux' },
+  { cmd: 'dramatique', label: 'Dramatique' },
+  { cmd: 'dore', label: 'Doré scintillant' },
+  { cmd: 'naturel', label: 'Naturel organique' },
+  { cmd: 'tech', label: 'Tech futuriste' },
+  { cmd: 'romantique', label: 'Romantique' },
+  { cmd: 'sportif', label: 'Sportif énergique' },
+  { cmd: 'food', label: 'Food appétissant' },
+  { cmd: 'boho', label: 'Boho chic' },
+  { cmd: 'gradient', label: 'Dégradés vifs' },
+  { cmd: 'monochrome', label: 'Monochrome' },
+  { cmd: 'collage', label: 'Collage magazine' },
 ];
 
 // Nombre de projets autorisés par pack
@@ -1663,13 +1663,13 @@ export default function App() {
   const [isComposerModelOpen, setIsComposerModelOpen] = useState(false);
   const [resizeOpenId, setResizeOpenId] = useState<string | null>(null);
   const [referralOpen, setReferralOpen] = useState(false);
+  const [attachMenuOpen, setAttachMenuOpen] = useState(false);
+  const attachRef = useRef<HTMLDivElement>(null);
   const [composerHighlight, setComposerHighlight] = useState(false);
   const [slashIndex, setSlashIndex] = useState(0);
   // Options ponctuelles posées par les commandes « / » (chips visibles, valables pour le prochain envoi uniquement)
-  const [pendingFormat, setPendingFormat] = useState<FormatType | null>(null);
   const [pendingStyle, setPendingStyle] = useState<'dark' | 'light' | null>(null);
   const [pendingProjectId, setPendingProjectId] = useState<string | null>(null);
-  const [pendingChips, setPendingChips] = useState<string[]>([]);
   const composerInputRef = useRef<HTMLTextAreaElement>(null);
   const highlightTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   // Clic sur une suggestion : préremplit le champ au lieu de générer à l'aveugle
@@ -1788,6 +1788,9 @@ export default function App() {
       if (projectsRef.current && !projectsRef.current.contains(event.target as Node)) {
         setProjectsOpen(false);
       }
+      if (attachRef.current && !attachRef.current.contains(event.target as Node)) {
+        setAttachMenuOpen(false);
+      }
       if (slidesCountDropdownRef.current && !slidesCountDropdownRef.current.contains(event.target as Node)) {
         setIsSlidesDropdownOpen(false);
       }
@@ -1799,6 +1802,7 @@ export default function App() {
     function handleEscape(event: KeyboardEvent) {
       if (event.key === 'Escape') {
         setProjectsOpen(false);
+        setAttachMenuOpen(false);
         setIsFormatDropdownOpen(false);
         setIsComposerModelOpen(false);
         setIsSlidesDropdownOpen(false);
@@ -2088,9 +2092,8 @@ export default function App() {
     const currentPhotos = [...attachedImages];
     const promptText = query || (currentPhotos.length > 0 ? 'Génère un design intégrant mes photos' : '');
     const inferred = inferOpts(promptText);
-    const resolvedFmt: FormatType = opts.format ?? pendingFormat ?? inferred.format ?? selectedFormat;
+    const resolvedFmt: FormatType = opts.format ?? inferred.format ?? selectedFormat;
     const resolvedStyle: 'dark' | 'light' = pendingStyle ?? 'dark';
-    const sentChips = pendingChips.map((c) => STYLE_CHIPS.find((x) => x.cmd === c)?.label || c);
     const resolvedCount = opts.count ?? inferred.count ?? carouselSlidesCount;
 
     // ===== FACTURATION POINTS : 1 image IA générée par slide =====
@@ -2126,10 +2129,8 @@ export default function App() {
     setMessages((prev) => [...prev, userMsg]);
     if (!textToSend) setInputPrompt('');
     setAttachedImages([]);
-    setPendingFormat(null);
     setPendingStyle(null);
     setPendingProjectId(null);
-    setPendingChips([]);
     setIsGenerating(true);
 
     setTimeout(() => {
@@ -2289,10 +2290,6 @@ export default function App() {
         ? `Voici votre ${activeFmt === 'presentation' ? 'présentation' : 'carrousel'} de **${resolvedCount} slides** au format **${fmtLabel}**${currentPhotos.length > 0 ? ` avec vos ${currentPhotos.length} photo(s) intégrée(s)` : ''}. Le Canvas ci-dessous vous permet de faire défiler les slides et d'exporter en haute résolution.`
         : `Voici votre nouveau design au format **${fmtLabel}**${resolvedStyle === 'light' ? ' en **style clair**' : ''}${currentPhotos.length > 0 ? ` avec vos ${currentPhotos.length} photo(s) intégrée(s)` : ''}. Le Canvas ci-dessous vous permet de le visualiser et de l'exporter en haute résolution.`;
 
-      if (sentChips.length > 0) {
-        aiMsgText += ` Ambiance appliquée : **${sentChips.join(', ')}**.`;
-      }
-
       const aiMsg: Message = {
         id: `ast_${Date.now()}`,
         sender: 'assistant',
@@ -2321,15 +2318,6 @@ export default function App() {
   // (format, modèle), qui restent les réglages persistants par défaut.
   const slashMatch = /^\/([\p{L}\p{N}_-]*)$/u.exec(inputPrompt.trimStart());
   const slashQuery = slashMatch ? slashMatch[1].toLowerCase() : null;
-  const slashFormatItems =
-    slashQuery === null
-      ? []
-      : FORMAT_SLASH.filter((f) => f.keys.some((k) => k.startsWith(slashQuery) || k.includes(slashQuery))).map((f) => ({
-          kind: 'format' as const,
-          id: f.id,
-          cmd: f.keys[0],
-          label: FORMATS[f.id].label,
-        }));
   const slashStyleItems =
     slashQuery === null
       ? []
@@ -2346,7 +2334,6 @@ export default function App() {
           kind: 'chip' as const,
           cmd: c.cmd,
           label: c.label,
-          emoji: c.emoji,
         }));
   const slashProjectItems =
     slashQuery === null
@@ -2354,30 +2341,22 @@ export default function App() {
       : projects
           .filter((pk) => slugify(pk.name).includes(slashQuery))
           .map((pk) => ({ kind: 'project' as const, id: pk.id, cmd: slugify(pk.name), label: pk.name }));
-  const slashItems = [...slashFormatItems, ...slashStyleItems, ...slashChipItems, ...slashProjectItems];
+  const slashItems = [...slashStyleItems, ...slashChipItems, ...slashProjectItems];
   useEffect(() => {
     setSlashIndex(0);
   }, [inputPrompt]);
 
   const acceptSlash = (item: (typeof slashItems)[number]) => {
-    setInputPrompt('');
-    if (item.kind === 'format') {
-      setPendingFormat(item.id);
-      showToast(`Format « ${FORMATS[item.id].label} » appliqué à la prochaine génération`);
-    } else if (item.kind === 'style') {
+    if (item.kind === 'style') {
       setPendingStyle(item.style);
       showToast(`Style ${item.style === 'dark' ? 'sombre' : 'clair'} appliqué à la prochaine génération`);
     } else if (item.kind === 'chip') {
-      setPendingChips((prev) => {
-        if (prev.includes(item.cmd)) return prev.filter((c) => c !== item.cmd);
-        if (prev.length >= 3) {
-          showToast('Maximum 3 ambiances par design.');
-          return prev;
-        }
-        const chip = STYLE_CHIPS.find((c) => c.cmd === item.cmd);
-        showToast(`Ambiance ${chip?.emoji || ''} ${chip?.label} ajoutée !`);
-        return [...prev, item.cmd];
+      // L'ambiance s'inscrit directement dans le texte envoyé à l'IA
+      setInputPrompt((prev) => {
+        const base = prev.replace(/\s+$/, '').replace(/\s*,\s*$/, '');
+        return base ? `${base}, ${item.label}` : item.label;
       });
+      showToast(`Ambiance « ${item.label} » ajoutée au texte`);
     } else {
       setPendingProjectId(item.id);
       const pk = projects.find((x) => x.id === item.id);
@@ -3394,7 +3373,7 @@ export default function App() {
             />
 
             {/* Chips des options ponctuelles (commandes « / ») */}
-            {(pendingFormat || pendingStyle || pendingProjectId) && (
+            {(pendingStyle || pendingProjectId) && (
               <div className="flex flex-wrap items-center gap-1.5 mb-2 px-1">
                 <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Appliqué à l'envoi :</span>
                 {pendingProjectId &&
@@ -3415,28 +3394,6 @@ export default function App() {
                       </span>
                     );
                   })()}
-                {pendingFormat && (
-                  <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-amber-50 border border-amber-200 text-[10px] font-bold text-amber-800 shadow-2xs">
-                    {FORMATS[pendingFormat].label}
-                    <button type="button" onClick={() => setPendingFormat(null)} className="text-amber-400 hover:text-amber-700 cursor-pointer">
-                      <X className="w-3 h-3" />
-                    </button>
-                  </span>
-                )}
-                {pendingChips.map((cmd) => {
-                  const chip = STYLE_CHIPS.find((c) => c.cmd === cmd);
-                  return (
-                    <span
-                      key={cmd}
-                      className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-gradient-to-r from-amber-100 to-orange-100 border border-amber-300/70 text-[10px] font-bold text-amber-900 shadow-2xs"
-                    >
-                      {chip?.emoji} {chip?.label}
-                      <button type="button" onClick={() => setPendingChips((prev) => prev.filter((c) => c !== cmd))} className="text-amber-400 hover:text-amber-700 cursor-pointer">
-                        <X className="w-3 h-3" />
-                      </button>
-                    </span>
-                  );
-                })}
                 {pendingStyle && (
                   <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-zinc-900 text-white border border-zinc-700 text-[10px] font-bold shadow-2xs">
                     {pendingStyle === 'dark' ? <Moon className="w-3 h-3" /> : <Sun className="w-3 h-3" />}
@@ -3449,43 +3406,13 @@ export default function App() {
               </div>
             )}
 
-            {/* Popup des commandes slash (uniquement en début de champ) */}
+            {/* Popup des commandes slash (compacte, uniquement en début de champ) */}
             {slashItems.length > 0 && slashQuery !== null && (
-              <div className="absolute bottom-full left-0 right-0 mb-3 rounded-2xl bg-white border border-gray-200 shadow-xl p-1.5 z-30 space-y-0.5 max-h-72 overflow-y-auto">
-                <div className="px-2.5 pt-1 pb-1 text-[10px] font-bold text-gray-400 uppercase tracking-wider flex items-center justify-between">
-                  <span>Commandes</span>
-                  <span className="normal-case font-semibold text-gray-300">↑↓ puis Entrée</span>
+              <div className="absolute left-0 bottom-full mb-3 w-64 max-w-[85vw] rounded-2xl bg-white border border-gray-200 shadow-xl p-1.5 z-30 space-y-0.5 max-h-64 overflow-y-auto">
+                <div className="px-2.5 pt-1 pb-1 text-[10px] font-bold text-gray-400 uppercase tracking-wider">
+                  Commandes
                 </div>
 
-                {slashFormatItems.length > 0 && (
-                  <div className="px-2.5 pt-1 text-[9px] font-bold text-gray-300 uppercase tracking-wider">Format</div>
-                )}
-                {slashFormatItems.map((it) => {
-                  const flatIdx = slashItems.indexOf(it);
-                  const F = FORMATS[it.id];
-                  return (
-                    <button
-                      key={`sf_${it.id}`}
-                      type="button"
-                      onMouseEnter={() => setSlashIndex(flatIdx)}
-                      onClick={() => acceptSlash(it)}
-                      className={`w-full flex items-center gap-2.5 px-2.5 py-2 rounded-xl text-xs cursor-pointer transition-colors ${
-                        flatIdx === slashIndex ? 'bg-amber-50 text-amber-900 font-bold' : 'text-gray-700 hover:bg-gray-100'
-                      }`}
-                    >
-                      <span className="w-6 h-6 rounded-lg bg-gray-100 flex items-center justify-center shrink-0">
-                        <F.Icon className="w-3.5 h-3.5 text-gray-500" />
-                      </span>
-                      <span className="font-mono text-[11px] text-gray-500 shrink-0">/{it.cmd}</span>
-                      <span className="flex-1 text-left truncate font-semibold">{it.label}</span>
-                      <span className="text-[9px] font-semibold text-gray-400">Format</span>
-                    </button>
-                  );
-                })}
-
-                {slashStyleItems.length > 0 && (
-                  <div className="px-2.5 pt-1 text-[9px] font-bold text-gray-300 uppercase tracking-wider">Style</div>
-                )}
                 {slashStyleItems.map((it) => {
                   const flatIdx = slashItems.indexOf(it);
                   return (
@@ -3494,51 +3421,49 @@ export default function App() {
                       type="button"
                       onMouseEnter={() => setSlashIndex(flatIdx)}
                       onClick={() => acceptSlash(it)}
-                      className={`w-full flex items-center gap-2.5 px-2.5 py-2 rounded-xl text-xs cursor-pointer transition-colors ${
+                      className={`w-full flex items-center justify-between gap-2 px-2.5 py-1.5 rounded-xl text-xs cursor-pointer transition-colors ${
                         flatIdx === slashIndex ? 'bg-amber-50 text-amber-900 font-bold' : 'text-gray-700 hover:bg-gray-100'
                       }`}
                     >
-                      <span className="w-6 h-6 rounded-lg bg-gray-100 flex items-center justify-center shrink-0">
-                        {it.style === 'dark' ? <Moon className="w-3.5 h-3.5 text-gray-500" /> : <Sun className="w-3.5 h-3.5 text-gray-500" />}
+                      <span className="flex items-center gap-2 min-w-0">
+                        <span className="w-5 h-5 rounded-md bg-gray-100 flex items-center justify-center shrink-0">
+                          {it.style === 'dark' ? <Moon className="w-3 h-3 text-gray-500" /> : <Sun className="w-3 h-3 text-gray-500" />}
+                        </span>
+                        <span className="truncate">{it.label}</span>
                       </span>
-                      <span className="font-mono text-[11px] text-gray-500 shrink-0">/{it.cmd}</span>
-                      <span className="flex-1 text-left truncate font-semibold">{it.label}</span>
-                      <span className="text-[9px] font-semibold text-gray-400">Style</span>
+                      <span className="text-[9px] font-semibold text-gray-400 shrink-0">{it.style === 'dark' ? 'Sombre' : 'Clair'}</span>
                     </button>
                   );
                 })}
 
-                {slashChipItems.length > 0 && (
-                  <div className="px-2.5 pt-1 text-[9px] font-bold text-gray-300 uppercase tracking-wider">Ambiance</div>
-                )}
                 {slashChipItems.map((it) => {
                   const flatIdx = slashItems.indexOf(it);
-                  const active = pendingChips.includes(it.cmd);
+                  const already = (inputPrompt.toLowerCase().includes(it.label.toLowerCase()));
                   return (
                     <button
                       key={`sc_${it.cmd}`}
                       type="button"
                       onMouseEnter={() => setSlashIndex(flatIdx)}
                       onClick={() => acceptSlash(it)}
-                      className={`w-full flex items-center gap-2.5 px-2.5 py-2 rounded-xl text-xs cursor-pointer transition-colors ${
+                      className={`w-full flex items-center justify-between gap-2 px-2.5 py-1.5 rounded-xl text-xs cursor-pointer transition-colors ${
                         flatIdx === slashIndex ? 'bg-amber-50 text-amber-900 font-bold' : 'text-gray-700 hover:bg-gray-100'
                       }`}
                     >
-                      <span className="w-6 h-6 rounded-lg bg-gray-100 flex items-center justify-center shrink-0 text-sm">{it.emoji}</span>
-                      <span className="font-mono text-[11px] text-gray-500 shrink-0">/{it.cmd}</span>
-                      <span className="flex-1 text-left truncate font-semibold">{it.label}</span>
-                      {active ? (
-                        <span className="text-[9px] font-bold text-emerald-600 bg-emerald-50 border border-emerald-200 px-1.5 py-0.5 rounded-full">AJOUTÉE</span>
+                      <span className="flex items-center gap-2 min-w-0">
+                        <span className="w-5 h-5 rounded-md bg-gradient-to-br from-amber-100 to-orange-100 flex items-center justify-center shrink-0">
+                          <span className="w-2 h-2 rounded-full bg-gradient-to-br from-amber-400 to-orange-500" />
+                        </span>
+                        <span className="truncate">{it.label}</span>
+                      </span>
+                      {already ? (
+                        <span className="text-[9px] font-bold text-emerald-600 shrink-0">DANS LE TEXTE</span>
                       ) : (
-                        <span className="text-[9px] font-semibold text-gray-400">Ambiance</span>
+                        <span className="text-[9px] font-semibold text-gray-400 shrink-0">Ambiance</span>
                       )}
                     </button>
                   );
                 })}
 
-                {slashProjectItems.length > 0 && (
-                  <div className="px-2.5 pt-1 text-[9px] font-bold text-gray-300 uppercase tracking-wider">Espaces</div>
-                )}
                 {slashProjectItems.map((it) => {
                   const flatIdx = slashItems.indexOf(it);
                   const pk = projects.find((x) => x.id === it.id);
@@ -3548,19 +3473,20 @@ export default function App() {
                       type="button"
                       onMouseEnter={() => setSlashIndex(flatIdx)}
                       onClick={() => acceptSlash(it)}
-                      className={`w-full flex items-center gap-2.5 px-2.5 py-2 rounded-xl text-xs cursor-pointer transition-colors ${
+                      className={`w-full flex items-center justify-between gap-2 px-2.5 py-1.5 rounded-xl text-xs cursor-pointer transition-colors ${
                         flatIdx === slashIndex ? 'bg-amber-50 text-amber-900 font-bold' : 'text-gray-700 hover:bg-gray-100'
                       }`}
                     >
-                      <span
-                        className="w-6 h-6 rounded-lg flex items-center justify-center shrink-0 overflow-hidden text-[10px] font-bold text-white"
-                        style={{ backgroundColor: pk?.color }}
-                      >
-                        {pk?.logo ? <img src={pk.logo} alt="" className="w-full h-full object-contain p-0.5" /> : it.label.slice(0, 1).toUpperCase()}
+                      <span className="flex items-center gap-2 min-w-0">
+                        <span
+                          className="w-5 h-5 rounded-md flex items-center justify-center shrink-0 overflow-hidden text-[9px] font-bold text-white"
+                          style={{ backgroundColor: pk?.color }}
+                        >
+                          {pk?.logo ? <img src={pk.logo} alt="" className="w-full h-full object-contain p-0.5" /> : it.label.slice(0, 1).toUpperCase()}
+                        </span>
+                        <span className="truncate">{it.label}</span>
                       </span>
-                      <span className="font-mono text-[11px] text-gray-500 shrink-0">/{it.cmd}</span>
-                      <span className="flex-1 text-left truncate font-semibold">{it.label}</span>
-                      <span className="text-[9px] font-semibold text-gray-400">Espace</span>
+                      <span className="text-[9px] font-semibold text-gray-400 shrink-0">Espace</span>
                     </button>
                   );
                 })}
@@ -3600,15 +3526,56 @@ export default function App() {
               )}
 
               <div className="flex items-center w-full">
-                {/* Icône "+" pour ajouter des photos et images */}
-                <button
-                  type="button"
-                  onClick={() => photoInputRef.current?.click()}
-                  title="Ajouter des photos"
-                  className="w-9 h-9 rounded-full hover:bg-gray-200/80 text-gray-600 hover:text-gray-900 flex items-center justify-center shrink-0 transition-colors cursor-pointer"
-                >
-                  <Plus className="w-5 h-5 stroke-[2]" />
-                </button>
+                {/* Bouton "+" : menu photo / ambiances */}
+                <div className="relative shrink-0" ref={attachRef}>
+                  <button
+                    type="button"
+                    onClick={() => setAttachMenuOpen((v) => !v)}
+                    title="Ajouter une photo ou une ambiance"
+                    className={`w-9 h-9 rounded-full flex items-center justify-center shrink-0 transition-colors cursor-pointer ${attachMenuOpen ? 'bg-gray-900 text-white' : 'hover:bg-gray-200/80 text-gray-600 hover:text-gray-900'}`}
+                  >
+                    <Plus className={`w-5 h-5 stroke-[2] transition-transform ${attachMenuOpen ? 'rotate-45' : ''}`} />
+                  </button>
+
+                  {attachMenuOpen && (
+                    <div className="absolute left-0 bottom-12 w-60 rounded-2xl bg-white border border-gray-200 shadow-xl p-1.5 z-30 space-y-0.5">
+                      <div className="px-2.5 pt-1 pb-1 text-[10px] font-bold text-gray-400 uppercase tracking-wider">
+                        Ajouter au design
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setAttachMenuOpen(false);
+                          photoInputRef.current?.click();
+                        }}
+                        className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-xl text-xs font-semibold text-gray-700 hover:bg-gray-100 cursor-pointer transition-colors"
+                      >
+                        <span className="w-6 h-6 rounded-lg bg-gray-100 flex items-center justify-center shrink-0">
+                          <ImageIcon className="w-3.5 h-3.5 text-gray-500" />
+                        </span>
+                        Uploader une photo
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setAttachMenuOpen(false);
+                          setInputPrompt('/');
+                          setTimeout(() => composerInputRef.current?.focus(), 0);
+                        }}
+                        className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-xl text-xs font-semibold text-gray-700 hover:bg-gray-100 cursor-pointer transition-colors"
+                      >
+                        <span className="w-6 h-6 rounded-lg bg-gradient-to-br from-amber-100 to-orange-100 flex items-center justify-center shrink-0">
+                          <span className="w-2.5 h-2.5 rounded-full bg-gradient-to-br from-amber-400 to-orange-500" />
+                        </span>
+                        Ajouter une ambiance
+                      </button>
+                      <div className="my-1 border-t border-gray-100" />
+                      <p className="px-2.5 pb-1 text-[10px] text-gray-400 leading-relaxed">
+                        Astuce : tapez « / » dans le champ pour les commandes rapides.
+                      </p>
+                    </div>
+                  )}
+                </div>
 
                 {/* Champ de texte */}
                 <textarea
