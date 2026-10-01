@@ -30,13 +30,24 @@ import {
   CheckCircle2,
   ExternalLink,
   Menu,
-  UploadCloud
+  UploadCloud,
+  Globe,
+  ShoppingBag,
+  Presentation,
+  Languages,
+  CircleHelp,
+  Info,
+  Zap,
+  LogOut,
+  FileImage
 } from 'lucide-react';
 import imgAbstract from './assets/images/social_abstract_accent_1790812839231.jpg';
 import imgMarketing from './assets/images/social_marketing_visual_1790812851560.jpg';
 
 // Format types
-type FormatType = 'scroller' | 'story' | 'square';
+type FormatType = 'scroller' | 'story' | 'square' | 'website' | 'product' | 'poster' | 'presentation';
+type Lang = 'fr' | 'en' | 'ar';
+type PlanId = 'free' | 'pro' | 'business';
 
 interface Slide {
   id: string;
@@ -150,11 +161,52 @@ const INITIAL_DEMO_MESSAGES: Message[] = [
   },
 ];
 
-const DIMENSIONS: Record<FormatType, { w: number; h: number }> = {
-  scroller: { w: 1080, h: 1350 },
-  story: { w: 1080, h: 1920 },
-  square: { w: 1080, h: 1080 },
+const FORMATS: Record<
+  FormatType,
+  {
+    label: string;
+    short: string;
+    w: number;
+    h: number;
+    aspect: string;
+    kind: 'carousel' | 'single';
+    Icon: React.ComponentType<{ className?: string }>;
+    tag: string;
+    cta: string;
+    sub: string;
+  }
+> = {
+  scroller: { label: 'Carrousel 4:5', short: '4:5', w: 1080, h: 1350, aspect: 'aspect-[4/5] max-w-md', kind: 'carousel', Icon: Layers, tag: 'CARROUSEL', cta: 'Enregistrer ➔', sub: '' },
+  story: { label: 'Story 9:16', short: '9:16', w: 1080, h: 1920, aspect: 'aspect-[9/14] max-w-sm', kind: 'single', Icon: Smartphone, tag: 'STORY IMPACT', cta: 'Swipe up ➔', sub: 'Une stratégie claire et 3 principes immuables pour transformer votre visibilité.' },
+  square: { label: 'Post carré 1:1', short: '1:1', w: 1080, h: 1080, aspect: 'aspect-square max-w-md', kind: 'single', Icon: Square, tag: 'POST CARRÉ', cta: 'Enregistrer ➔', sub: 'Une stratégie claire et 3 principes immuables pour transformer votre visibilité.' },
+  website: { label: 'Site web 16:9', short: '16:9', w: 1920, h: 1080, aspect: 'aspect-video max-w-2xl', kind: 'single', Icon: Globe, tag: 'SITE WEB · SECTION HERO', cta: 'Démarrer maintenant ➔', sub: 'Une page d\'accueil claire : promesse, preuve et appel à l\'action visibles dès l\'arrivée.' },
+  product: { label: 'Produit 3:4', short: '3:4', w: 1200, h: 1600, aspect: 'aspect-[3/4] max-w-md', kind: 'single', Icon: ShoppingBag, tag: 'FICHE PRODUIT', cta: 'Ajouter au panier ➔', sub: 'Un visuel fort, des bénéfices concrets et une preuve sociale pour convertir dès la première visite.' },
+  poster: { label: 'Affiche 2:3', short: '2:3', w: 1200, h: 1800, aspect: 'aspect-[2/3] max-w-sm', kind: 'single', Icon: FileImage, tag: 'AFFICHE · ÉVÉNEMENT', cta: 'Réservez votre place ➔', sub: 'Une accroche immédiate, une hiérarchie nette et une information clé lisible à distance.' },
+  presentation: { label: 'Présentation 16:9', short: '16:9', w: 1920, h: 1080, aspect: 'aspect-video max-w-2xl', kind: 'carousel', Icon: Presentation, tag: 'PRÉSENTATION', cta: 'Suivant ➔', sub: '' },
 };
+const FORMAT_ORDER: FormatType[] = ['scroller', 'story', 'square', 'website', 'product', 'poster', 'presentation'];
+
+const I18N: Record<Lang, Record<string, string>> = {
+  fr: { newDesign: 'Nouveau design', search: 'Recherche', brandKit: 'Brand Kit', templates: 'Templates', recents: 'Récents', greeting: 'Bonjour', subtitle: "On travaille sur quoi aujourd'hui ?", placeholder: "Décrivez le design à créer... (site web, produit, story, carrousel, affiche)", share: 'Partager', settings: 'Paramètres', language: 'Langue', help: "Obtenir de l'aide", learnMore: 'En savoir plus', upgrade: 'Mettre le forfait à niveau', logout: 'Se déconnecter', plan: 'Forfait' },
+  en: { newDesign: 'New design', search: 'Search', brandKit: 'Brand Kit', templates: 'Templates', recents: 'Recents', greeting: 'Hello', subtitle: 'What are we working on today?', placeholder: 'Describe the design to create... (website, product, story, carousel, poster)', share: 'Share', settings: 'Settings', language: 'Language', help: 'Get help', learnMore: 'Learn more', upgrade: 'Upgrade plan', logout: 'Log out', plan: 'Plan' },
+  ar: { newDesign: 'تصميم جديد', search: 'بحث', brandKit: 'هوية العلامة', templates: 'قوالب', recents: 'الأخيرة', greeting: 'مرحباً', subtitle: 'على ماذا سنعمل اليوم؟', placeholder: 'صف التصميم المطلوب... (موقع، منتج، ستوري، كاروسيل، ملصق)', share: 'مشاركة', settings: 'الإعدادات', language: 'اللغة', help: 'احصل على مساعدة', learnMore: 'اعرف المزيد', upgrade: 'ترقية الباقة', logout: 'تسجيل الخروج', plan: 'الباقة' },
+};
+const LANGS: { id: Lang; label: string }[] = [
+  { id: 'fr', label: 'Français' },
+  { id: 'en', label: 'English' },
+  { id: 'ar', label: 'العربية' },
+];
+const PLANS: { id: PlanId; name: string; desc: string; features: string[] }[] = [
+  { id: 'free', name: 'Gratuit', desc: 'Pour découvrir', features: ['10 designs / mois', 'Export PNG', '1 Brand Kit'] },
+  { id: 'pro', name: 'Pro', desc: 'Pour les créateurs', features: ['Designs illimités', 'Export HD', 'Tous les formats', 'Brand Kits multiples'] },
+  { id: 'business', name: 'Business', desc: 'Pour les équipes', features: ['Tout Pro', 'Espace d\'équipe', 'Support prioritaire'] },
+];
+const FAQ: { q: string; a: string }[] = [
+  { q: 'Quels types de designs puis-je créer ?', a: 'Posts et stories pour les réseaux sociaux, carrousels, sites web, fiches produit, affiches et présentations. Choisissez le format dans la barre de saisie.' },
+  { q: 'Comment exporter mon design ?', a: 'Dans le Canvas, cliquez sur « PNG HD » pour télécharger le slide affiché, ou utilisez la suggestion « Télécharger les slides en PNG » pour tout exporter.' },
+  { q: 'Comment appliquer ma marque ?', a: 'Ouvrez Brand Kit : logo, nom, identifiant et couleur d\'accentuation sont appliqués à tous vos designs.' },
+  { q: 'Raccourcis utiles', a: 'Entrée pour envoyer, Échap pour fermer une fenêtre ou un menu.' },
+];
 
 const loadImage = (src: string) =>
   new Promise<HTMLImageElement | null>((resolve) => {
@@ -188,7 +240,7 @@ async function slideToPngBlob(
   total: number,
   brand: { name: string; handle: string; color: string }
 ): Promise<Blob | null> {
-  const { w, h } = DIMENSIONS[format];
+  const { w, h } = FORMATS[format];
   const canvas = document.createElement('canvas');
   canvas.width = w;
   canvas.height = h;
@@ -245,9 +297,9 @@ async function slideToPngBlob(
   ctx.textAlign = 'left';
 
   // Body
-  const big = format === 'story' ? 88 : 78;
-  const maxW = w - pad * 2;
-  let y = format === 'story' ? 520 : format === 'square' ? 300 : 360;
+  const big = format === 'story' ? 88 : w > h ? 70 : 78;
+  const maxW = Math.min(w - pad * 2, 1100);
+  let y = Math.round(h * 0.26);
 
   ctx.fillStyle = brand.color;
   ctx.font = F(600, 26);
@@ -340,9 +392,20 @@ const copyText = async (text: string) => {
 
 const inferOpts = (text: string): { format?: FormatType; count?: number } => {
   const l = text.toLowerCase();
-  const format: FormatType | undefined = l.includes('story')
+  const has = (...k: string[]) => k.some((x) => l.includes(x));
+  const format: FormatType | undefined = has('carrousel', 'carousel')
+    ? 'scroller'
+    : has('story')
     ? 'story'
-    : l.includes('carré') || l.includes('citation')
+    : has('site web', 'website', 'landing', 'page d\'accueil')
+    ? 'website'
+    : has('présentation', 'presentation', 'pitch deck')
+    ? 'presentation'
+    : has('fiche produit', 'produit', 'packshot', 'product')
+    ? 'product'
+    : has('affiche', 'poster', 'flyer')
+    ? 'poster'
+    : has('carré', 'citation')
     ? 'square'
     : undefined;
   const m = l.match(/(\d+)\s*slides/);
@@ -367,6 +430,45 @@ export default function App() {
   useEffect(() => {
     activeIdRef.current = activeSessionId;
   }, [activeSessionId]);
+  const [lang, setLang] = useState<Lang>(() => {
+    try {
+      return (localStorage.getItem('aura_lang') as Lang) || 'fr';
+    } catch {
+      return 'fr';
+    }
+  });
+  const [plan, setPlan] = useState<PlanId>(() => {
+    try {
+      return (localStorage.getItem('aura_plan') as PlanId) || 'free';
+    } catch {
+      return 'free';
+    }
+  });
+  const [loggedOut, setLoggedOut] = useState(() => {
+    try {
+      return localStorage.getItem('aura_logged_out') === '1';
+    } catch {
+      return false;
+    }
+  });
+  const [accountMenuOpen, setAccountMenuOpen] = useState(false);
+  const [langMenuOpen, setLangMenuOpen] = useState(false);
+  const [modal, setModal] = useState<null | 'settings' | 'help' | 'upgrade' | 'about'>(null);
+  const [faqOpen, setFaqOpen] = useState<number | null>(0);
+  const accountRef = useRef<HTMLDivElement>(null);
+  const t = (k: string) => I18N[lang][k] ?? I18N.fr[k] ?? k;
+  useEffect(() => {
+    document.documentElement.lang = lang;
+    document.documentElement.dir = lang === 'ar' ? 'rtl' : 'ltr';
+    try {
+      localStorage.setItem('aura_lang', lang);
+    } catch {}
+  }, [lang]);
+  useEffect(() => {
+    try {
+      localStorage.setItem('aura_plan', plan);
+    } catch {}
+  }, [plan]);
   const [searchOpen, setSearchOpen] = useState(false);
   const [sessionSearch, setSessionSearch] = useState('');
   const [model, setModel] = useState(MODELS[0]);
@@ -464,41 +566,20 @@ export default function App() {
   });
 
   // Salutation dynamique Gemini
-  const greetingSalutation = 'Bonjour';
+  const greetingSalutation = t('greeting');
 
   // Suggestions d'inspiration sur la page d'accueil style Gemini
   const welcomeSuggestions = [
-    {
-      title: 'Carrousel B2B Viral',
-      badge: 'Carrousel 4:5 · 5 slides',
-      format: 'scroller' as FormatType,
-      slidesCount: 5,
-      prompt: 'Génère un carrousel B2B en 5 slides sur les erreurs fatales que font les startups en phase de scaling.',
-      icon: <Layers className="w-4 h-4 text-amber-600" />,
-    },
-    {
-      title: 'Story Teaser Masterclass',
-      badge: 'Story 9:16',
-      format: 'story' as FormatType,
-      prompt: 'Génère une story teaser ultra-captivante pour une masterclass IA jeudi à 18h avec compte à rebours.',
-      icon: <Smartphone className="w-4 h-4 text-amber-600" />,
-    },
-    {
-      title: 'Poster Citation Minimaliste',
-      badge: 'Carré 1:1',
-      format: 'square' as FormatType,
-      prompt: 'Crée un post citation percutant et minimaliste sur la discipline et le focus d\'un fondateur.',
-      icon: <Square className="w-4 h-4 text-amber-600" />,
-    },
-    {
-      title: 'Framework Avant / Après',
-      badge: 'Carrousel 4:5 · 4 slides',
-      format: 'scroller' as FormatType,
-      slidesCount: 4,
-      prompt: 'Génère un comparatif avant / après en 4 slides montrant l\'impact concret de l\'automatisation IA.',
-      icon: <Sparkles className="w-4 h-4 text-amber-600" />,
-    },
-  ];
+    { title: 'Carrousel B2B', format: 'scroller' as FormatType, slidesCount: 5, prompt: 'Génère un carrousel B2B en 5 slides sur les erreurs fatales que font les startups en phase de scaling.' },
+    { title: 'Story Instagram', format: 'story' as FormatType, prompt: 'Génère une story teaser ultra-captivante pour une masterclass IA jeudi à 18h avec compte à rebours.' },
+    { title: 'Site web', format: 'website' as FormatType, prompt: 'Conçois la section hero d\'un site web pour une agence de marketing digital moderne.' },
+    { title: 'Fiche produit', format: 'product' as FormatType, prompt: 'Crée une fiche produit élégante pour une montre minimaliste, avec bénéfices clés et preuve sociale.' },
+    { title: 'Affiche événement', format: 'poster' as FormatType, prompt: 'Crée une affiche percutante pour un festival de cinéma en plein air ce samedi soir.' },
+    { title: 'Présentation pitch', format: 'presentation' as FormatType, slidesCount: 5, prompt: 'Génère une présentation pitch deck en 5 slides pour une startup SaaS en phase de lancement.' },
+  ].map((c) => {
+    const F = FORMATS[c.format].Icon;
+    return { ...c, icon: <F className="w-4 h-4 text-orange-600" /> };
+  });
 
   const showToast = (msg: string) => {
     setToastMessage(msg);
@@ -526,6 +607,10 @@ export default function App() {
       if (modelRef.current && !modelRef.current.contains(event.target as Node)) {
         setIsModelOpen(false);
       }
+      if (accountRef.current && !accountRef.current.contains(event.target as Node)) {
+        setAccountMenuOpen(false);
+        setLangMenuOpen(false);
+      }
     }
     function handleEscape(event: KeyboardEvent) {
       if (event.key === 'Escape') {
@@ -534,6 +619,8 @@ export default function App() {
         setIsFormatDropdownOpen(false);
         setIsSlidesDropdownOpen(false);
         setIsModelOpen(false);
+        setAccountMenuOpen(false);
+        setModal(null);
       }
     }
     document.addEventListener('mousedown', handleClickOutside);
@@ -545,11 +632,10 @@ export default function App() {
   }, []);
 
   // Format definitions
-  const formatOptions: { id: FormatType; label: string; ratio: string; icon: React.ReactNode }[] = [
-    { id: 'scroller', label: 'Carrousel 4:5', ratio: '1080 × 1350', icon: <Layers className="w-4 h-4 text-gray-600" /> },
-    { id: 'story', label: 'Story 9:16', ratio: '1080 × 1920', icon: <Smartphone className="w-4 h-4 text-gray-600" /> },
-    { id: 'square', label: 'Carré 1:1', ratio: '1080 × 1080', icon: <Square className="w-4 h-4 text-gray-600" /> },
-  ];
+  const formatOptions = FORMAT_ORDER.map((id) => {
+    const F = FORMATS[id];
+    return { id, label: F.label, ratio: `${F.w} × ${F.h}`, icon: <F.Icon className="w-4 h-4 text-gray-600" /> };
+  });
 
   const currentFormatObj = formatOptions.find((f) => f.id === selectedFormat) || formatOptions[0];
 
@@ -688,7 +774,7 @@ export default function App() {
 
       let slidesToBuild: Slide[] = [];
 
-      if (activeFmt === 'scroller') {
+      if (FORMATS[activeFmt].kind === 'carousel') {
         const count = resolvedCount;
         // Slide 1: Hook
         slidesToBuild.push({
@@ -798,12 +884,12 @@ export default function App() {
           {
             id: `gen_1_${Date.now()}`,
             slideNumber: 1,
-            tag: activeFmt === 'story' ? 'STORY IMPACT' : 'POST CARRÉ',
-            title: promptText.length < 45 ? promptText : 'La vérité que personne n\'ose dire dans votre industrie.',
-            subtitle: 'Une stratégie claire et 3 principes immuables pour transformer votre visibilité.',
-            highlightWord: 'vérité',
+            tag: FORMATS[activeFmt].tag,
+            title: promptText.length < 60 ? promptText : 'Un design pensé pour convertir dès le premier regard.',
+            subtitle: FORMATS[activeFmt].sub,
+            highlightWord: undefined,
             image: heroImg,
-            ctaText: activeFmt === 'story' ? 'Swipe up ➔' : 'Enregistrer ➔',
+            ctaText: FORMATS[activeFmt].cta,
           },
           {
             id: `gen_2_${Date.now()}`,
@@ -828,9 +914,11 @@ export default function App() {
         slides: slidesToBuild,
       };
 
-      const aiMsgText = activeFmt === 'scroller'
-        ? `Voici votre nouveau carrousel de **${resolvedCount} slides** généré au format **Carrousel 4:5**${currentPhotos.length > 0 ? ` avec vos ${currentPhotos.length} photo(s) intégrée(s)` : ''}. Le Canvas ci-dessous vous permet de faire défiler l'ensemble des ${resolvedCount} slides, d'ajuster le contenu et d'exporter en haute résolution.`
-        : `Voici votre nouveau design généré au format **${activeFmt === 'story' ? 'Story 9:16' : 'Carré 1:1'}**${currentPhotos.length > 0 ? ` avec vos ${currentPhotos.length} photo(s) intégrée(s)` : ''}. Le Canvas ci-dessous vous permet de visualiser et d'exporter en haute résolution.`;
+      const fmtLabel = FORMATS[activeFmt].label;
+      const isCarousel = FORMATS[activeFmt].kind === 'carousel';
+      const aiMsgText = isCarousel
+        ? `Voici votre ${activeFmt === 'presentation' ? 'présentation' : 'carrousel'} de **${resolvedCount} slides** au format **${fmtLabel}**${currentPhotos.length > 0 ? ` avec vos ${currentPhotos.length} photo(s) intégrée(s)` : ''}. Le Canvas ci-dessous vous permet de faire défiler les slides et d'exporter en haute résolution.`
+        : `Voici votre nouveau design au format **${fmtLabel}**${currentPhotos.length > 0 ? ` avec vos ${currentPhotos.length} photo(s) intégrée(s)` : ''}. Le Canvas ci-dessous vous permet de le visualiser et de l'exporter en haute résolution.`;
 
       const aiMsg: Message = {
         id: `ast_${Date.now()}`,
@@ -840,7 +928,7 @@ export default function App() {
         design: generatedDesign,
         suggestions: [
           'Affiner le texte du Slide 1',
-          activeFmt === 'scroller' ? `Régénérer avec ${resolvedCount === 5 ? 7 : 5} slides` : 'Passer en format Carrousel 4:5',
+          isCarousel ? `Régénérer avec ${resolvedCount === 5 ? 7 : 5} slides` : 'Passer en format Carrousel 4:5',
           'Exporter tout le carrousel en PNG HD',
         ],
       };
@@ -850,7 +938,7 @@ export default function App() {
       } else {
         setSessionMessagesMap((prev) => ({ ...prev, [sessionId]: [...(prev[sessionId] || []), aiMsg] }));
       }
-      showToast(activeFmt === 'scroller' ? `Carrousel de ${resolvedCount} slides généré !` : 'Nouveau design généré !');
+      showToast(isCarousel ? `${resolvedCount} slides générés !` : 'Nouveau design généré !');
     }, 1100);
   };
 
@@ -901,8 +989,40 @@ export default function App() {
     s.title.toLowerCase().includes(sessionSearch.trim().toLowerCase())
   );
 
+  if (loggedOut) {
+    return (
+      <div className="relative flex h-screen w-screen items-center justify-center overflow-hidden p-4">
+        <div className="aurora" aria-hidden="true">
+          <span className="blob blob-a" />
+          <span className="blob blob-b" />
+          <span className="blob blob-c" />
+          <span className="blob blob-d" />
+        </div>
+        <div className="relative z-10 w-full max-w-sm rounded-3xl bg-white/85 backdrop-blur-md border border-orange-200/60 shadow-xl p-8 text-center space-y-4 animate-fade-in">
+          <div className="mx-auto w-12 h-12 rounded-full bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center">
+            <Sparkles className="w-6 h-6 text-white" />
+          </div>
+          <h1 className="text-xl font-semibold text-gray-900">Vous êtes déconnecté</h1>
+          <p className="text-sm text-gray-500">À bientôt sur Aura Design.</p>
+          <button
+            type="button"
+            onClick={() => {
+              try {
+                localStorage.removeItem('aura_logged_out');
+              } catch {}
+              setLoggedOut(false);
+            }}
+            className="w-full px-4 py-2.5 rounded-full bg-gray-900 hover:bg-black text-white text-sm font-semibold transition-colors cursor-pointer"
+          >
+            Se reconnecter
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className="relative flex h-screen w-screen bg-transparent text-gray-900 font-sans overflow-hidden antialiased">
+    <div dir={lang === 'ar' ? 'rtl' : 'ltr'} className="relative flex h-screen w-screen bg-transparent text-gray-900 font-sans overflow-hidden antialiased">
 
       {/* Fond dégradé orange / jaune qui bouge lentement */}
       <div className="aurora" aria-hidden="true">
@@ -950,7 +1070,7 @@ export default function App() {
             className="w-full flex items-center gap-3 px-4 py-2.5 rounded-full bg-white hover:bg-gray-100/90 text-gray-800 text-sm font-semibold border border-gray-200 shadow-xs transition-all cursor-pointer group"
           >
             <Plus className="w-4 h-4 text-gray-700 group-hover:scale-110 transition-transform" />
-            <span>Nouveau design</span>
+            <span>{t('newDesign')}</span>
           </button>
 
           {/* Recherche */}
@@ -964,7 +1084,7 @@ export default function App() {
             }`}
           >
             <Search className="w-4 h-4 text-gray-500" />
-            <span>Recherche</span>
+            <span>{t('search')}</span>
           </button>
           {searchOpen && (
             <input
@@ -982,7 +1102,7 @@ export default function App() {
             className="w-full flex items-center gap-3 px-4 py-2 rounded-full hover:bg-gray-200/60 text-gray-600 hover:text-gray-900 text-sm font-medium transition-colors"
           >
             <Palette className="w-4 h-4 text-gray-500" />
-            <span>Brand Kit</span>
+            <span>{t('brandKit')}</span>
           </button>
 
           {/* Templates */}
@@ -991,14 +1111,14 @@ export default function App() {
             className="w-full flex items-center gap-3 px-4 py-2 rounded-full hover:bg-gray-200/60 text-gray-600 hover:text-gray-900 text-sm font-medium transition-colors"
           >
             <LayoutTemplate className="w-4 h-4 text-gray-500" />
-            <span>Templates</span>
+            <span>{t('templates')}</span>
           </button>
         </div>
 
         {/* Section "Récents" (Historique avec pills arrondis) */}
         <div className="flex-1 overflow-y-auto px-3 py-3 mt-1 space-y-1">
           <div className="px-3 pb-1 text-xs font-semibold text-gray-400 tracking-wider uppercase">
-            Récents
+            {t('recents')}
           </div>
 
           {filteredSessions.length === 0 && (
@@ -1019,7 +1139,7 @@ export default function App() {
                 >
                   <span className="truncate pr-2">{session.title}</span>
                   <span className="text-[10px] text-gray-400 shrink-0 group-hover:opacity-0 transition-opacity">
-                    {session.format === 'story' ? '9:16' : session.format === 'square' ? '1:1' : '4:5'}
+                    {FORMATS[session.format].short}
                   </span>
                 </button>
                 <button
@@ -1035,24 +1155,101 @@ export default function App() {
         </div>
 
         {/* En bas : Profil utilisateur "Labbaci Malek" avec avatar et réglages */}
-        <div className="p-3 border-t border-orange-200/40 bg-white/40 flex items-center justify-between">
-          <div className="flex items-center gap-2.5 truncate">
-            {/* Avatar */}
-            <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-gray-900 to-gray-700 text-white font-bold text-xs flex items-center justify-center shrink-0 shadow-xs">
-              L{userFirstName.charAt(0).toUpperCase()}
+        <div ref={accountRef} className="relative p-3 border-t border-orange-200/40 bg-white/40">
+          {accountMenuOpen && (
+            <div className="absolute bottom-full left-3 right-3 mb-2 rounded-2xl bg-white border border-gray-200 shadow-xl p-1.5 z-40 animate-fade-in">
+              {[
+                { key: 'settings', Icon: Settings, label: t('settings'), action: () => { setModal('settings'); setAccountMenuOpen(false); } },
+                { key: 'language', Icon: Languages, label: t('language'), action: () => setLangMenuOpen((v) => !v), chevron: true },
+              ].map((it) => (
+                <div key={it.key}>
+                  <button
+                    type="button"
+                    onClick={it.action}
+                    className="w-full flex items-center justify-between gap-3 px-3 py-2 rounded-xl text-sm text-gray-700 hover:bg-orange-50 hover:text-gray-900 transition-colors cursor-pointer"
+                  >
+                    <span className="flex items-center gap-3">
+                      <it.Icon className="w-4 h-4 text-gray-500" />
+                      {it.label}
+                    </span>
+                    {it.chevron && <ChevronRight className={`w-3.5 h-3.5 text-gray-400 transition-transform ${langMenuOpen ? 'rotate-90' : ''}`} />}
+                  </button>
+                  {it.key === 'language' && langMenuOpen && (
+                    <div className="ml-4 pl-3 border-l border-orange-200/70 my-1 space-y-0.5">
+                      {LANGS.map((l) => (
+                        <button
+                          key={l.id}
+                          type="button"
+                          onClick={() => {
+                            setLang(l.id);
+                            setLangMenuOpen(false);
+                            setAccountMenuOpen(false);
+                          }}
+                          className={`w-full flex items-center justify-between px-3 py-1.5 rounded-lg text-sm cursor-pointer transition-colors ${
+                            lang === l.id ? 'bg-orange-50 text-orange-800 font-semibold' : 'text-gray-600 hover:bg-gray-100'
+                          }`}
+                        >
+                          <span>{l.label}</span>
+                          {lang === l.id && <Check className="w-3.5 h-3.5 text-orange-600" />}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              ))}
+              {[
+                { key: 'help', Icon: CircleHelp, label: t('help'), action: () => setModal('help') },
+                { key: 'about', Icon: Info, label: t('learnMore'), action: () => setModal('about') },
+                { key: 'upgrade', Icon: Zap, label: t('upgrade'), action: () => setModal('upgrade') },
+              ].map((it) => (
+                <button
+                  key={it.key}
+                  type="button"
+                  onClick={() => {
+                    it.action();
+                    setAccountMenuOpen(false);
+                  }}
+                  className="w-full flex items-center gap-3 px-3 py-2 rounded-xl text-sm text-gray-700 hover:bg-orange-50 hover:text-gray-900 transition-colors cursor-pointer"
+                >
+                  <it.Icon className={`w-4 h-4 ${it.key === 'upgrade' ? 'text-orange-500' : 'text-gray-500'}`} />
+                  {it.label}
+                </button>
+              ))}
+              <div className="my-1 border-t border-gray-100" />
+              <button
+                type="button"
+                onClick={() => {
+                  try {
+                    localStorage.setItem('aura_logged_out', '1');
+                  } catch {}
+                  setAccountMenuOpen(false);
+                  setLoggedOut(true);
+                }}
+                className="w-full flex items-center gap-3 px-3 py-2 rounded-xl text-sm text-red-600 hover:bg-red-50 transition-colors cursor-pointer"
+              >
+                <LogOut className="w-4 h-4" />
+                {t('logout')}
+              </button>
             </div>
-            <div className="truncate">
-              <p className="text-xs font-bold text-gray-900 truncate leading-tight">Labbaci {userFirstName}</p>
-              <p className="text-[11px] text-gray-500 truncate">Plan Créateur Pro</p>
-            </div>
-          </div>
+          )}
 
           <button
-            onClick={() => setIsBrandKitOpen(true)}
-            title="Paramètres du compte & Brand"
-            className="p-1.5 rounded-full hover:bg-gray-200 text-gray-500 hover:text-gray-900 transition-colors shrink-0"
+            type="button"
+            onClick={() => setAccountMenuOpen((v) => !v)}
+            className="w-full flex items-center justify-between gap-2 rounded-xl px-1.5 py-1 hover:bg-white/70 transition-colors cursor-pointer text-start"
           >
-            <Settings className="w-4 h-4" />
+            <div className="flex items-center gap-2.5 min-w-0">
+              <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-gray-900 to-gray-700 text-white font-bold text-xs flex items-center justify-center shrink-0 shadow-xs">
+                L{userFirstName.charAt(0).toUpperCase()}
+              </div>
+              <div className="min-w-0">
+                <p className="text-xs font-bold text-gray-900 truncate leading-tight">Labbaci {userFirstName}</p>
+                <p className="text-[11px] text-gray-500 truncate">
+                  {t('plan')} {PLANS.find((x) => x.id === plan)?.name}
+                </p>
+              </div>
+            </div>
+            <Settings className={`w-4 h-4 text-gray-500 shrink-0 transition-transform ${accountMenuOpen ? 'rotate-90' : ''}`} />
           </button>
         </div>
       </aside>
@@ -1114,7 +1311,7 @@ export default function App() {
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/70 hover:bg-white text-gray-700 text-xs font-semibold transition-colors cursor-pointer"
             >
               <Share2 className="w-3.5 h-3.5 text-gray-600" />
-              <span className="hidden sm:inline">Partager</span>
+              <span className="hidden sm:inline">{t('share')}</span>
             </button>
           </div>
         </header>
@@ -1133,7 +1330,7 @@ export default function App() {
                 </h1>
               </div>
               <p className="text-base sm:text-lg text-gray-500 font-normal">
-                On travaille sur quoi aujourd'hui ?
+                {t('subtitle')}
               </p>
             </div>
           ) : (
@@ -1203,11 +1400,7 @@ export default function App() {
                               <div className="flex items-center justify-between pb-4 border-b border-zinc-800/80 text-xs">
                                 <div className="flex items-center gap-2">
                                   <span className="px-2.5 py-1 rounded-full bg-zinc-900 text-amber-400  text-[11px] font-bold border border-amber-500/30">
-                                    {msg.design.format === 'story'
-                                      ? 'Story 9:16'
-                                      : msg.design.format === 'square'
-                                      ? 'Carré 1:1'
-                                      : 'Carrousel 4:5'}
+                                    {FORMATS[msg.design.format].label}
                                   </span>
                                   <span className="text-zinc-400 text-xs font-medium">
                                     Slide {(msg.design.activeSlideIndex || 0) + 1} sur {msg.design.slides.length}
@@ -1243,17 +1436,10 @@ export default function App() {
                               {/* Le Canvas Visuel Actif avec transition animée des slides */}
                               {(() => {
                                 const slide = msg.design.slides[msg.design.activeSlideIndex || 0];
-                                const isStory = msg.design.format === 'story';
-                                const isSquare = msg.design.format === 'square';
-
                                 return (
                                   <div
                                     className={`my-4 mx-auto w-full transition-all duration-300 ${
-                                      isStory
-                                        ? 'aspect-[9/14] max-w-sm'
-                                        : isSquare
-                                        ? 'aspect-square max-w-md'
-                                        : 'aspect-[4/5] max-w-md'
+                                      FORMATS[msg.design.format].aspect
                                     }`}
                                   >
                                     <AnimatePresence mode="wait">
@@ -1566,11 +1752,7 @@ export default function App() {
                   value={inputPrompt}
                   onChange={(e) => setInputPrompt(e.target.value)}
                   onKeyDown={handleKeyDown}
-                  placeholder={
-                    selectedFormat === 'scroller'
-                      ? `Demander à l'IA... (Carrousel de ${carouselSlidesCount} slides)`
-                      : "Demander à l'IA... (ex: Crée un post percutant sur la productivité)"
-                  }
+                  placeholder={t('placeholder')}
                   className="flex-1 bg-transparent px-3 py-1.5 text-sm sm:text-[15px] text-gray-900 placeholder-gray-400 focus:outline-none"
                 />
 
@@ -1586,14 +1768,14 @@ export default function App() {
                       {currentFormatObj.icon}
                       <span className="hidden md:inline">{currentFormatObj.label}</span>
                       <span className="md:hidden">
-                        {selectedFormat === 'story' ? '9:16' : selectedFormat === 'square' ? '1:1' : '4:5'}
+                        {FORMATS[selectedFormat].short}
                       </span>
                       <ChevronDown className="w-3 h-3 text-gray-400" />
                     </button>
 
                     {/* Menu déroulant format */}
                     {isFormatDropdownOpen && (
-                      <div className="absolute right-0 bottom-12 w-48 rounded-2xl bg-white border border-gray-200 shadow-xl p-1.5 z-30 space-y-1">
+                      <div className="absolute right-0 bottom-12 w-60 rounded-2xl bg-white border border-gray-200 shadow-xl p-1.5 z-30 space-y-1">
                         <div className="px-2.5 py-1 text-[11px] font-semibold text-gray-400 uppercase tracking-wider">
                           Format du design
                         </div>
@@ -1624,7 +1806,7 @@ export default function App() {
                   </div>
 
                   {/* Bouton du nombre de slides affiché uniquement quand Carrousel est sélectionné */}
-                  {selectedFormat === 'scroller' && (
+                  {FORMATS[selectedFormat].kind === 'carousel' && (
                     <div className="relative" ref={slidesCountDropdownRef}>
                       <button
                         type="button"
@@ -1926,39 +2108,25 @@ export default function App() {
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-96 overflow-y-auto pr-1">
                 {[
-                  {
-                    title: 'Carrousel Hacks B2B',
-                    format: 'Carrousel 4:5',
-                    prompt: 'Génère un carrousel 5 slides sur les erreurs fatales des startups en phase de scaling.',
-                  },
-                  {
-                    title: 'Story Teaser Masterclass',
-                    format: 'Story 9:16',
-                    prompt: 'Génère une story teaser pour une masterclass IA jeudi à 18h avec compte à rebours.',
-                  },
-                  {
-                    title: 'Poster Citation Minimaliste',
-                    format: 'Carré 1:1',
-                    prompt: 'Crée un post carré percutant avec une citation de Steve Jobs sur le focus et la discipline.',
-                  },
-                  {
-                    title: 'Carrousel Avant / Après',
-                    format: 'Carrousel 4:5',
-                    prompt: 'Génère un comparatif avant/après en 4 slides sur l\'optimisation de temps avec l\'IA.',
-                  },
+                  { title: 'Carrousel Hacks B2B', fmt: 'scroller' as FormatType, prompt: 'Génère un carrousel 5 slides sur les erreurs fatales des startups en phase de scaling.' },
+                  { title: 'Story Teaser Masterclass', fmt: 'story' as FormatType, prompt: 'Génère une story teaser pour une masterclass IA jeudi à 18h avec compte à rebours.' },
+                  { title: 'Citation Minimaliste', fmt: 'square' as FormatType, prompt: 'Crée un post carré percutant avec une citation sur le focus et la discipline.' },
+                  { title: 'Hero de site web', fmt: 'website' as FormatType, prompt: 'Conçois la section hero d\'un site web pour une agence de marketing digital.' },
+                  { title: 'Fiche produit e-commerce', fmt: 'product' as FormatType, prompt: 'Crée une fiche produit élégante pour une montre minimaliste avec bénéfices et avis clients.' },
+                  { title: 'Affiche événement', fmt: 'poster' as FormatType, prompt: 'Crée une affiche percutante pour un festival de cinéma en plein air ce samedi.' },
+                  { title: 'Pitch deck startup', fmt: 'presentation' as FormatType, prompt: 'Génère une présentation pitch deck en 5 slides pour une startup SaaS.' },
+                  { title: 'Carrousel Avant / Après', fmt: 'scroller' as FormatType, prompt: 'Génère un comparatif avant/après en 4 slides sur l\'optimisation de temps avec l\'IA.' },
                 ].map((tpl, i) => (
                   <div
                     key={i}
                     onClick={() => {
                       setIsTemplatesOpen(false);
-                      handleSendMessage(tpl.prompt, {
-                        format: tpl.format.includes('Story') ? 'story' : tpl.format.includes('Carré') ? 'square' : 'scroller',
-                      });
+                      handleSendMessage(tpl.prompt, { format: tpl.fmt });
                     }}
                     className="p-3.5 rounded-2xl border border-gray-200 hover:border-amber-500/50 hover:bg-amber-50/30 transition-all cursor-pointer space-y-1.5 group"
                   >
                     <span className="text-[10px]  font-bold text-amber-600 uppercase">
-                      {tpl.format}
+                      {FORMATS[tpl.fmt].label}
                     </span>
                     <h4 className="text-xs font-bold text-gray-900 group-hover:text-amber-800">
                       {tpl.title}
@@ -1967,6 +2135,167 @@ export default function App() {
                   </div>
                 ))}
               </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* ===== MODALS COMPTE ===== */}
+      <AnimatePresence>
+        {modal && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            onMouseDown={(e) => e.target === e.currentTarget && setModal(null)}
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-2xs p-4"
+          >
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 10 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 10 }}
+              transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
+              className={`bg-white rounded-3xl border border-gray-200 shadow-2xl w-full p-6 space-y-5 max-h-[90vh] overflow-y-auto ${modal === 'upgrade' ? 'max-w-3xl' : 'max-w-md'}`}
+            >
+              <div className="flex items-center justify-between pb-3 border-b border-gray-100">
+                <h3 className="font-semibold text-gray-900 text-base">
+                  {modal === 'settings' ? t('settings') : modal === 'help' ? t('help') : modal === 'upgrade' ? t('upgrade') : t('learnMore')}
+                </h3>
+                <button onClick={() => setModal(null)} className="p-1 rounded-full hover:bg-gray-100 text-gray-400 hover:text-gray-700 transition-colors cursor-pointer">
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+
+              {modal === 'settings' && (
+                <div className="space-y-5">
+                  <div>
+                    <label className="text-xs font-semibold text-gray-700 block mb-1.5">Prénom</label>
+                    <input
+                      type="text"
+                      value={userFirstName}
+                      onChange={(e) => {
+                        setUserFirstName(e.target.value);
+                        try {
+                          localStorage.setItem('aura_user_firstname', e.target.value);
+                        } catch {}
+                      }}
+                      className="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 text-sm text-gray-900 focus:outline-none focus:border-orange-400"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs font-semibold text-gray-700 block mb-1.5">{t('language')}</label>
+                    <div className="flex gap-2">
+                      {LANGS.map((l) => (
+                        <button
+                          key={l.id}
+                          type="button"
+                          onClick={() => setLang(l.id)}
+                          className={`flex-1 px-3 py-2 rounded-xl text-sm border transition-colors cursor-pointer ${
+                            lang === l.id ? 'bg-orange-50 border-orange-300 text-orange-800 font-semibold' : 'border-gray-200 text-gray-600 hover:bg-gray-50'
+                          }`}
+                        >
+                          {l.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  <div className="flex flex-col gap-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setModal(null);
+                        setIsBrandKitOpen(true);
+                      }}
+                      className="w-full flex items-center gap-2 px-3 py-2.5 rounded-xl border border-gray-200 hover:bg-gray-50 text-sm text-gray-700 cursor-pointer transition-colors"
+                    >
+                      <Palette className="w-4 h-4 text-orange-500" />
+                      {t('brandKit')}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setRecentSessions([]);
+                        setSessionMessagesMap({});
+                        setMessages([]);
+                        setActiveSessionId(`sess_${Date.now()}`);
+                        setModal(null);
+                        showToast('Historique effacé.');
+                      }}
+                      className="w-full flex items-center gap-2 px-3 py-2.5 rounded-xl border border-red-100 hover:bg-red-50 text-sm text-red-600 cursor-pointer transition-colors"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                      Effacer l'historique des sessions
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {modal === 'help' && (
+                <div className="space-y-2">
+                  {FAQ.map((f, i) => (
+                    <div key={i} className="rounded-2xl border border-gray-200 overflow-hidden">
+                      <button
+                        type="button"
+                        onClick={() => setFaqOpen(faqOpen === i ? null : i)}
+                        className="w-full flex items-center justify-between gap-3 px-4 py-3 text-sm font-medium text-gray-900 text-start cursor-pointer hover:bg-gray-50"
+                      >
+                        {f.q}
+                        <ChevronDown className={`w-4 h-4 text-gray-400 shrink-0 transition-transform ${faqOpen === i ? 'rotate-180' : ''}`} />
+                      </button>
+                      {faqOpen === i && <p className="px-4 pb-3 text-sm text-gray-600 leading-relaxed">{f.a}</p>}
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {modal === 'about' && (
+                <div className="space-y-3 text-sm text-gray-600 leading-relaxed">
+                  <p>
+                    <span className="font-semibold text-gray-900">Aura Design</span> est un générateur de designs par IA : posts et stories pour les réseaux sociaux, carrousels, sites web, fiches produit, affiches et présentations.
+                  </p>
+                  <p>Décrivez ce que vous voulez, choisissez un format, puis exportez votre création en PNG haute définition avec votre Brand Kit.</p>
+                  <p className="text-xs text-gray-400">Version 1.0</p>
+                </div>
+              )}
+
+              {modal === 'upgrade' && (
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  {PLANS.map((pl) => (
+                    <div
+                      key={pl.id}
+                      className={`rounded-2xl border p-4 flex flex-col gap-3 ${pl.id === plan ? 'border-orange-400 bg-orange-50/50' : 'border-gray-200'}`}
+                    >
+                      <div>
+                        <h4 className="font-semibold text-gray-900">{pl.name}</h4>
+                        <p className="text-xs text-gray-500">{pl.desc}</p>
+                      </div>
+                      <ul className="space-y-1.5 flex-1">
+                        {pl.features.map((f) => (
+                          <li key={f} className="flex items-start gap-2 text-xs text-gray-700">
+                            <Check className="w-3.5 h-3.5 text-orange-500 shrink-0 mt-0.5" />
+                            {f}
+                          </li>
+                        ))}
+                      </ul>
+                      <button
+                        type="button"
+                        disabled={pl.id === plan}
+                        onClick={() => {
+                          setPlan(pl.id);
+                          showToast(`Forfait ${pl.name} activé.`);
+                          setModal(null);
+                        }}
+                        className={`w-full px-3 py-2 rounded-full text-xs font-semibold transition-colors ${
+                          pl.id === plan ? 'bg-gray-100 text-gray-400 cursor-default' : 'bg-gray-900 hover:bg-black text-white cursor-pointer'
+                        }`}
+                      >
+                        {pl.id === plan ? 'Forfait actuel' : 'Choisir'}
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
             </motion.div>
           </motion.div>
         )}
