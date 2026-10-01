@@ -1,91 +1,123 @@
 @import "tailwindcss";
 
+@theme {
+  --font-sans: 'Poppins', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --font-mono: 'Poppins', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+}
+
 @layer base {
+  html,
+  body,
+  button,
+  input,
+  textarea,
+  select {
+    font-family: 'Poppins', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  }
+
   body {
-    font-family: 'Manrope', 'Poppins', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+    background-color: #fff8ee;
+  }
 
-    /* ─── Full-viewport warm orange/amber gradient (low opacity) ─── */
-    background:
-      /* Base : fond blanc cassé légèrement chaud */
-      radial-gradient(ellipse 160% 100% at 50% 40%, rgba(255, 248, 240, 0.95) 0%, rgba(255, 250, 245, 0.80) 50%, rgba(255, 245, 235, 0.60) 100%),
-
-      /* Grand diffuseur orange vif — top left */
-      radial-gradient(ellipse 55% 50% at 15% 5%, rgba(245, 158, 11, 0.18) 0%, rgba(234, 88, 12, 0.08) 40%, transparent 72%),
-
-      /* Grand diffuseur orange profond — center-right */
-      radial-gradient(ellipse 50% 60% at 75% 55%, rgba(249, 115, 22, 0.15) 0%, rgba(245, 158, 11, 0.07) 45%, transparent 75%),
-
-      /* Jaune ambré diffus — bottom */
-      radial-gradient(ellipse 60% 40% at 50% 95%, rgba(250, 204, 21, 0.14) 0%, rgba(245, 158, 11, 0.06) 45%, transparent 72%),
-
-      /* Petit pic de jaune intense — haut droit */
-      radial-gradient(ellipse 35% 30% at 90% 8%, rgba(250, 204, 21, 0.16) 0%, rgba(245, 158, 11, 0.06) 40%, transparent 70%),
-
-      /* Dernier diffuseur orange doux — gauche milieu */
-      radial-gradient(ellipse 45% 50% at 0% 50%, rgba(245, 158, 11, 0.10) 0%, rgba(234, 88, 12, 0.04) 50%, transparent 75%);
-
-    background-attachment: fixed;
-    background-color: #fffaf5;
+  button:not(:disabled) {
+    cursor: pointer;
   }
 }
 
-/* ─── Ambient background blobs (App container layer) ─── */
+/* ─── Fond clair : dégradé orange + jaune qui bouge lentement ─── */
+.aurora {
+  position: fixed;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  background: linear-gradient(135deg, #fffaf1 0%, #fff4e0 100%);
+}
 
-.bg-ambient-blob {
+.aurora .blob {
   position: absolute;
   border-radius: 50%;
-  filter: blur(90px);
-  pointer-events: none;
-  will-change: transform, opacity;
+  filter: blur(70px);
+  will-change: transform;
 }
 
-/* ─── Blob drift animations (warm tones only) ─── */
-
-@keyframes blob-drift-a {
-  0%, 100% { transform: translate(0, 0) scale(1); }
-  33%       { transform: translate(35px, -25px) scale(1.07); }
-  66%       { transform: translate(-20px, 18px) scale(0.96); }
-}
-@keyframes blob-drift-b {
-  0%, 100% { transform: translate(0, 0) scale(1); }
-  33%       { transform: translate(-30px, 20px) scale(1.05); }
-  66%       { transform: translate(22px, -15px) scale(0.98); }
-}
-@keyframes blob-drift-c {
-  0%, 100% { transform: translate(0, 0) scale(1); }
-  50%       { transform: translate(28px, 30px) scale(1.09); }
-}
-@keyframes blob-drift-d {
-  0%, 100% { transform: translate(0, 0) scale(1); }
-  40%       { transform: translate(-15px, -30px) scale(0.92); }
-  80%       { transform: translate(20px, 10px) scale(1.06); }
-}
-@keyframes blob-pulse-warm {
-  0%, 100% { opacity: 0.40; }
-  50%       { opacity: 0.68; }
+.aurora .blob-a {
+  width: 62vmax;
+  height: 62vmax;
+  top: -22%;
+  left: -18%;
+  background: radial-gradient(circle, rgba(251, 146, 60, 0.55) 0%, rgba(251, 146, 60, 0.18) 45%, transparent 70%);
+  animation: drift-a 48s ease-in-out infinite;
 }
 
-.animate-blob-a { animation: blob-drift-a 24s ease-in-out infinite; }
-.animate-blob-b { animation: blob-drift-b 30s ease-in-out infinite; }
-.animate-blob-c { animation: blob-drift-c 20s ease-in-out infinite; }
-.animate-blob-d { animation: blob-drift-d 26s ease-in-out infinite; }
-.animate-blob-pulse { animation: blob-pulse-warm 7s ease-in-out infinite; }
+.aurora .blob-b {
+  width: 55vmax;
+  height: 55vmax;
+  top: 5%;
+  right: -20%;
+  background: radial-gradient(circle, rgba(250, 204, 21, 0.55) 0%, rgba(250, 204, 21, 0.18) 45%, transparent 70%);
+  animation: drift-b 56s ease-in-out infinite;
+}
 
-/* ─── Custom subtle scrollbars ─── */
+.aurora .blob-c {
+  width: 58vmax;
+  height: 58vmax;
+  bottom: -28%;
+  right: -8%;
+  background: radial-gradient(circle, rgba(249, 115, 22, 0.42) 0%, rgba(249, 115, 22, 0.14) 45%, transparent 70%);
+  animation: drift-c 62s ease-in-out infinite;
+}
+
+.aurora .blob-d {
+  width: 50vmax;
+  height: 50vmax;
+  bottom: -20%;
+  left: -12%;
+  background: radial-gradient(circle, rgba(253, 224, 71, 0.5) 0%, rgba(253, 224, 71, 0.16) 45%, transparent 70%);
+  animation: drift-d 52s ease-in-out infinite;
+}
+
+@keyframes drift-a {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  50% { transform: translate(18vw, 14vh) scale(1.12); }
+}
+@keyframes drift-b {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  50% { transform: translate(-16vw, 18vh) scale(0.92); }
+}
+@keyframes drift-c {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  50% { transform: translate(-14vw, -16vh) scale(1.1); }
+}
+@keyframes drift-d {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  50% { transform: translate(16vw, -12vh) scale(1.08); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .aurora .blob { animation: none; }
+}
+
+/* ─── Apparition douce ─── */
+@keyframes fade-in {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.animate-fade-in {
+  animation: fade-in 0.4s ease-out both;
+}
+
+/* ─── Scrollbars discrètes ─── */
 ::-webkit-scrollbar {
   width: 6px;
   height: 6px;
 }
-
 ::-webkit-scrollbar-track {
   background: transparent;
 }
-
 ::-webkit-scrollbar-thumb {
-  background: rgba(203, 213, 225, 0.40);
+  background: rgba(251, 146, 60, 0.35);
   border-radius: 9999px;
 }
-
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(203, 213, 225, 0.65);
+  background: rgba(251, 146, 60, 0.6);
 }

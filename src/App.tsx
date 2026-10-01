@@ -32,6 +32,8 @@ import {
   Menu,
   UploadCloud
 } from 'lucide-react';
+import imgAbstract from './assets/images/social_abstract_accent_1790812839231.jpg';
+import imgMarketing from './assets/images/social_marketing_visual_1790812851560.jpg';
 
 // Format types
 type FormatType = 'scroller' | 'story' | 'square';
@@ -96,7 +98,7 @@ const INITIAL_DEMO_MESSAGES: Message[] = [
           title: '90% des posts B2B ne convertissent pas.',
           subtitle: 'Voici la structure en 4 étapes que les meilleurs créateurs utilisent pour captiver et vendre sans forcer.',
           highlightWord: 'convertissent',
-          image: '/src/assets/images/social_abstract_accent_1790812839231.jpg',
+          image: imgAbstract,
           ctaText: 'Faites glisser pour découvrir ➔',
         },
         {
@@ -122,7 +124,7 @@ const INITIAL_DEMO_MESSAGES: Message[] = [
             value: '+318%',
             label: 'Taux de clics qualifiés mesuré après refonte du framework narratif',
           },
-          image: '/src/assets/images/social_marketing_visual_1790812851560.jpg',
+          image: imgMarketing,
         },
         {
           id: 'sl_4',
@@ -148,10 +150,230 @@ const INITIAL_DEMO_MESSAGES: Message[] = [
   },
 ];
 
+const DIMENSIONS: Record<FormatType, { w: number; h: number }> = {
+  scroller: { w: 1080, h: 1350 },
+  story: { w: 1080, h: 1920 },
+  square: { w: 1080, h: 1080 },
+};
+
+const loadImage = (src: string) =>
+  new Promise<HTMLImageElement | null>((resolve) => {
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.onload = () => resolve(img);
+    img.onerror = () => resolve(null);
+    img.src = src;
+  });
+
+const wrapLines = (ctx: CanvasRenderingContext2D, text: string, maxWidth: number) => {
+  const words = text.split(/\s+/);
+  const lines: string[] = [];
+  let line = '';
+  for (const w of words) {
+    const test = line ? `${line} ${w}` : w;
+    if (ctx.measureText(test).width > maxWidth && line) {
+      lines.push(line);
+      line = w;
+    } else {
+      line = test;
+    }
+  }
+  if (line) lines.push(line);
+  return lines;
+};
+
+async function slideToPngBlob(
+  slide: Slide,
+  format: FormatType,
+  total: number,
+  brand: { name: string; handle: string; color: string }
+): Promise<Blob | null> {
+  const { w, h } = DIMENSIONS[format];
+  const canvas = document.createElement('canvas');
+  canvas.width = w;
+  canvas.height = h;
+  const ctx = canvas.getContext('2d');
+  if (!ctx) return null;
+  try {
+    await Promise.all([
+      document.fonts.load('400 30px Poppins'),
+      document.fonts.load('600 30px Poppins'),
+      document.fonts.load('700 30px Poppins'),
+    ]);
+  } catch {}
+  const F = (weight: number, size: number) => `${weight} ${size}px Poppins, system-ui, sans-serif`;
+
+  ctx.fillStyle = '#18181b';
+  ctx.fillRect(0, 0, w, h);
+
+  if (slide.image) {
+    const img = await loadImage(slide.image);
+    if (img) {
+      const r = Math.max(w / img.width, h / img.height);
+      ctx.globalAlpha = 0.22;
+      ctx.drawImage(img, (w - img.width * r) / 2, (h - img.height * r) / 2, img.width * r, img.height * r);
+      ctx.globalAlpha = 1;
+    }
+  }
+  const grad = ctx.createLinearGradient(0, h, 0, 0);
+  grad.addColorStop(0, 'rgba(9,9,11,0.95)');
+  grad.addColorStop(0.6, 'rgba(9,9,11,0.7)');
+  grad.addColorStop(1, 'rgba(9,9,11,0.1)');
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, 0, w, h);
+
+  const pad = 90;
+  ctx.textBaseline = 'alphabetic';
+
+  // Header
+  ctx.fillStyle = brand.color;
+  ctx.beginPath();
+  ctx.roundRect(pad, 80, 56, 56, 14);
+  ctx.fill();
+  ctx.fillStyle = '#000';
+  ctx.font = F(700, 22);
+  ctx.textAlign = 'center';
+  ctx.fillText(brand.name.slice(0, 2).toUpperCase(), pad + 28, 116);
+  ctx.textAlign = 'left';
+  ctx.fillStyle = '#fff';
+  ctx.font = F(600, 28);
+  ctx.fillText(brand.name.toUpperCase(), pad + 76, 117);
+  ctx.textAlign = 'right';
+  ctx.fillStyle = brand.color;
+  ctx.font = F(600, 26);
+  ctx.fillText(`${String(slide.slideNumber).padStart(2, '0')} / ${String(total).padStart(2, '0')}`, w - pad, 116);
+  ctx.textAlign = 'left';
+
+  // Body
+  const big = format === 'story' ? 88 : 78;
+  const maxW = w - pad * 2;
+  let y = format === 'story' ? 520 : format === 'square' ? 300 : 360;
+
+  ctx.fillStyle = brand.color;
+  ctx.font = F(600, 26);
+  ctx.fillText(slide.tag.toUpperCase(), pad, y);
+  y += 90;
+
+  ctx.font = F(700, big);
+  ctx.fillStyle = '#fff';
+  for (const line of wrapLines(ctx, slide.title, maxW)) {
+    ctx.fillText(line, pad, y);
+    y += big * 1.18;
+  }
+  y += 20;
+
+  ctx.font = F(400, 36);
+  ctx.fillStyle = '#d4d4d8';
+  for (const line of wrapLines(ctx, slide.subtitle, maxW)) {
+    ctx.fillText(line, pad, y);
+    y += 54;
+  }
+  y += 24;
+
+  if (slide.stat) {
+    ctx.font = F(700, 120);
+    ctx.fillStyle = brand.color;
+    ctx.fillText(slide.stat.value, pad, y + 100);
+    y += 150;
+    ctx.font = F(400, 30);
+    ctx.fillStyle = '#a1a1aa';
+    for (const line of wrapLines(ctx, slide.stat.label, maxW)) {
+      ctx.fillText(line, pad, y + 20);
+      y += 44;
+    }
+  }
+
+  if (slide.bulletPoints) {
+    ctx.font = F(500, 34);
+    for (const bp of slide.bulletPoints) {
+      ctx.fillStyle = brand.color;
+      ctx.beginPath();
+      ctx.arc(pad + 14, y - 10, 14, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = '#e4e4e7';
+      for (const line of wrapLines(ctx, bp, maxW - 60)) {
+        ctx.fillText(line, pad + 50, y);
+        y += 50;
+      }
+      y += 12;
+    }
+  }
+
+  // Footer
+  ctx.fillStyle = 'rgba(255,255,255,0.15)';
+  ctx.fillRect(pad, h - 150, w - pad * 2, 2);
+  ctx.fillStyle = '#fff';
+  ctx.font = F(600, 28);
+  ctx.textAlign = 'left';
+  ctx.fillText(brand.handle, pad, h - 90);
+  if (slide.ctaText) {
+    ctx.textAlign = 'right';
+    ctx.fillStyle = brand.color;
+    ctx.font = F(600, 24);
+    ctx.fillText(slide.ctaText.slice(0, 40), w - pad, h - 90);
+    ctx.textAlign = 'left';
+  }
+
+  return new Promise((resolve) => canvas.toBlob((b) => resolve(b), 'image/png'));
+}
+
+const copyText = async (text: string) => {
+  try {
+    await navigator.clipboard.writeText(text);
+    return true;
+  } catch {
+    try {
+      const ta = document.createElement('textarea');
+      ta.value = text;
+      ta.style.position = 'fixed';
+      ta.style.opacity = '0';
+      document.body.appendChild(ta);
+      ta.select();
+      const ok = document.execCommand('copy');
+      document.body.removeChild(ta);
+      return ok;
+    } catch {
+      return false;
+    }
+  }
+};
+
+const inferOpts = (text: string): { format?: FormatType; count?: number } => {
+  const l = text.toLowerCase();
+  const format: FormatType | undefined = l.includes('story')
+    ? 'story'
+    : l.includes('carré') || l.includes('citation')
+    ? 'square'
+    : undefined;
+  const m = l.match(/(\d+)\s*slides/);
+  return { format, count: m ? Math.max(2, Math.min(12, parseInt(m[1], 10))) : undefined };
+};
+
+const loadBrand = (): { name?: string; handle?: string; color?: string } => {
+  try {
+    return JSON.parse(localStorage.getItem('aura_brand') || '{}');
+  } catch {
+    return {};
+  }
+};
+
+const MODELS = ['Aura 2.5 Social', 'Aura 2.5 Pro'];
+
 export default function App() {
   // Sidebar state
   const [sidebarOpen, setSidebarOpen] = useState(true);
-  const [activeSessionId, setActiveSessionId] = useState('sess_new');
+  const [activeSessionId, setActiveSessionId] = useState('sess_draft');
+  const activeIdRef = useRef('sess_draft');
+  useEffect(() => {
+    activeIdRef.current = activeSessionId;
+  }, [activeSessionId]);
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [sessionSearch, setSessionSearch] = useState('');
+  const [model, setModel] = useState(MODELS[0]);
+  const [isModelOpen, setIsModelOpen] = useState(false);
+  const modelRef = useRef<HTMLDivElement>(null);
+  const [feedback, setFeedback] = useState<Record<string, 'up' | 'down'>>({});
+  const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // User First Name (Gemini Greeting)
   const [userFirstName, setUserFirstName] = useState<string>(() => {
@@ -163,9 +385,14 @@ export default function App() {
 
   // Brand Kit state
   const [isBrandKitOpen, setIsBrandKitOpen] = useState(false);
-  const [brandName, setBrandName] = useState('Aura Studio');
-  const [brandHandle, setBrandHandle] = useState('@aurastudio.ai');
-  const [brandColor, setBrandColor] = useState('#F59E0B'); // amber accent
+  const [brandName, setBrandName] = useState(() => loadBrand().name ?? 'Aura Studio');
+  const [brandHandle, setBrandHandle] = useState(() => loadBrand().handle ?? '@aurastudio.ai');
+  const [brandColor, setBrandColor] = useState(() => loadBrand().color ?? '#F59E0B');
+  useEffect(() => {
+    try {
+      localStorage.setItem('aura_brand', JSON.stringify({ name: brandName, handle: brandHandle, color: brandColor }));
+    } catch {}
+  }, [brandName, brandHandle, brandColor]);
   const [brandLogo, setBrandLogo] = useState<string | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -237,8 +464,7 @@ export default function App() {
   });
 
   // Salutation dynamique Gemini
-  const currentHour = new Date().getHours();
-  const greetingSalutation = currentHour >= 18 || currentHour < 5 ? 'Bonsoir' : 'Bonjour';
+  const greetingSalutation = 'Bonjour';
 
   // Suggestions d'inspiration sur la page d'accueil style Gemini
   const welcomeSuggestions = [
@@ -276,8 +502,13 @@ export default function App() {
 
   const showToast = (msg: string) => {
     setToastMessage(msg);
-    setTimeout(() => setToastMessage(null), 3000);
+    if (toastTimer.current) clearTimeout(toastTimer.current);
+    toastTimer.current = setTimeout(() => setToastMessage(null), 2800);
   };
+
+  useEffect(() => {
+    setSessionMessagesMap((prev) => (prev[activeSessionId] === messages ? prev : { ...prev, [activeSessionId]: messages }));
+  }, [messages, activeSessionId]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -292,9 +523,25 @@ export default function App() {
       if (slidesCountDropdownRef.current && !slidesCountDropdownRef.current.contains(event.target as Node)) {
         setIsSlidesDropdownOpen(false);
       }
+      if (modelRef.current && !modelRef.current.contains(event.target as Node)) {
+        setIsModelOpen(false);
+      }
+    }
+    function handleEscape(event: KeyboardEvent) {
+      if (event.key === 'Escape') {
+        setIsBrandKitOpen(false);
+        setIsTemplatesOpen(false);
+        setIsFormatDropdownOpen(false);
+        setIsSlidesDropdownOpen(false);
+        setIsModelOpen(false);
+      }
     }
     document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
+    document.addEventListener('keydown', handleEscape);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('keydown', handleEscape);
+    };
   }, []);
 
   // Format definitions
@@ -326,36 +573,97 @@ export default function App() {
     );
   };
 
-  // Export slide as PNG simulation
-  const handleExportSlide = (title: string, slideNumber: number, imageUrl?: string) => {
-    showToast(`Téléchargement du Slide #${slideNumber} (PNG HD 1080px)...`);
-    setTimeout(() => {
-      const link = document.createElement('a');
-      link.href = imageUrl || '/src/assets/images/social_abstract_accent_1790812839231.jpg';
-      link.download = `${title.replace(/\s+/g, '_')}_slide_${slideNumber}.png`;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      showToast(`Slide #${slideNumber} exporté avec succès !`);
-    }, 500);
+  // Export slide as real PNG
+  const downloadSlide = async (design: DesignContent, index: number) => {
+    const slide = design.slides[index];
+    const blob = await slideToPngBlob(slide, design.format, design.slides.length, {
+      name: brandName,
+      handle: brandHandle,
+      color: brandColor,
+    });
+    if (!blob) {
+      showToast("Export impossible sur ce navigateur.");
+      return false;
+    }
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `${design.title.replace(/[^\w\-]+/g, '_')}_slide_${index + 1}.png`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    setTimeout(() => URL.revokeObjectURL(url), 1500);
+    return true;
+  };
+
+  const handleExportSlide = async (design: DesignContent, index: number) => {
+    showToast(`Export du slide ${index + 1} en cours...`);
+    if (await downloadSlide(design, index)) showToast(`Slide ${index + 1} téléchargé !`);
+  };
+
+  const handleExportAll = async (design: DesignContent) => {
+    showToast(`Export de ${design.slides.length} slides en cours...`);
+    for (let i = 0; i < design.slides.length; i++) {
+      await downloadSlide(design, i);
+      await new Promise((r) => setTimeout(r, 350));
+    }
+    showToast('Tous les slides sont téléchargés !');
   };
 
   // Copy slide text
-  const handleCopySlideText = (slide: Slide) => {
+  const handleCopySlideText = async (slide: Slide) => {
     const text = `${slide.tag}\n\n${slide.title}\n\n${slide.subtitle}\n\n${slide.bulletPoints?.join('\n') || ''}`;
-    navigator.clipboard.writeText(text);
-    setCopiedId(slide.id);
-    showToast('Contenu du slide copié dans le presse-papier !');
-    setTimeout(() => setCopiedId(null), 2000);
+    const ok = await copyText(text);
+    if (ok) {
+      setCopiedId(slide.id);
+      showToast('Contenu du slide copié !');
+      setTimeout(() => setCopiedId(null), 2000);
+    } else {
+      showToast('Copie impossible.');
+    }
+  };
+
+  const handleCopyMessage = async (text: string) => {
+    showToast((await copyText(text)) ? 'Texte copié !' : 'Copie impossible.');
+  };
+
+  const handleShare = async () => {
+    showToast((await copyText(window.location.href)) ? 'Lien copié dans le presse-papier !' : 'Copie impossible.');
+  };
+
+  const handleSuggestion = (sug: string, msg: Message) => {
+    const lower = sug.toLowerCase();
+    const lastUser = [...messages].reverse().find((m) => m.sender === 'user')?.text;
+    if (lower.includes('png') && msg.design) {
+      handleExportAll(msg.design);
+      return;
+    }
+    const opts = inferOpts(sug);
+    if (lastUser && (lower.includes('slides') || lower.includes('format'))) {
+      handleSendMessage(lastUser, opts);
+      return;
+    }
+    handleSendMessage(sug);
   };
 
   // Handle send prompt
-  const handleSendMessage = (textToSend?: string) => {
+  const handleSendMessage = (textToSend?: string, opts: { format?: FormatType; count?: number } = {}) => {
     const query = (textToSend || inputPrompt).trim();
     if ((!query && attachedImages.length === 0) || isGenerating) return;
 
     const currentPhotos = [...attachedImages];
     const promptText = query || (currentPhotos.length > 0 ? 'Génère un design intégrant mes photos' : '');
+    const inferred = inferOpts(promptText);
+    const resolvedFmt: FormatType = opts.format ?? inferred.format ?? selectedFormat;
+    const resolvedCount = opts.count ?? inferred.count ?? carouselSlidesCount;
+    const sessionId = activeSessionId;
+    setSelectedFormat(resolvedFmt);
+    setCarouselSlidesCount(resolvedCount);
+    setRecentSessions((prev) =>
+      prev.some((s) => s.id === sessionId)
+        ? prev
+        : [{ id: sessionId, title: promptText.length > 34 ? `${promptText.slice(0, 34)}…` : promptText, format: resolvedFmt }, ...prev]
+    );
 
     const userMsg: Message = {
       id: `usr_${Date.now()}`,
@@ -373,17 +681,15 @@ export default function App() {
     setTimeout(() => {
       setIsGenerating(false);
 
-      const isStory = selectedFormat === 'story' || promptText.toLowerCase().includes('story');
-      const isSquare = selectedFormat === 'square' || promptText.toLowerCase().includes('carré');
-      const activeFmt: FormatType = isStory ? 'story' : isSquare ? 'square' : 'scroller';
+      const activeFmt: FormatType = resolvedFmt;
 
-      const heroImg = currentPhotos[0] || '/src/assets/images/social_abstract_accent_1790812839231.jpg';
-      const secondaryImg = currentPhotos[1] || '/src/assets/images/social_marketing_visual_1790812851560.jpg';
+      const heroImg = currentPhotos[0] || imgAbstract;
+      const secondaryImg = currentPhotos[1] || imgMarketing;
 
       let slidesToBuild: Slide[] = [];
 
       if (activeFmt === 'scroller') {
-        const count = carouselSlidesCount;
+        const count = resolvedCount;
         // Slide 1: Hook
         slidesToBuild.push({
           id: `gen_1_${Date.now()}`,
@@ -523,7 +829,7 @@ export default function App() {
       };
 
       const aiMsgText = activeFmt === 'scroller'
-        ? `Voici votre nouveau carrousel de **${carouselSlidesCount} slides** généré au format **Carrousel 4:5**${currentPhotos.length > 0 ? ` avec vos ${currentPhotos.length} photo(s) intégrée(s)` : ''}. Le Canvas ci-dessous vous permet de faire défiler l'ensemble des ${carouselSlidesCount} slides, d'ajuster le contenu et d'exporter en haute résolution.`
+        ? `Voici votre nouveau carrousel de **${resolvedCount} slides** généré au format **Carrousel 4:5**${currentPhotos.length > 0 ? ` avec vos ${currentPhotos.length} photo(s) intégrée(s)` : ''}. Le Canvas ci-dessous vous permet de faire défiler l'ensemble des ${resolvedCount} slides, d'ajuster le contenu et d'exporter en haute résolution.`
         : `Voici votre nouveau design généré au format **${activeFmt === 'story' ? 'Story 9:16' : 'Carré 1:1'}**${currentPhotos.length > 0 ? ` avec vos ${currentPhotos.length} photo(s) intégrée(s)` : ''}. Le Canvas ci-dessous vous permet de visualiser et d'exporter en haute résolution.`;
 
       const aiMsg: Message = {
@@ -534,13 +840,17 @@ export default function App() {
         design: generatedDesign,
         suggestions: [
           'Affiner le texte du Slide 1',
-          activeFmt === 'scroller' ? `Régénérer avec ${carouselSlidesCount === 5 ? 7 : 5} slides` : 'Passer en format Carrousel 4:5',
+          activeFmt === 'scroller' ? `Régénérer avec ${resolvedCount === 5 ? 7 : 5} slides` : 'Passer en format Carrousel 4:5',
           'Exporter tout le carrousel en PNG HD',
         ],
       };
 
-      setMessages((prev) => [...prev, aiMsg]);
-      showToast(activeFmt === 'scroller' ? `Carrousel de ${carouselSlidesCount} slides généré !` : 'Nouveau design généré !');
+      if (activeIdRef.current === sessionId) {
+        setMessages((prev) => [...prev, aiMsg]);
+      } else {
+        setSessionMessagesMap((prev) => ({ ...prev, [sessionId]: [...(prev[sessionId] || []), aiMsg] }));
+      }
+      showToast(activeFmt === 'scroller' ? `Carrousel de ${resolvedCount} slides généré !` : 'Nouveau design généré !');
     }, 1100);
   };
 
@@ -551,104 +861,55 @@ export default function App() {
     }
   };
 
+  const closeSidebarOnMobile = () => {
+    if (typeof window !== 'undefined' && window.innerWidth < 768) setSidebarOpen(false);
+  };
+
   const handleNewDesign = () => {
-    const newId = `sess_${Date.now()}`;
-    const newSession: RecentSession = {
-      id: newId,
-      title: 'Nouveau Design Social',
-      format: selectedFormat,
-    };
-    setRecentSessions([newSession, ...recentSessions]);
-    setActiveSessionId(newId);
-    setMessages([]); // Clears messages so Gemini greeting page is displayed!
-    setSessionMessagesMap((prev) => ({ ...prev, [newId]: [] }));
+    setActiveSessionId(`sess_${Date.now()}`);
+    setMessages([]);
     setInputPrompt('');
     setAttachedImages([]);
-    showToast('Nouvelle session créée.');
+    setSearchOpen(false);
+    setSessionSearch('');
+    closeSidebarOnMobile();
   };
 
   const handleSelectSession = (sessionId: string) => {
-    setActiveSessionId(sessionId);
+    if (isGenerating) {
+      showToast('Patientez, génération en cours...');
+      return;
+    }
     const msgs = sessionMessagesMap[sessionId] ?? (sessionId === 'sess_1' ? INITIAL_DEMO_MESSAGES : []);
+    setActiveSessionId(sessionId);
     setMessages(msgs);
+    closeSidebarOnMobile();
   };
 
-  return (
-    <div className="relative flex h-screen w-screen bg-transparent text-gray-900 font-sans overflow-hidden antialiased select-none">
+  const handleDeleteSession = (sessionId: string) => {
+    setRecentSessions((prev) => prev.filter((s) => s.id !== sessionId));
+    setSessionMessagesMap((prev) => {
+      const next = { ...prev };
+      delete next[sessionId];
+      return next;
+    });
+    if (sessionId === activeSessionId) handleNewDesign();
+    showToast('Session supprimée.');
+  };
 
-      {/* ── Ambient background blobs (behind everything) ── */}
-      <div className="fixed inset-0 pointer-events-none overflow-hidden">
-        {/* Grand diffuseur orange doux — haut gauche */}
-        <div
-          className="bg-ambient-blob animate-blob-a"
-          style={{
-            width: '700px',
-            height: '700px',
-            top: '-15%',
-            left: '-12%',
-            background: 'radial-gradient(circle, rgba(245,158,11,0.22) 0%, rgba(234,88,12,0.10) 40%, transparent 72%)',
-          }}
-        />
-        {/* Blob jaune ambré — centre droit */}
-        <div
-          className="bg-ambient-blob animate-blob-b"
-          style={{
-            width: '550px',
-            height: '550px',
-            top: '35%',
-            right: '10%',
-            background: 'radial-gradient(circle, rgba(250,204,21,0.20) 0%, rgba(245,158,11,0.09) 45%, transparent 72%)',
-          }}
-        />
-        {/* Diffuseur orange profond — bas droite */}
-        <div
-          className="bg-ambient-blob animate-blob-c"
-          style={{
-            width: '600px',
-            height: '600px',
-            bottom: '0%',
-            right: '-8%',
-            background: 'radial-gradient(circle, rgba(249,115,22,0.18) 0%, rgba(245,158,11,0.08) 40%, transparent 72%)',
-          }}
-        />
-        {/* Petit pic de jaune vif — haut droit */}
-        <div
-          className="bg-ambient-blob animate-blob-d"
-          style={{
-            width: '320px',
-            height: '320px',
-            top: '8%',
-            right: '25%',
-            background: 'radial-gradient(circle, rgba(250,204,21,0.25) 0%, rgba(245,158,11,0.10) 35%, transparent 68%)',
-            opacity: 0.75,
-          }}
-        />
-        {/* Diffuseur orange doux — bas gauche */}
-        <div
-          className="bg-ambient-blob animate-blob-pulse"
-          style={{
-            width: '400px',
-            height: '400px',
-            bottom: '12%',
-            left: '5%',
-            background: 'radial-gradient(circle, rgba(245,158,11,0.15) 0%, rgba(234,88,12,0.05) 45%, transparent 70%)',
-            opacity: 0.6,
-          }}
-        />
-        {/* Grand glow central très diffus (warm amber) */}
-        <div
-          className="bg-ambient-blob animate-blob-pulse"
-          style={{
-            width: '1000px',
-            height: '800px',
-            top: '50%',
-            left: '50%',
-            transform: 'translate(-50%, -50%)',
-            background: 'radial-gradient(ellipse, rgba(245,158,11,0.07) 0%, rgba(250,204,21,0.03) 35%, transparent 68%)',
-            filter: 'blur(140px)',
-            opacity: 0.75,
-          }}
-        />
+  const filteredSessions = recentSessions.filter((s) =>
+    s.title.toLowerCase().includes(sessionSearch.trim().toLowerCase())
+  );
+
+  return (
+    <div className="relative flex h-screen w-screen bg-transparent text-gray-900 font-sans overflow-hidden antialiased">
+
+      {/* Fond dégradé orange / jaune qui bouge lentement */}
+      <div className="aurora" aria-hidden="true">
+        <span className="blob blob-a" />
+        <span className="blob blob-b" />
+        <span className="blob blob-c" />
+        <span className="blob blob-d" />
       </div>
       {/* ========================================================= */}
       {/* 1. PANNEAU GAUCHE (SIDEBAR - MENU & HISTORIQUE STYLE GEMINI) */}
@@ -656,7 +917,7 @@ export default function App() {
       <aside
         className={`${
           sidebarOpen ? 'w-64 sm:w-72' : 'w-0 -translate-x-full'
-        } transition-all duration-300 ease-in-out h-full bg-gray-50 border-r border-gray-200/80 flex flex-col shrink-0 z-20 overflow-hidden`}
+        } transition-all duration-300 ease-in-out h-full bg-white/60 backdrop-blur-xl border-r border-orange-200/40 flex flex-col shrink-0 z-20 overflow-hidden max-md:absolute max-md:inset-y-0 max-md:left-0`}
       >
         {/* En haut : Logo / Titre SaaS */}
         <div className="p-4 flex items-center justify-between">
@@ -665,7 +926,7 @@ export default function App() {
               <Sparkles className="w-4 h-4 text-white stroke-[2.5]" />
             </div>
             <div className="flex items-center gap-1.5">
-              <span className="font-extrabold text-gray-900 text-lg tracking-tight">Aura</span>
+              <span className="font-semibold text-gray-900 text-lg tracking-tight">Aura</span>
               <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-gray-200/80 text-gray-700">
                 Design
               </span>
@@ -694,12 +955,26 @@ export default function App() {
 
           {/* Recherche */}
           <button
-            onClick={() => showToast('Recherche dans vos designs...')}
-            className="w-full flex items-center gap-3 px-4 py-2 rounded-full hover:bg-gray-200/60 text-gray-600 hover:text-gray-900 text-sm font-medium transition-colors"
+            onClick={() => {
+              setSearchOpen((v) => !v);
+              if (searchOpen) setSessionSearch('');
+            }}
+            className={`w-full flex items-center gap-3 px-4 py-2 rounded-full text-sm font-medium transition-colors cursor-pointer ${
+              searchOpen ? 'bg-white/80 text-gray-900' : 'hover:bg-white/70 text-gray-600 hover:text-gray-900'
+            }`}
           >
             <Search className="w-4 h-4 text-gray-500" />
             <span>Recherche</span>
           </button>
+          {searchOpen && (
+            <input
+              autoFocus
+              value={sessionSearch}
+              onChange={(e) => setSessionSearch(e.target.value)}
+              placeholder="Rechercher une session..."
+              className="w-full px-4 py-2 rounded-full bg-white/90 border border-orange-200/60 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-orange-300/50"
+            />
+          )}
 
           {/* Brand Kit */}
           <button
@@ -726,32 +1001,41 @@ export default function App() {
             Récents
           </div>
 
-          {recentSessions.map((session) => {
+          {filteredSessions.length === 0 && (
+            <p className="px-3 py-2 text-xs text-gray-400">Aucune session trouvée.</p>
+          )}
+
+          {filteredSessions.map((session) => {
             const isActive = session.id === activeSessionId;
             return (
-              <button
-                key={session.id}
-                onClick={() => {
-                  handleSelectSession(session.id);
-                  showToast(`Session "${session.title}" chargée`);
-                }}
-                className={`w-full flex items-center justify-between px-3.5 py-2 text-sm transition-all rounded-full text-left truncate group ${
-                  isActive
-                    ? 'bg-gray-200/90 text-gray-900 font-semibold shadow-xs'
-                    : 'text-gray-600 hover:bg-gray-200/50 hover:text-gray-900 font-medium'
-                }`}
-              >
-                <span className="truncate pr-2">{session.title}</span>
-                <span className="text-[10px] text-gray-400 font-mono shrink-0">
-                  {session.format === 'story' ? '9:16' : session.format === 'square' ? '1:1' : '4:5'}
-                </span>
-              </button>
+              <div key={session.id} className="group relative">
+                <button
+                  onClick={() => handleSelectSession(session.id)}
+                  className={`w-full flex items-center justify-between px-3.5 py-2 text-sm transition-all rounded-full text-left cursor-pointer ${
+                    isActive
+                      ? 'bg-white/90 text-gray-900 font-semibold shadow-xs'
+                      : 'text-gray-600 hover:bg-white/60 hover:text-gray-900 font-medium'
+                  }`}
+                >
+                  <span className="truncate pr-2">{session.title}</span>
+                  <span className="text-[10px] text-gray-400 shrink-0 group-hover:opacity-0 transition-opacity">
+                    {session.format === 'story' ? '9:16' : session.format === 'square' ? '1:1' : '4:5'}
+                  </span>
+                </button>
+                <button
+                  onClick={() => handleDeleteSession(session.id)}
+                  title="Supprimer"
+                  className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 rounded-full text-gray-400 hover:text-red-500 hover:bg-red-50 opacity-0 group-hover:opacity-100 transition-all cursor-pointer"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                </button>
+              </div>
             );
           })}
         </div>
 
         {/* En bas : Profil utilisateur "Labbaci Malek" avec avatar et réglages */}
-        <div className="p-3 border-t border-gray-200/80 bg-gray-50/90 flex items-center justify-between">
+        <div className="p-3 border-t border-orange-200/40 bg-white/40 flex items-center justify-between">
           <div className="flex items-center gap-2.5 truncate">
             {/* Avatar */}
             <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-gray-900 to-gray-700 text-white font-bold text-xs flex items-center justify-center shrink-0 shadow-xs">
@@ -776,9 +1060,9 @@ export default function App() {
       {/* ========================================================= */}
       {/* 2. PANNEAU CENTRAL (ZONE DE CHAT & ESPACE DE TRAVAIL BLANC) */}
       {/* ========================================================= */}
-      <main className="flex-1 flex flex-col h-full bg-white relative min-w-0">
+      <main className="flex-1 flex flex-col h-full relative min-w-0">
         {/* Top Header épuré style Gemini */}
-        <header className="h-14 px-4 sm:px-6 flex items-center justify-between bg-white/90 backdrop-blur-xs z-10 shrink-0">
+        <header className="h-14 px-4 sm:px-6 flex items-center justify-between z-10 shrink-0">
           <div className="flex items-center gap-3">
             {!sidebarOpen && (
               <button
@@ -791,19 +1075,43 @@ export default function App() {
             )}
 
             {/* Sélecteur de modèle style Gemini */}
-            <div className="flex items-center gap-1.5 px-3 py-1 rounded-full hover:bg-gray-100 text-gray-900 font-semibold text-sm cursor-pointer transition-colors border border-transparent hover:border-gray-200">
-              <span className="font-extrabold tracking-tight">Aura 2.5 Social</span>
-              <ChevronDown className="w-3.5 h-3.5 text-gray-500" />
+            <div className="relative" ref={modelRef}>
+              <button
+                type="button"
+                onClick={() => setIsModelOpen((v) => !v)}
+                className="flex items-center gap-1.5 px-3 py-1 rounded-full hover:bg-white/70 text-gray-900 font-semibold text-sm cursor-pointer transition-colors"
+              >
+                <span className="tracking-tight">{model}</span>
+                <ChevronDown className={`w-3.5 h-3.5 text-gray-500 transition-transform ${isModelOpen ? 'rotate-180' : ''}`} />
+              </button>
+              {isModelOpen && (
+                <div className="absolute left-0 top-10 w-52 rounded-2xl bg-white border border-gray-200 shadow-xl p-1.5 z-30 space-y-0.5">
+                  {MODELS.map((m) => (
+                    <button
+                      key={m}
+                      type="button"
+                      onClick={() => {
+                        setModel(m);
+                        setIsModelOpen(false);
+                        showToast(`Modèle actif : ${m}`);
+                      }}
+                      className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-sm cursor-pointer transition-colors ${
+                        model === m ? 'bg-orange-50 text-orange-800 font-semibold' : 'text-gray-700 hover:bg-gray-100'
+                      }`}
+                    >
+                      <span>{m}</span>
+                      {model === m && <Check className="w-3.5 h-3.5 text-orange-600" />}
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
 
           <div className="flex items-center gap-2">
             <button
-              onClick={() => {
-                navigator.clipboard.writeText(window.location.href);
-                showToast('Lien de partage copié dans le presse-papier !');
-              }}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-semibold transition-colors"
+              onClick={handleShare}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/70 hover:bg-white text-gray-700 text-xs font-semibold transition-colors cursor-pointer"
             >
               <Share2 className="w-3.5 h-3.5 text-gray-600" />
               <span className="hidden sm:inline">Partager</span>
@@ -812,80 +1120,21 @@ export default function App() {
         </header>
 
         {/* Flux de discussion (Au centre) */}
-        <div className="flex-1 overflow-y-auto px-4 sm:px-6 pb-36 pt-4 flex flex-col">
+        <div className={`flex-1 overflow-y-auto px-4 sm:px-6 pt-4 flex flex-col ${messages.length === 0 ? 'pb-[calc(54vh+1rem)]' : 'pb-36'}`}>
           {messages.length === 0 ? (
             /* ========================================================= */
             /* PAGE D'ACCUEIL NOUVEAU DESIGN STYLE GEMINI */
             /* ========================================================= */
-            <div className="flex-1 flex flex-col justify-center max-w-3xl mx-auto w-full py-6 sm:py-10 my-auto animate-fade-in">
-              {/* Message de salutation style Gemini avec prénom */}
-              <div className="space-y-2 mb-8 sm:mb-10">
-                <div className="flex items-center gap-3">
-                  <h1 className="text-4xl sm:text-5xl md:text-6xl font-extrabold tracking-tight">
-                    <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 via-indigo-600 to-amber-500">
-                      {greetingSalutation}, {userFirstName}
-                    </span>
-                  </h1>
-                  <button
-                    onClick={() => {
-                      const newName = prompt('Personnaliser votre prénom (affiché sur l\'accueil) :', userFirstName);
-                      if (newName && newName.trim()) {
-                        const trimmed = newName.trim();
-                        setUserFirstName(trimmed);
-                        localStorage.setItem('aura_user_firstname', trimmed);
-                        showToast(`Prénom mis à jour : ${trimmed}`);
-                      }
-                    }}
-                    title="Modifier votre prénom"
-                    className="p-1.5 rounded-full hover:bg-gray-100 text-gray-400 hover:text-gray-700 transition-colors cursor-pointer"
-                  >
-                    <Sliders className="w-4 h-4" />
-                  </button>
-                </div>
-                <p className="text-3xl sm:text-4xl md:text-5xl font-extrabold text-gray-300 tracking-tight">
-                  On fait quoi aujourd'hui ?
-                </p>
-                <p className="text-sm sm:text-base text-gray-500 pt-1 font-medium">
-                  Qu'allons-nous créer aujourd'hui ? Générez un carrousel LinkedIn, une story Instagram ou un post avec vos photos en quelques secondes.
-                </p>
+            <div className="mt-auto w-full max-w-3xl mx-auto text-center animate-fade-in">
+              <div className="flex items-center justify-center gap-3 mb-2">
+                <Sparkles className="w-7 h-7 sm:w-8 sm:h-8 text-orange-500 stroke-[2]" />
+                <h1 className="text-3xl sm:text-4xl font-medium tracking-tight text-gray-900">
+                  {greetingSalutation}, {userFirstName}
+                </h1>
               </div>
-
-              {/* Cartes de suggestions interactives (Style Gemini) */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 w-full">
-                {welcomeSuggestions.map((card, idx) => (
-                  <button
-                    key={idx}
-                    type="button"
-                    onClick={() => {
-                      setSelectedFormat(card.format);
-                      if (card.slidesCount) setCarouselSlidesCount(card.slidesCount);
-                      handleSendMessage(card.prompt);
-                    }}
-                    className="group text-left p-4 sm:p-5 rounded-3xl bg-gray-50/90 hover:bg-gray-100 border border-gray-200/90 hover:border-gray-300 transition-all shadow-2xs hover:shadow-xs flex flex-col justify-between h-40 cursor-pointer relative"
-                  >
-                    <div>
-                      <div className="flex items-center justify-between mb-2.5">
-                        <span className="text-[11px] font-mono font-bold text-amber-800 bg-amber-100/80 px-2.5 py-0.5 rounded-full">
-                          {card.badge}
-                        </span>
-                        <div className="w-8 h-8 rounded-full bg-white border border-gray-200 shadow-2xs flex items-center justify-center text-gray-600 group-hover:text-amber-600 group-hover:scale-105 transition-all">
-                          {card.icon}
-                        </div>
-                      </div>
-                      <h3 className="text-sm font-bold text-gray-900 group-hover:text-amber-700 transition-colors line-clamp-1">
-                        {card.title}
-                      </h3>
-                      <p className="text-xs text-gray-500 mt-1 line-clamp-2 leading-relaxed">
-                        {card.prompt}
-                      </p>
-                    </div>
-                    <div className="flex items-center gap-1 text-[11px] font-semibold text-gray-400 group-hover:text-gray-700 transition-colors pt-1">
-                      <span>Créer ce design</span>
-                      <ChevronRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
-                    </div>
-                  </button>
-                ))}
-              </div>
+              <p className="text-base sm:text-lg text-gray-500 font-normal">
+                On travaille sur quoi aujourd'hui ?
+              </p>
             </div>
           ) : (
             <div className="max-w-3xl mx-auto space-y-8 w-full">
@@ -918,7 +1167,7 @@ export default function App() {
                             <span className="text-xs font-bold text-gray-900">
                               {isUser ? `Labbaci ${userFirstName}` : 'Aura Design AI'}
                             </span>
-                            <span className="text-[11px] text-gray-400 font-mono">{msg.timestamp}</span>
+                            <span className="text-[11px] text-gray-400 ">{msg.timestamp}</span>
                           </div>
 
                           {/* Texte du message */}
@@ -953,7 +1202,7 @@ export default function App() {
                               {/* Canvas Top Controls */}
                               <div className="flex items-center justify-between pb-4 border-b border-zinc-800/80 text-xs">
                                 <div className="flex items-center gap-2">
-                                  <span className="px-2.5 py-1 rounded-full bg-zinc-900 text-amber-400 font-mono text-[11px] font-bold border border-amber-500/30">
+                                  <span className="px-2.5 py-1 rounded-full bg-zinc-900 text-amber-400  text-[11px] font-bold border border-amber-500/30">
                                     {msg.design.format === 'story'
                                       ? 'Story 9:16'
                                       : msg.design.format === 'square'
@@ -982,14 +1231,8 @@ export default function App() {
                                   </button>
 
                                   <button
-                                    onClick={() =>
-                                      handleExportSlide(
-                                        msg.design!.title,
-                                        (msg.design!.activeSlideIndex || 0) + 1,
-                                        msg.design!.slides[msg.design!.activeSlideIndex || 0].image
-                                      )
-                                    }
-                                    className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-black font-extrabold text-xs tracking-wide transition-all shadow-sm cursor-pointer"
+                                    onClick={() => handleExportSlide(msg.design!, msg.design!.activeSlideIndex || 0)}
+                                    className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-black font-semibold text-xs tracking-wide transition-all shadow-sm cursor-pointer"
                                   >
                                     <Download className="w-3.5 h-3.5 stroke-[2.5]" />
                                     <span>PNG HD</span>
@@ -1037,19 +1280,19 @@ export default function App() {
                                         {/* Slide Header (Brand & Counter) */}
                                         <div className="relative z-10 flex items-center justify-between">
                                           <div className="flex items-center gap-2">
-                                            <div className="w-6 h-6 rounded-lg bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center text-black font-extrabold text-[10px] overflow-hidden">
+                                            <div style={{ background: brandColor }} className="w-6 h-6 rounded-lg flex items-center justify-center text-black font-semibold text-[10px] overflow-hidden">
                                               {brandLogo ? (
                                                 <img src={brandLogo} alt="Logo" className="w-full h-full object-contain p-0.5" />
                                               ) : (
                                                 brandName.slice(0, 2).toUpperCase()
                                               )}
                                             </div>
-                                            <span className="text-xs font-extrabold tracking-wider text-white uppercase">
+                                            <span className="text-xs font-semibold tracking-wider text-white uppercase">
                                               {brandName}
                                             </span>
                                           </div>
 
-                                          <div className="text-[11px] font-mono font-bold text-amber-400 bg-amber-500/10 border border-amber-500/20 px-2 py-0.5 rounded-full">
+                                          <div className="text-[11px]  font-bold text-amber-400 bg-amber-500/10 border border-amber-500/20 px-2 py-0.5 rounded-full">
                                             {String(slide.slideNumber).padStart(2, '0')} /{' '}
                                             {String(msg.design.slides.length).padStart(2, '0')}
                                           </div>
@@ -1058,18 +1301,18 @@ export default function App() {
                                         {/* Slide Middle Content */}
                                         <div className="relative z-10 my-auto py-4 space-y-3">
                                           <div className="flex items-center gap-2">
-                                            <span className="w-1.5 h-1.5 rounded-full bg-amber-400" />
-                                            <span className="text-[11px] font-mono font-bold uppercase tracking-wider text-amber-400">
+                                            <span style={{ backgroundColor: brandColor }} className="w-1.5 h-1.5 rounded-full" />
+                                            <span style={{ color: brandColor }} className="text-[11px] font-bold uppercase tracking-wider">
                                               {slide.tag}
                                             </span>
                                           </div>
 
                                           {/* Big Hook Headline */}
-                                          <h2 className="text-xl sm:text-2xl font-extrabold tracking-tight text-white leading-tight">
+                                          <h2 className="text-xl sm:text-2xl font-semibold tracking-tight text-white leading-tight">
                                             {slide.highlightWord && slide.title.includes(slide.highlightWord) ? (
                                               <>
                                                 {slide.title.split(slide.highlightWord)[0]}
-                                                <span className="text-transparent bg-clip-text bg-gradient-to-r from-amber-400 via-amber-500 to-orange-500 underline decoration-amber-500/40 underline-offset-4">
+                                                <span style={{ color: brandColor }} className="underline decoration-white/20 underline-offset-4">
                                                   {slide.highlightWord}
                                                 </span>
                                                 {slide.title.split(slide.highlightWord)[1]}
@@ -1086,7 +1329,7 @@ export default function App() {
                                           {/* Stat Callout if present */}
                                           {slide.stat && (
                                             <div className="p-3.5 rounded-xl bg-zinc-950/80 border border-amber-500/30 my-2">
-                                              <div className="text-3xl font-extrabold font-mono text-transparent bg-clip-text bg-gradient-to-r from-amber-400 to-orange-500">
+                                              <div style={{ color: brandColor }} className="text-3xl font-bold">
                                                 {slide.stat.value}
                                               </div>
                                               <div className="text-xs text-zinc-400 mt-0.5">{slide.stat.label}</div>
@@ -1110,7 +1353,7 @@ export default function App() {
 
                                         {/* Slide Footer */}
                                         <div className="relative z-10 pt-3 border-t border-zinc-800/80 flex items-center justify-between text-xs">
-                                          <div className="flex items-center gap-1 text-zinc-400 font-mono">
+                                          <div className="flex items-center gap-1 text-zinc-400 ">
                                             <span className="text-white font-medium">{brandHandle}</span>
                                             <CheckCircle2 className="w-3 h-3 text-amber-400 inline" />
                                           </div>
@@ -1185,7 +1428,7 @@ export default function App() {
                             {msg.suggestions.map((sug, i) => (
                               <button
                                 key={i}
-                                onClick={() => handleSendMessage(sug)}
+                                onClick={() => handleSuggestion(sug, msg)}
                                 className="px-3 py-1.5 rounded-full bg-gray-100 hover:bg-gray-200 text-gray-700 hover:text-gray-900 text-xs font-medium transition-colors border border-gray-200/80 cursor-pointer"
                               >
                                 {sug}
@@ -1198,23 +1441,26 @@ export default function App() {
                         {!isUser && (
                           <div className="flex items-center gap-2 mt-3 text-gray-400">
                             <button
-                              onClick={() => showToast('Merci pour votre feedback positif !')}
-                              className="p-1 rounded-full hover:bg-gray-100 hover:text-gray-700 transition-colors"
+                              onClick={() => {
+                                setFeedback((f) => ({ ...f, [msg.id]: 'up' }));
+                                showToast('Merci pour votre retour !');
+                              }}
+                              className={`p-1 rounded-full hover:bg-white/80 transition-colors cursor-pointer ${feedback[msg.id] === 'up' ? 'text-orange-600' : 'hover:text-gray-700'}`}
                             >
                               <ThumbsUp className="w-3.5 h-3.5" />
                             </button>
                             <button
-                              onClick={() => showToast('Feedback enregistré.')}
-                              className="p-1 rounded-full hover:bg-gray-100 hover:text-gray-700 transition-colors"
+                              onClick={() => {
+                                setFeedback((f) => ({ ...f, [msg.id]: 'down' }));
+                                showToast('Retour enregistré.');
+                              }}
+                              className={`p-1 rounded-full hover:bg-white/80 transition-colors cursor-pointer ${feedback[msg.id] === 'down' ? 'text-orange-600' : 'hover:text-gray-700'}`}
                             >
                               <ThumbsDown className="w-3.5 h-3.5" />
                             </button>
                             <button
-                              onClick={() => {
-                                navigator.clipboard.writeText(msg.text);
-                                showToast('Texte copié !');
-                              }}
-                              className="p-1 rounded-full hover:bg-gray-100 hover:text-gray-700 transition-colors"
+                              onClick={() => handleCopyMessage(msg.text)}
+                              className="p-1 rounded-full hover:bg-white/80 hover:text-gray-700 transition-colors cursor-pointer"
                             >
                               <Copy className="w-3.5 h-3.5" />
                             </button>
@@ -1259,7 +1505,7 @@ export default function App() {
       {/* ========================================================= */}
         {/* BARRE DE SAISIE (EN BAS, CENTRÉE ET FLOTTANTE STYLE GEMINI) */}
         {/* ========================================================= */}
-        <div className="absolute bottom-0 left-0 right-0 p-4 sm:p-6 bg-gradient-to-t from-white via-white/95 to-transparent pointer-events-none">
+        <div className={`absolute left-0 right-0 p-4 sm:p-6 pointer-events-none transition-all duration-300 ${messages.length === 0 ? 'top-[46%]' : 'bottom-0 bg-gradient-to-t from-[#fff7ec] via-[#fff7ec]/80 to-transparent'}`}>
           <div className="max-w-3xl mx-auto w-full pointer-events-auto">
             {/* Input file caché pour les photos */}
             <input
@@ -1272,7 +1518,7 @@ export default function App() {
             />
 
             {/* Conteneur flottant avec grand rayon de bordure */}
-            <div className="relative flex flex-col bg-gray-50 hover:bg-gray-100/90 focus-within:bg-white rounded-3xl sm:rounded-full px-3 py-2 border border-gray-200/90 shadow-md focus-within:shadow-lg focus-within:border-gray-300 focus-within:ring-2 focus-within:ring-amber-500/20 transition-all">
+            <div className="relative flex flex-col bg-white/85 backdrop-blur-md rounded-[28px] px-3 py-2.5 border border-orange-200/60 shadow-md focus-within:shadow-lg focus-within:border-orange-300 focus-within:ring-2 focus-within:ring-orange-400/20 transition-all">
               {/* Preview des photos attachées */}
               {attachedImages.length > 0 && (
                 <div className="flex items-center gap-2 px-2 pt-1 pb-2 border-b border-gray-200/70 mb-1 overflow-x-auto">
@@ -1439,10 +1685,25 @@ export default function App() {
               </div>
             </div>
 
-            {/* Disclaimer en bas */}
-            <p className="text-[11px] text-gray-400 text-center mt-2 font-normal">
-              Aura AI génère des visuels optimisés pour LinkedIn, Instagram et X. Vérifiez les textes avant publication.
-            </p>
+            {messages.length === 0 ? (
+              <div className="flex flex-wrap justify-center gap-2 mt-4">
+                {welcomeSuggestions.map((card, idx) => (
+                  <button
+                    key={idx}
+                    type="button"
+                    onClick={() => handleSendMessage(card.prompt, { format: card.format, count: card.slidesCount })}
+                    className="flex items-center gap-2 px-4 py-2 rounded-full bg-white/75 hover:bg-white border border-orange-200/60 text-sm text-gray-700 hover:text-gray-900 shadow-2xs transition-all cursor-pointer"
+                  >
+                    {card.icon}
+                    <span>{card.title}</span>
+                  </button>
+                ))}
+              </div>
+            ) : (
+              <p className="text-[11px] text-gray-400 text-center mt-2 font-normal">
+                Aura AI génère des visuels optimisés pour LinkedIn, Instagram et X. Vérifiez les textes avant publication.
+              </p>
+            )}
           </div>
         </div>
       </main>
@@ -1457,6 +1718,7 @@ export default function App() {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.2 }}
+            onMouseDown={(e) => e.target === e.currentTarget && setIsBrandKitOpen(false)}
             className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-2xs p-4"
           >
             <motion.div
@@ -1469,7 +1731,7 @@ export default function App() {
               <div className="flex items-center justify-between pb-3 border-b border-gray-100">
                 <div className="flex items-center gap-2">
                   <Palette className="w-5 h-5 text-amber-500" />
-                  <h3 className="font-extrabold text-gray-900 text-base">Configuration Brand Kit</h3>
+                  <h3 className="font-semibold text-gray-900 text-base">Configuration Brand Kit</h3>
                 </div>
                 <button
                   onClick={() => setIsBrandKitOpen(false)}
@@ -1554,7 +1816,7 @@ export default function App() {
 
                 <div>
                   <label className="text-xs font-semibold text-gray-700 block mb-1.5">
-                    Votre prénom (Salutation Gemini)
+                    Votre prénom (affiché à l'accueil)
                   </label>
                   <input
                     type="text"
@@ -1589,7 +1851,7 @@ export default function App() {
                     type="text"
                     value={brandHandle}
                     onChange={(e) => setBrandHandle(e.target.value)}
-                    className="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 text-sm text-gray-900 font-mono focus:outline-none focus:border-amber-500"
+                    className="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 text-sm text-gray-900  focus:outline-none focus:border-amber-500"
                     placeholder="@votrecompte"
                   />
                 </div>
@@ -1615,8 +1877,11 @@ export default function App() {
 
               <div className="pt-2 flex justify-end gap-2">
                 <button
-                  onClick={() => setIsBrandKitOpen(false)}
-                  className="px-4 py-2 rounded-full bg-gray-100 hover:bg-gray-200 text-gray-800 text-xs font-bold transition-colors cursor-pointer"
+                  onClick={() => {
+                    setIsBrandKitOpen(false);
+                    showToast('Brand Kit enregistré.');
+                  }}
+                  className="px-4 py-2 rounded-full bg-gray-900 hover:bg-black text-white text-xs font-bold transition-colors cursor-pointer"
                 >
                   Enregistrer
                 </button>
@@ -1636,6 +1901,7 @@ export default function App() {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.2 }}
+            onMouseDown={(e) => e.target === e.currentTarget && setIsTemplatesOpen(false)}
             className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-2xs p-4"
           >
             <motion.div
@@ -1648,7 +1914,7 @@ export default function App() {
               <div className="flex items-center justify-between pb-3 border-b border-gray-100">
                 <div className="flex items-center gap-2">
                   <LayoutTemplate className="w-5 h-5 text-amber-500" />
-                  <h3 className="font-extrabold text-gray-900 text-base">Templates Prêts à l'Emploi</h3>
+                  <h3 className="font-semibold text-gray-900 text-base">Templates Prêts à l'Emploi</h3>
                 </div>
                 <button
                   onClick={() => setIsTemplatesOpen(false)}
@@ -1685,11 +1951,13 @@ export default function App() {
                     key={i}
                     onClick={() => {
                       setIsTemplatesOpen(false);
-                      handleSendMessage(tpl.prompt);
+                      handleSendMessage(tpl.prompt, {
+                        format: tpl.format.includes('Story') ? 'story' : tpl.format.includes('Carré') ? 'square' : 'scroller',
+                      });
                     }}
                     className="p-3.5 rounded-2xl border border-gray-200 hover:border-amber-500/50 hover:bg-amber-50/30 transition-all cursor-pointer space-y-1.5 group"
                   >
-                    <span className="text-[10px] font-mono font-bold text-amber-600 uppercase">
+                    <span className="text-[10px]  font-bold text-amber-600 uppercase">
                       {tpl.format}
                     </span>
                     <h4 className="text-xs font-bold text-gray-900 group-hover:text-amber-800">
