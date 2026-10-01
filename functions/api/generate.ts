@@ -411,49 +411,54 @@ async function handleImage(apiKey: string, body: Record<string, unknown>): Promi
 
   let lastStatus = 502;
   let lastDetail = '';
+  const imgCfg = { aspectRatio: aspect, ...(sendSize ? { imageSize: size } : {}) };
+  // Deux variantes de config image : imageConfig (historique, accepte 4:5) puis responseFormat.image.
+  // Un 400 = requête rejetée, non facturée : on tente la variante suivante.
+  const variants: Record<string, unknown>[] = [{ imageConfig: imgCfg }, { responseFormat: { image: imgCfg } }];
+
   for (const model of candidates) {
-    // Endpoint officiel generateContent — ratio/taille dans generationConfig.responseFormat.image
-    const res = await fetchWithTimeout(
-      `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'x-goog-api-key': apiKey },
-        body: JSON.stringify({
-          contents: [
-            {
-              parts: [
-                ...inputImages.map((im) => ({ inline_data: { mime_type: im.mime, data: im.data } })),
-                { text: imagePrompt },
-              ],
-            },
-          ],
-          generationConfig: {
-            responseModalities: ['IMAGE'],
-            responseFormat: { image: { aspectRatio: aspect, ...(sendSize ? { imageSize: size } : {}) } },
-          },
-        }),
-      },
-      90000
-    );
+    let notFound = false;
+    for (const variant of variants) {
+      const res = await fetchWithTimeout(
+        `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'x-goog-api-key': apiKey },
+          body: JSON.stringify({
+            contents: [
+              {
+                parts: [
+                  ...inputImages.map((im) => ({ inline_data: { mime_type: im.mime, data: im.data } })),
+                  { text: imagePrompt },
+                ],
+              },
+            ],
+            generationConfig: { responseModalities: ['IMAGE'], ...variant },
+          }),
+        },
+        90000
+      );
 
-    if (res.ok) {
-      let data: unknown;
-      try {
-        data = await res.json();
-      } catch {
-        return json({ error: 'image_invalid_response' }, 502);
+      if (res.ok) {
+        let data: unknown;
+        try {
+          data = await res.json();
+        } catch {
+          return json({ error: 'image_invalid_response' }, 502);
+        }
+        const b64 = extractB64(data);
+        if (!b64) return json({ error: 'image_missing' }, 502);
+        return json({ configured: true, stage: 'image', model, image: `data:image/png;base64,${b64}` });
       }
-      const b64 = extractB64(data);
-      if (!b64) return json({ error: 'image_missing' }, 502);
-      return json({ configured: true, stage: 'image', model, image: `data:image/png;base64,${b64}` });
-    }
 
-    lastStatus = res.status;
-    const errText = await res.text().catch(() => '');
-    lastDetail = errText.slice(0, 400);
-    console.error('image upstream error', model, res.status, lastDetail);
-    const notFound = res.status === 404 || /not found|not_found/i.test(lastDetail);
-    if (!notFound) break; // vraie erreur (quota, safety, timeout) : on ne force pas
+      lastStatus = res.status;
+      const errText = await res.text().catch(() => '');
+      lastDetail = errText.slice(0, 1500);
+      console.error('image upstream error', model, res.status, Object.keys(variant)[0], lastDetail);
+      notFound = res.status === 404 || /not found|not_found/i.test(lastDetail);
+      if (res.status !== 400) break; // quota, safety, timeout : pas de variante suivante
+    }
+    if (!notFound) break;
   }
 
   return json({ error: 'image_upstream', status: lastStatus, detail: lastDetail }, 502);
