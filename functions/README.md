@@ -1,21 +1,30 @@
 # Cloudflare Pages Functions — Backend Aura Design
 
-Ce dossier est automatiquement déployé par **Cloudflare Pages**. Chaque sous-dossier correspond à une route API :
+Ce dossier est automatiquement déployé par **Cloudflare Pages** (aucune configuration build supplémentaire).
+Chaque sous-dossier correspond à une route API :
 
 | Route | Fichier | Rôle |
 | :--- | :--- | :--- |
-| `POST /api/generate` | `functions/api/generate.ts` | Génération de structure copywriting via Gemini côté serveur |
-| `POST /api/canva/import` | `functions/api/canva/import.ts` | Import du fichier `.pptx` multi-calques via Canva Connect |
+| `POST /api/generate` | `functions/api/generate.ts` | Génération IA : route les modèles de la plateforme vers les 3 Nano Banana (Gemini API) |
+| `POST /api/canva/import` | `functions/api/canva/import.ts` | Envoi direct du design multi-calques `.pptx` dans le compte Canva de l'utilisateur (Canva Connect `POST /rest/v1/imports`) et retour de l'`edit_url` |
 
-## Secrets Pages Functions
+## Variables d'environnement à définir dans Cloudflare Pages
 
-À définir comme **secrets chiffrés**, dans les environnements Production et Preview du projet Pages `aicontent` :
+`Paramètres → Fonctions (Functions) → Variables d'environnement` :
 
 | Variable | Description |
 | :--- | :--- |
-| `GEMINI_API_KEY` | Clé Google AI Studio — active la génération Gemini côté Cloudflare |
-| `CANVA_ACCESS_TOKEN` | Token Canva Connect par défaut ; facultatif si chaque utilisateur renseigne son propre token |
+| `GEMINI_API_KEY` | Clé API Google AI Studio (https://aistudio.google.com/apikey) — active la vraie génération IA |
+| `CANVA_ACCESS_TOKEN` | *(Optionnel)* Jeton Canva Connect par défaut. Sinon, chaque client colle son propre jeton depuis l'app (Paramètres → Compte Canva) |
 
-Le frontend ne reçoit jamais ces deux valeurs. La route Canva envoie le fichier vers Canva via le token Worker et retourne uniquement l’URL d’édition ou une erreur contrôlée.
+## Modèles & tarification en points
 
-Les variables `VITE_SUPABASE_URL` et `VITE_SUPABASE_ANON_KEY` sont des variables de build publiques destinées au client Supabase. Les données sont protégées par l’identité Auth anonyme et les politiques RLS définies dans `supabase/schema.sql`.
+| Modèle plateforme | Modèle Google | Coût API | Points déduits / image |
+| :--- | :--- | :--- | :--- |
+| Aura Flash | `gemini-2.5-flash-image` (Nano Banana 1) | ~0,039 $ | **5 pts** |
+| Aura Studio | `gemini-3.1-flash-image-preview` (Nano Banana 2) | ~0,067 $ | **10 pts** |
+| Aura Pro Max | `gemini-3-pro-image-preview` (Nano Banana Pro) | ~0,134 $ | **20 pts** |
+
+Facturation : **1 image IA générée = points du modèle** (un carrousel de N slides avec 1 image par slide = N × points).
+En dev local (`npm run dev`), un stub Vite répond `{ configured: false }` pour `/api/*` : l'app bascule alors
+sur le téléchargement du fichier `.pptx` multi-calques (importable manuellement sur canva.com).
