@@ -20,22 +20,7 @@
 })();
 
 import {createRoot} from 'react-dom/client';
-import {LazyMotion} from 'motion/react';
 import App from './App.tsx';
 import './index.css';
 
-// Les fonctionnalités d'animation (drag inclus) sont chargées à part pour alléger le premier affichage
-const loadMotionFeatures = () => import('./motionFeatures').then((m) => m.default);
-
-createRoot(document.getElementById('root')!).render(
-  <LazyMotion features={loadMotionFeatures}>
-    <App />
-  </LazyMotion>,
-);
-
-// PWA : service worker (production uniquement)
-if ('serviceWorker' in navigator && import.meta.env.PROD) {
-  window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/sw.js').catch(() => {});
-  });
-}
+createRoot(document.getElementById('root')!).render(<App />);

@@ -16,19 +16,11 @@
   }
 
   body {
-    background-color: #fffcf6;
-    -webkit-tap-highlight-color: transparent;
-    overscroll-behavior-y: none;
+    background-color: #fff8ee;
   }
 
   button:not(:disabled) {
     cursor: pointer;
-  }
-
-  button,
-  a,
-  [role='button'] {
-    touch-action: manipulation;
   }
 }
 
@@ -38,7 +30,7 @@
   inset: 0;
   overflow: hidden;
   pointer-events: none;
-  background: linear-gradient(135deg, #fffdf9 0%, #fff9ef 100%);
+  background: linear-gradient(135deg, #fffaf1 0%, #fff4e0 100%);
 }
 
 .aurora .blob {
@@ -82,23 +74,6 @@
   left: -12%;
   background: radial-gradient(circle, rgba(253, 224, 71, 0.5) 0%, rgba(253, 224, 71, 0.16) 45%, transparent 70%);
   animation: drift-d 52s ease-in-out infinite;
-}
-
-/* Voile blanc : atténue les couleurs pour que le design reste le point focal */
-.aurora::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background: rgba(255, 255, 255, 0.5);
-}
-
-/* Mobile : fond statique et flou réduit = plus fluide, batterie préservée */
-@media (max-width: 767px) {
-  .aurora .blob {
-    animation: none;
-    filter: blur(48px);
-    will-change: auto;
-  }
 }
 
 @keyframes drift-a {
@@ -145,12 +120,4 @@
 }
 ::-webkit-scrollbar-thumb:hover {
   background: rgba(251, 146, 60, 0.6);
-}
-
-/* ─── Mobile : défilement horizontal sans barre, zones sûres ─── */
-.no-scrollbar {
-  scrollbar-width: none;
-}
-.no-scrollbar::-webkit-scrollbar {
-  display: none;
 }

@@ -1,11 +1,10 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { m, AnimatePresence } from 'motion/react';
+import { motion, AnimatePresence } from 'motion/react';
 import {
   Sparkles,
   Plus,
   Search,
   Palette,
-  LayoutTemplate,
   Settings,
   MoreVertical,
   ChevronDown,
@@ -40,17 +39,19 @@ import {
   Zap,
   LogOut,
   FileImage,
-  History,
-  User as UserIcon,
-  Pencil
+  Lightbulb,
+  Rocket,
+  PencilRuler,
+  RefreshCw
 } from 'lucide-react';
-import imgAbstract from './assets/images/social_abstract_accent_1790812839231.webp';
-import imgMarketing from './assets/images/social_marketing_visual_1790812851560.webp';
+import { createEditableCanvaPptx } from './utils/canvaExport';
+import imgAbstract from './assets/images/social_abstract_accent_1790812839231.jpg';
+import imgMarketing from './assets/images/social_marketing_visual_1790812851560.jpg';
 
 // Format types
 type FormatType = 'scroller' | 'story' | 'square' | 'website' | 'product' | 'poster' | 'presentation';
 type Lang = 'fr' | 'en' | 'ar';
-type PlanId = 'free' | 'pro' | 'business';
+type PlanId = 'free' | 'starter' | 'pro' | 'business';
 
 interface Slide {
   id: string;
@@ -88,82 +89,6 @@ interface RecentSession {
   format: FormatType;
 }
 
-const INITIAL_DEMO_MESSAGES: Message[] = [
-  {
-    id: 'msg_1',
-    sender: 'user',
-    text: 'Génère un carrousel B2B au format 4:5 sur les erreurs de copywriting en 2026, avec un style minimaliste et percutant.',
-    timestamp: '14:28',
-  },
-  {
-    id: 'msg_2',
-    sender: 'assistant',
-    text: "J'ai conçu un carrousel de 4 slides optimisé pour LinkedIn et Instagram. La typographie est ultra-contrastée pour maximiser le scroll-stop rate, avec des accents ambrés subtils pour guider l'œil vers les points clés.",
-    timestamp: '14:29',
-    design: {
-      format: 'scroller',
-      title: 'Les Erreurs de Copywriting B2B',
-      activeSlideIndex: 0,
-      slides: [
-        {
-          id: 'sl_1',
-          slideNumber: 1,
-          tag: 'COPYWRITING & CONVERSION 2026',
-          title: '90% des posts B2B ne convertissent pas.',
-          subtitle: 'Voici la structure en 4 étapes que les meilleurs créateurs utilisent pour captiver et vendre sans forcer.',
-          highlightWord: 'convertissent',
-          image: imgAbstract,
-          ctaText: 'Faites glisser pour découvrir ➔',
-        },
-        {
-          id: 'sl_2',
-          slideNumber: 2,
-          tag: 'ERREUR #1 · LE JARGON TECHNIQUE',
-          title: 'Tuez les phrases creuses dès la 1ère seconde.',
-          subtitle: "Si votre accroche ne pose pas un paradoxe ou une tension immédiate, votre lecteur passe au post suivant.",
-          highlightWord: 'immédiate',
-          bulletPoints: [
-            'Bannissez "Dans le paysage dynamique d\'aujourd\'hui..."',
-            'Commencez par un coût d\'inaction chiffré',
-            'Limitez le hook à moins de 8 mots percutants',
-          ],
-        },
-        {
-          id: 'sl_3',
-          slideNumber: 3,
-          tag: 'ERREUR #2 · L\'ABSENCE DE PREUVES',
-          title: 'Remplacez les promesses par des métriques réelles.',
-          subtitle: 'Les décideurs sont immunisés contre les adjectifs vagues. Donnez-leur des chiffres irréfutables.',
-          stat: {
-            value: '+318%',
-            label: 'Taux de clics qualifiés mesuré après refonte du framework narratif',
-          },
-          image: imgMarketing,
-        },
-        {
-          id: 'sl_4',
-          slideNumber: 4,
-          tag: 'RÉCAPITULATIF & PASSAGE À L\'ACTION',
-          title: 'Prêt à transformer votre portée organique ?',
-          subtitle: 'Enregistrez ce carrousel pour l\'appliquer à votre prochaine campagne et partagez-le à votre équipe.',
-          bulletPoints: [
-            'Hook paradoxal en moins de 8 mots',
-            'Une seule idée force par slide',
-            'CTA orienté bénéfice mesurable',
-          ],
-          ctaText: 'Enregistrer le post · Suivre @aurastudio.ai',
-        },
-      ],
-    },
-    suggestions: [
-      'Passer au format Story 9:16',
-      'Rendre le hook plus provocateur',
-      'Ajouter une slide statistique',
-      'Télécharger les slides en PNG',
-    ],
-  },
-];
-
 const FORMATS: Record<
   FormatType,
   {
@@ -190,26 +115,20 @@ const FORMATS: Record<
 const FORMAT_ORDER: FormatType[] = ['scroller', 'story', 'square', 'website', 'product', 'poster', 'presentation'];
 
 const I18N: Record<Lang, Record<string, string>> = {
-  fr: { newDesign: 'Nouveau design', search: 'Recherche', brandKit: 'Brand Kit', templates: 'Templates', recents: 'Récents', greeting: 'Bonjour', subtitle: "On travaille sur quoi aujourd'hui ?", placeholder: 'Décrivez votre design…', share: 'Partager', settings: 'Paramètres', language: 'Langue', help: "Obtenir de l'aide", learnMore: 'En savoir plus', upgrade: 'Mettre le forfait à niveau', logout: 'Se déconnecter', plan: 'Forfait', create: 'Créer', profile: 'Profil', edit: 'Éditer', copy: 'Copier', shareSlide: 'Partager', install: "Installer l'application" },
-  en: { newDesign: 'New design', search: 'Search', brandKit: 'Brand Kit', templates: 'Templates', recents: 'Recents', greeting: 'Hello', subtitle: 'What are we working on today?', placeholder: 'Describe your design…', share: 'Share', settings: 'Settings', language: 'Language', help: 'Get help', learnMore: 'Learn more', upgrade: 'Upgrade plan', logout: 'Log out', plan: 'Plan', create: 'Create', profile: 'Profile', edit: 'Edit', copy: 'Copy', shareSlide: 'Share', install: 'Install the app' },
-  ar: { newDesign: 'تصميم جديد', search: 'بحث', brandKit: 'هوية العلامة', templates: 'قوالب', recents: 'الأخيرة', greeting: 'مرحباً', subtitle: 'على ماذا سنعمل اليوم؟', placeholder: 'صف تصميمك…', share: 'مشاركة', settings: 'الإعدادات', language: 'اللغة', help: 'احصل على مساعدة', learnMore: 'اعرف المزيد', upgrade: 'ترقية الباقة', logout: 'تسجيل الخروج', plan: 'الباقة', create: 'إنشاء', profile: 'حسابي', edit: 'تعديل', copy: 'نسخ', shareSlide: 'مشاركة', install: 'تثبيت التطبيق' },
+  fr: { newDesign: 'Nouveau design', search: 'Recherche', brandKit: 'Brand Kit', templates: 'Templates', recents: 'Récents', greeting: 'Bonjour', subtitle: "On travaille sur quoi aujourd'hui ?", placeholder: "Décrivez le design à créer... (site web, produit, story, carrousel, affiche)", share: 'Partager', settings: 'Paramètres', language: 'Langue', help: "Obtenir de l'aide", learnMore: 'En savoir plus', upgrade: 'Mettre le forfait à niveau', logout: 'Se déconnecter', plan: 'Forfait' },
+  en: { newDesign: 'New design', search: 'Search', brandKit: 'Brand Kit', templates: 'Templates', recents: 'Recents', greeting: 'Hello', subtitle: 'What are we working on today?', placeholder: 'Describe the design to create... (website, product, story, carousel, poster)', share: 'Share', settings: 'Settings', language: 'Language', help: 'Get help', learnMore: 'Learn more', upgrade: 'Upgrade plan', logout: 'Log out', plan: 'Plan' },
+  ar: { newDesign: 'تصميم جديد', search: 'بحث', brandKit: 'هوية العلامة', templates: 'قوالب', recents: 'الأخيرة', greeting: 'مرحباً', subtitle: 'على ماذا سنعمل اليوم؟', placeholder: 'صف التصميم المطلوب... (موقع، منتج، ستوري، كاروسيل، ملصق)', share: 'مشاركة', settings: 'الإعدادات', language: 'اللغة', help: 'احصل على مساعدة', learnMore: 'اعرف المزيد', upgrade: 'ترقية الباقة', logout: 'تسجيل الخروج', plan: 'الباقة' },
 };
 const LANGS: { id: Lang; label: string }[] = [
   { id: 'fr', label: 'Français' },
   { id: 'en', label: 'English' },
   { id: 'ar', label: 'العربية' },
 ];
-const PLANS: { id: PlanId; name: string; desc: string; features: string[] }[] = [
-  { id: 'free', name: 'Gratuit', desc: 'Pour découvrir', features: ['10 designs / mois', 'Export PNG', '1 Brand Kit'] },
-  { id: 'pro', name: 'Pro', desc: 'Pour les créateurs', features: ['Designs illimités', 'Export HD', 'Tous les formats', 'Brand Kits multiples'] },
-  { id: 'business', name: 'Business', desc: 'Pour les équipes', features: ['Tout Pro', 'Espace d\'équipe', 'Support prioritaire'] },
-];
 const FAQ: { q: string; a: string }[] = [
   { q: 'Quels types de designs puis-je créer ?', a: 'Posts et stories pour les réseaux sociaux, carrousels, sites web, fiches produit, affiches et présentations. Choisissez le format dans la barre de saisie.' },
   { q: 'Comment exporter mon design ?', a: 'Dans le Canvas, cliquez sur « PNG HD » pour télécharger le slide affiché, ou utilisez la suggestion « Télécharger les slides en PNG » pour tout exporter.' },
   { q: 'Comment appliquer ma marque ?', a: 'Ouvrez Brand Kit : logo, nom, identifiant et couleur d\'accentuation sont appliqués à tous vos designs.' },
-  { q: 'Raccourcis utiles', a: 'Entrée pour envoyer (ordinateur), Maj+Entrée pour un retour à la ligne, Échap pour fermer une fenêtre ou un menu. Sur téléphone : glissez le design pour changer de slide.' },
-  { q: "Comment installer l'application ?", a: "Android (Chrome) : menu ⋮ puis « Installer l'application ». iPhone (Safari) : bouton Partager puis « Sur l'écran d'accueil ». Aura s'ouvre ensuite en plein écran, comme une vraie application." },
+  { q: 'Raccourcis utiles', a: 'Entrée pour envoyer, Échap pour fermer une fenêtre ou un menu.' },
 ];
 
 const loadImage = (src: string) =>
@@ -424,64 +343,274 @@ const loadBrand = (): { name?: string; handle?: string; color?: string } => {
   }
 };
 
-const MODELS = ['Aura 2.5 Social', 'Aura 2.5 Pro'];
+export type ModelId = 'flash' | 'studio' | 'pro';
+const MODELS: { id: ModelId; name: string; points: number; badge?: string }[] = [
+  { id: 'flash', name: 'Aura Flash', points: 5 },
+  { id: 'studio', name: 'Aura Studio', points: 10 },
+  { id: 'pro', name: 'Aura Pro Max', points: 20, badge: 'MAX QUALITÉ' },
+];
+const MODEL_POINTS: Record<ModelId, number> = { flash: 5, studio: 10, pro: 20 };
 
-const BRAND_COLORS = ['#F59E0B', '#EA580C', '#EAB308', '#F97316', '#10B981', '#3B82F6', '#8B5CF6', '#EC4899'];
+// ---------- PACKS COMMERCIAUX (Option A) ----------
+// 1 image générée = 5 pts (Flash) / 10 pts (Studio) / 20 pts (Pro Max)
+const PRICING: {
+  id: PlanId | 'business';
+  name: string;
+  price?: string;
+  period?: string;
+  points?: string;
+  tagline: string;
+  features: string[];
+  cta: string;
+  highlight?: boolean;
+  ribbon?: string;
+}[] = [
+  {
+    id: 'free',
+    name: 'Gratuit',
+    price: '0 DA',
+    period: 'pour toujours',
+    points: '20 points offerts',
+    tagline: 'Pour découvrir la magie',
+    features: ['20 points de bienvenue', 'Aura Flash inclus (5 pts/image)', 'Export PNG HD', '1 Brand Kit', 'Export multi-calques Canva'],
+    cta: 'Commencer gratuitement',
+  },
+  {
+    id: 'starter',
+    name: 'Starter',
+    price: '1 900 DA',
+    period: '/ mois',
+    points: '150 points / mois',
+    tagline: 'Pour les créateurs & indépendants',
+    features: [
+      '150 points chaque mois',
+      'Les 3 modèles : Flash · Studio · Pro Max',
+      'Carrousels multi-slides',
+      'Export PNG HD illimité',
+      'Brand Kit complet (logo, couleurs)',
+      'Envoi direct vers Canva',
+    ],
+    cta: 'Choisir Starter',
+    highlight: true,
+    ribbon: 'LE PLUS POPULAIRE',
+  },
+  {
+    id: 'pro',
+    name: 'Pro',
+    price: '4 900 DA',
+    period: '/ mois',
+    points: '450 points / mois',
+    tagline: 'Pour les marques en croissance',
+    features: [
+      '450 points chaque mois',
+      'Les 3 modèles : Flash · Studio · Pro Max',
+      'Carrousels multi-slides illimités',
+      'Export PNG HD illimité',
+      '3 Brand Kits multiples',
+      'Envoi direct vers Canva',
+      'Support prioritaire',
+    ],
+    cta: 'Choisir Pro',
+  },
+  {
+    id: 'business',
+    name: 'Business & Agences',
+    price: 'Sur devis',
+    period: 'tarification négociée',
+    points: 'Points sur mesure',
+    tagline: 'Volume élevé, équipe & revente',
+    features: [
+      'Volume de points personnalisé',
+      'Tarifs dégressifs par volume',
+      'Espace multi-équipes',
+      'Droits commerciaux (revendeur)',
+      'Onboarding & support dédié',
+    ],
+    cta: 'Contacter l\'équipe',
+  },
+];
 
-const ACTION_BTN =
-  'flex flex-col items-center justify-center gap-1 min-h-[52px] rounded-2xl text-[11px] font-semibold transition-colors bg-zinc-900 hover:bg-zinc-800 active:bg-zinc-700 text-zinc-200 border border-zinc-800 cursor-pointer';
+// Remarques de consommation affichées sur la page tarifs
+const PRICING_TIPS: { icon: 'lightbulb' | 'rocket'; tone: 'eco' | 'pro'; title: string; text: string }[] = [
+  {
+    icon: 'lightbulb',
+    tone: 'eco',
+    title: "Petits visuels, posts quotidiens, stories simples ?",
+    text: "Économisez vos points avec Aura Flash (5 pts) — rapide, léger et parfait pour les contenus du quotidien.",
+  },
+  {
+    icon: 'rocket',
+    tone: 'pro',
+    title: 'Lancement produit, campagne majeure, visuel premium ?',
+    text: "Utilisez Aura Pro Max (20 pts) : la qualité maximale pour vos projets les plus importants. Aura Studio (10 pts) reste le juste milieu HD.",
+  },
+];
 
-function SlideThumbs({
-  slides,
-  active,
-  onSelect,
-  accent,
+// ============================================================
+// PAGE TARIFS & CRÉDITS (design inspiré de l'interface Aura)
+// ============================================================
+function PricingPage({
+  currentPlan,
+  credits,
+  onChoose,
 }: {
-  slides: Slide[];
-  active: number;
-  onSelect: (i: number) => void;
-  accent: string;
+  currentPlan: PlanId;
+  credits: number;
+  onChoose: (packId: PlanId) => void;
 }) {
-  const refs = useRef<(HTMLButtonElement | null)[]>([]);
-  const first = useRef(true);
-  useEffect(() => {
-    if (first.current) {
-      first.current = false;
-      return;
-    }
-    refs.current[active]?.scrollIntoView({ inline: 'center', block: 'nearest', behavior: 'smooth' });
-  }, [active]);
   return (
-    <div className="flex-1 min-w-0 flex gap-2 overflow-x-auto no-scrollbar py-1 snap-x" role="tablist" aria-label="Slides">
-      {slides.map((sl, i) => (
-        <button
-          key={sl.id}
-          ref={(el) => {
-            refs.current[i] = el;
-          }}
-          type="button"
-          role="tab"
-          aria-selected={i === active}
-          aria-label={`Slide ${i + 1}`}
-          onClick={() => onSelect(i)}
-          className={`snap-center shrink-0 w-14 h-[4.5rem] rounded-xl p-1.5 text-left flex flex-col justify-between overflow-hidden border transition-all cursor-pointer ${
-            i === active ? 'bg-zinc-800' : 'bg-zinc-900 border-zinc-800 opacity-70 hover:opacity-100'
-          }`}
-          style={i === active ? { borderColor: accent } : undefined}
-        >
-          <span className="text-[9px] font-bold" style={{ color: accent }}>
-            {String(i + 1).padStart(2, '0')}
+    <div className="space-y-6">
+      {/* --- En-tête Hero --- */}
+      <div className="relative overflow-hidden rounded-t-3xl bg-gradient-to-br from-amber-50 via-orange-50/70 to-white px-6 sm:px-10 pt-10 pb-8 border-b border-orange-100">
+        <div className="aurora opacity-40" aria-hidden="true">
+          <span className="blob blob-a" />
+          <span className="blob blob-b" />
+        </div>
+        <div className="relative z-10 text-center space-y-3 max-w-2xl mx-auto">
+          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/80 border border-amber-200/70 text-[11px] font-bold text-amber-700 shadow-xs">
+            <Zap className="w-3 h-3" />
+            TARIFS & CRÉDITS
           </span>
-          <span className="text-[7px] leading-tight text-zinc-300 line-clamp-3">{sl.title}</span>
-        </button>
-      ))}
+          <h2 className="text-2xl sm:text-3xl font-semibold text-gray-900 tracking-tight">
+            Rechargez en <span className="text-transparent bg-clip-text bg-gradient-to-r from-amber-500 to-orange-500">points</span>, générez en liberté
+          </h2>
+          <p className="text-sm text-gray-500 leading-relaxed">
+            1 image générée = <span className="font-bold text-gray-700">5 pts</span> avec <span className="font-semibold">Aura Flash</span> ·{' '}
+            <span className="font-bold text-gray-700">10 pts</span> avec <span className="font-semibold">Aura Studio</span> ·{' '}
+            <span className="font-bold text-gray-700">20 pts</span> avec <span className="font-semibold">Aura Pro Max</span>.
+          </p>
+          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white border border-gray-200 shadow-xs text-xs font-semibold text-gray-700">
+            <Sparkles className="w-3.5 h-3.5 text-amber-500" />
+            Votre solde actuel :
+            <span className="font-bold text-amber-600">{credits} points</span>
+          </div>
+        </div>
+      </div>
+
+      {/* --- Grille des packs --- */}
+      <div className="px-6 sm:px-10">
+        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+          {PRICING.map((pk) => {
+            const isCurrent = pk.id === currentPlan && pk.price !== 'Sur devis';
+            const isDevis = pk.price === 'Sur devis';
+            return (
+              <div
+                key={pk.name}
+                className={`relative rounded-3xl border flex flex-col gap-4 p-5 transition-all ${
+                  pk.highlight
+                    ? 'border-amber-400 bg-gradient-to-b from-amber-50/80 to-white shadow-lg shadow-amber-100/60 xl:-translate-y-1'
+                    : isCurrent
+                    ? 'border-orange-300 bg-orange-50/40'
+                    : 'border-gray-200 hover:border-amber-300/70 hover:shadow-md'
+                }`}
+              >
+                {pk.ribbon && (
+                  <span className="absolute -top-2.5 left-1/2 -translate-x-1/2 px-3 py-0.5 rounded-full bg-gradient-to-r from-amber-500 to-orange-500 text-white text-[9px] font-bold tracking-wider shadow-sm whitespace-nowrap">
+                    {pk.ribbon}
+                  </span>
+                )}
+
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2">
+                    <h4 className="font-semibold text-gray-900">{pk.name}</h4>
+                    {isCurrent && (
+                      <span className="text-[9px] font-bold text-orange-700 bg-orange-100 border border-orange-200 px-1.5 py-0.5 rounded-full">
+                        ACTUEL
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-[11px] text-gray-500">{pk.tagline}</p>
+                </div>
+
+                <div className="flex items-end gap-1.5">
+                  <span className={`text-2xl font-bold tracking-tight ${pk.highlight ? 'text-transparent bg-clip-text bg-gradient-to-r from-amber-600 to-orange-500' : 'text-gray-900'}`}>
+                    {pk.price}
+                  </span>
+                  {pk.period && <span className="text-[11px] text-gray-400 pb-1">{pk.period}</span>}
+                </div>
+
+                {pk.points && (
+                  <div className={`flex items-center gap-1.5 w-fit px-3 py-1 rounded-full text-[11px] font-bold border ${
+                    pk.highlight
+                      ? 'bg-amber-100/80 text-amber-800 border-amber-200'
+                      : 'bg-gray-100 text-gray-700 border-gray-200'
+                  }`}>
+                    <Zap className="w-3 h-3 text-amber-500" />
+                    {pk.points}
+                  </div>
+                )}
+
+                <ul className="space-y-2 flex-1 pt-1">
+                  {pk.features.map((f) => (
+                    <li key={f} className="flex items-start gap-2 text-xs text-gray-600">
+                      <Check className="w-3.5 h-3.5 text-amber-500 shrink-0 mt-0.5 stroke-[2.5]" />
+                      {f}
+                    </li>
+                  ))}
+                </ul>
+
+                <button
+                  type="button"
+                  disabled={isCurrent}
+                  onClick={() => {
+                    if (isDevis) {
+                      window.location.href = 'mailto:contact@auradesign.dz?subject=Pack%20Business%20%26%20Agences%20%E2%80%94%20Aura%20Design';
+                      return;
+                    }
+                    onChoose(pk.id);
+                  }}
+                  className={`w-full px-3 py-2.5 rounded-full text-xs font-bold transition-all ${
+                    isCurrent
+                      ? 'bg-gray-100 text-gray-400 cursor-default'
+                      : pk.highlight
+                      ? 'bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-white shadow-md shadow-amber-200/60 cursor-pointer'
+                      : 'bg-gray-900 hover:bg-black text-white cursor-pointer'
+                  }`}
+                >
+                  {isCurrent ? 'Pack actuel' : pk.cta}
+                </button>
+              </div>
+            );
+          })}
+        </div>
+
+        {/* --- Remarques de consommation --- */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-5">
+          {PRICING_TIPS.map((tip) => (
+            <div
+              key={tip.title}
+              className={`flex items-start gap-3 rounded-2xl border p-4 ${
+                tip.tone === 'eco' ? 'border-emerald-200/80 bg-emerald-50/40' : 'border-amber-200/80 bg-amber-50/50'
+              }`}
+            >
+              <div
+                className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${
+                  tip.tone === 'eco' ? 'bg-emerald-100 text-emerald-600' : 'bg-amber-100 text-amber-600'
+                }`}
+              >
+                {tip.icon === 'lightbulb' ? <Lightbulb className="w-4 h-4" /> : <Rocket className="w-4 h-4" />}
+              </div>
+              <div className="space-y-0.5">
+                <p className="text-xs font-bold text-gray-900">{tip.title}</p>
+                <p className="text-[11px] text-gray-500 leading-relaxed">{tip.text}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* --- Note de facturation --- */}
+        <p className="text-[11px] text-gray-400 text-center pt-4 pb-6 leading-relaxed max-w-xl mx-auto">
+          Les points sont déduits uniquement lorsque vous générez un visuel — un point non utilisé reste dans votre solde.
+          L'export PNG HD, l'export multi-calques Canva et l'envoi vers votre compte Canva sont toujours inclus gratuitement.
+        </p>
+      </div>
     </div>
   );
 }
 
 export default function App() {
   // Sidebar state
-  const [sidebarOpen, setSidebarOpen] = useState(() => typeof window === 'undefined' || window.innerWidth >= 768);
+  const [sidebarOpen, setSidebarOpen] = useState(true);
   const [activeSessionId, setActiveSessionId] = useState('sess_draft');
   const activeIdRef = useRef('sess_draft');
   useEffect(() => {
@@ -501,6 +630,45 @@ export default function App() {
       return 'free';
     }
   });
+  // ===== SYSTÈME DE CRÉDITS (POINTS) =====
+  const [credits, setCredits] = useState<number>(() => {
+    try {
+      const stored = Number(localStorage.getItem('aura_credits'));
+      return Number.isFinite(stored) ? stored : 20;
+    } catch {
+      return 20;
+    }
+  });
+  useEffect(() => {
+    try {
+      localStorage.setItem('aura_credits', String(credits));
+    } catch {}
+  }, [credits]);
+  const [activeModelId, setActiveModelId] = useState<ModelId>(() => {
+    try {
+      return (localStorage.getItem('aura_model') as ModelId) || 'flash';
+    } catch {
+      return 'flash';
+    }
+  });
+  const activeModel = MODELS.find((m) => m.id === activeModelId) || MODELS[0];
+  useEffect(() => {
+    try {
+      localStorage.setItem('aura_model', activeModelId);
+    } catch {}
+  }, [activeModelId]);
+  // Coût total de la prochaine génération (images IA réellement générées × points du modèle)
+  // ===== CONNEXION CANVA =====
+  const [canvaConnected, setCanvaConnected] = useState<boolean>(() => {
+    try {
+      return localStorage.getItem('aura_canva_token') ? true : false;
+    } catch {
+      return false;
+    }
+  });
+  const [canvaModalOpen, setCanvaModalOpen] = useState(false);
+  const [canvaTokenInput, setCanvaTokenInput] = useState('');
+  const [canvaExporting, setCanvaExporting] = useState(false);
   const [loggedOut, setLoggedOut] = useState(() => {
     try {
       return localStorage.getItem('aura_logged_out') === '1';
@@ -528,7 +696,6 @@ export default function App() {
   }, [plan]);
   const [searchOpen, setSearchOpen] = useState(false);
   const [sessionSearch, setSessionSearch] = useState('');
-  const [model, setModel] = useState(MODELS[0]);
   const [isModelOpen, setIsModelOpen] = useState(false);
   const modelRef = useRef<HTMLDivElement>(null);
   const [feedback, setFeedback] = useState<Record<string, 'up' | 'down'>>({});
@@ -569,20 +736,6 @@ export default function App() {
     }
   };
 
-  // Templates Modal state
-  const [isTemplatesOpen, setIsTemplatesOpen] = useState(false);
-
-  // Mobile / PWA
-  const [isTouch] = useState(() => typeof window !== 'undefined' && window.matchMedia('(pointer: coarse)').matches);
-  const [isStandalone] = useState(
-    () =>
-      typeof window !== 'undefined' &&
-      (window.matchMedia('(display-mode: standalone)').matches || (navigator as any).standalone === true)
-  );
-  const [installEvt, setInstallEvt] = useState<any>(null);
-  const [editingMsgId, setEditingMsgId] = useState<string | null>(null);
-  const promptRef = useRef<HTMLTextAreaElement>(null);
-
   // Chat & Input state
   const [inputPrompt, setInputPrompt] = useState('');
   const [selectedFormat, setSelectedFormat] = useState<FormatType>('scroller');
@@ -619,33 +772,24 @@ export default function App() {
   };
 
   // Sessions list
-  const [recentSessions, setRecentSessions] = useState<RecentSession[]>([
-    { id: 'sess_1', title: 'Carrousel B2B (Démo)', format: 'scroller' },
-    { id: 'sess_2', title: 'Story Sawtify', format: 'story' },
-    { id: 'sess_3', title: 'Lancement Produit SaaS', format: 'scroller' },
-    { id: 'sess_4', title: 'Citation Steve Jobs', format: 'square' },
-    { id: 'sess_5', title: 'Framework Growth Q1', format: 'scroller' },
-  ]);
+  const [recentSessions, setRecentSessions] = useState<RecentSession[]>([]);
 
   // Messages list - starts empty so user immediately lands on the Gemini greeting screen!
   const [messages, setMessages] = useState<Message[]>([]);
-  const [sessionMessagesMap, setSessionMessagesMap] = useState<Record<string, Message[]>>({
-    sess_1: INITIAL_DEMO_MESSAGES,
-  });
+  const [sessionMessagesMap, setSessionMessagesMap] = useState<Record<string, Message[]>>({});
 
   // Salutation dynamique Gemini
   const greetingSalutation = t('greeting');
 
   // Suggestions d'inspiration sur la page d'accueil style Gemini
   const welcomeSuggestions = [
-    { title: 'Carrousel B2B', format: 'scroller' as FormatType, slidesCount: 5, prompt: 'Génère un carrousel B2B en 5 slides sur les erreurs fatales que font les startups en phase de scaling.' },
-    { title: 'Story Instagram', format: 'story' as FormatType, prompt: 'Génère une story teaser ultra-captivante pour une masterclass IA jeudi à 18h avec compte à rebours.' },
-    { title: 'Site web', format: 'website' as FormatType, prompt: 'Conçois la section hero d\'un site web pour une agence de marketing digital moderne.' },
-    { title: 'Fiche produit', format: 'product' as FormatType, prompt: 'Crée une fiche produit élégante pour une montre minimaliste, avec bénéfices clés et preuve sociale.' },
-    { title: 'Affiche événement', format: 'poster' as FormatType, prompt: 'Crée une affiche percutante pour un festival de cinéma en plein air ce samedi soir.' },
-    { title: 'Présentation pitch', format: 'presentation' as FormatType, slidesCount: 5, prompt: 'Génère une présentation pitch deck en 5 slides pour une startup SaaS en phase de lancement.' },
+    { title: 'Lancement de ma boutique', prompt: 'Crée un visuel de lancement percutant pour l\'ouverture de ma nouvelle boutique en ligne.' },
+    { title: 'Promotion -30%', prompt: 'Génère un visuel promotionnel pour une réduction de -30% valable ce week-end seulement.' },
+    { title: 'Conseils pour ma clientèle', prompt: 'Crée un contenu éducatif donnant 5 conseils pratiques à mes clients pour progresser rapidement.' },
+    { title: 'Citation inspirante', prompt: 'Crée un visuel avec une citation inspirante sur la réussite et la discipline pour LinkedIn.' },
   ].map((c) => {
-    const F = FORMATS[c.format].Icon;
+    const inferred = inferOpts(c.prompt);
+    const F = FORMATS[inferred.format || 'square'].Icon;
     return { ...c, icon: <F className="w-4 h-4 text-orange-600" /> };
   });
 
@@ -655,58 +799,13 @@ export default function App() {
     toastTimer.current = setTimeout(() => setToastMessage(null), 2800);
   };
 
-  // Installation PWA
-  useEffect(() => {
-    const onPrompt = (e: Event) => {
-      e.preventDefault();
-      setInstallEvt(e);
-    };
-    const onInstalled = () => {
-      setInstallEvt(null);
-      showToast('Application installée !');
-    };
-    window.addEventListener('beforeinstallprompt', onPrompt);
-    window.addEventListener('appinstalled', onInstalled);
-    return () => {
-      window.removeEventListener('beforeinstallprompt', onPrompt);
-      window.removeEventListener('appinstalled', onInstalled);
-    };
-  }, []);
-
-  const handleInstall = async () => {
-    if (!installEvt) {
-      setFaqOpen(FAQ.length - 1);
-      setModal('help');
-      return;
-    }
-    installEvt.prompt();
-    try {
-      await installEvt.userChoice;
-    } catch {}
-    setInstallEvt(null);
-  };
-
-  // Zone de saisie : hauteur auto (jusqu'à ~5 lignes)
-  useEffect(() => {
-    const el = promptRef.current;
-    if (!el) return;
-    el.style.height = 'auto';
-    el.style.height = `${Math.min(el.scrollHeight, 160)}px`;
-  }, [inputPrompt]);
-
   useEffect(() => {
     setSessionMessagesMap((prev) => (prev[activeSessionId] === messages ? prev : { ...prev, [activeSessionId]: messages }));
   }, [messages, activeSessionId]);
 
   useEffect(() => {
-    // Un nouveau design s'affiche depuis son début (le slide d'abord), le reste suit le bas du fil
-    const last = messages[messages.length - 1];
-    if (last?.sender === 'assistant' && last.design) {
-      document.getElementById(`msg-${last.id}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    } else {
-      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-    }
-  }, [messages.length, isGenerating]);
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages, isGenerating]);
 
   // Click outside format & slides count dropdowns
   useEffect(() => {
@@ -728,7 +827,6 @@ export default function App() {
     function handleEscape(event: KeyboardEvent) {
       if (event.key === 'Escape') {
         setIsBrandKitOpen(false);
-        setIsTemplatesOpen(false);
         setIsFormatDropdownOpen(false);
         setIsSlidesDropdownOpen(false);
         setIsModelOpen(false);
@@ -809,42 +907,93 @@ export default function App() {
     showToast('Tous les slides sont téléchargés !');
   };
 
-  // Édition rapide d'un slide
-  const handleSlideEdit = (messageId: string, slideIndex: number, patch: Partial<Slide>) => {
-    setMessages((prev) =>
-      prev.map((msg) =>
-        msg.id === messageId && msg.design
-          ? {
-              ...msg,
-              design: {
-                ...msg.design,
-                slides: msg.design.slides.map((sl, i) => (i === slideIndex ? { ...sl, ...patch } : sl)),
-              },
-            }
-          : msg
-      )
-    );
+  // ===== EXPORT MULTI-CALQUES VERS CANVA =====
+  const getCanvaToken = (): string | null => {
+    try {
+      return localStorage.getItem('aura_canva_token');
+    } catch {
+      return null;
+    }
   };
 
-  // Partage natif (feuille de partage du téléphone) avec repli sur le téléchargement
-  const handleShareSlide = async (design: DesignContent, index: number) => {
-    const blob = await slideToPngBlob(design.slides[index], design.format, design.slides.length, {
-      name: brandName,
-      handle: brandHandle,
-      color: brandColor,
-    });
-    if (!blob) {
-      showToast('Export impossible sur ce navigateur.');
+  const handleExportToCanva = async (design: DesignContent) => {
+    setCanvaExporting(true);
+    showToast('Préparation du fichier multi-calques...');
+    try {
+      const fmt = FORMATS[design.format];
+      const blob = createEditableCanvaPptx({
+        title: design.title,
+        widthPx: fmt.w,
+        heightPx: fmt.h,
+        slides: design.slides.map((s) => ({
+          slideNumber: s.slideNumber,
+          tag: s.tag,
+          title: s.title,
+          subtitle: s.subtitle,
+          bulletPoints: s.bulletPoints,
+          stat: s.stat,
+          image: s.image,
+          ctaText: s.ctaText,
+        })),
+        brand: { name: brandName, handle: brandHandle, color: brandColor, logo: brandLogo },
+      });
+
+      const token = getCanvaToken();
+      if (token) {
+        // 1. Envoi automatique dans le compte Canva via Canva Connect (backend Cloudflare)
+        try {
+          const res = await fetch('/api/canva/import', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/octet-stream',
+              'X-Canva-Token': token,
+              'X-Design-Title': design.title,
+            },
+            body: blob,
+          });
+          const data = await res.json();
+          if (data.edit_url) {
+            window.open(data.edit_url as string, '_blank', 'noopener');
+            showToast('Design ouvert dans votre compte Canva !');
+            setCanvaExporting(false);
+            return;
+          }
+          showToast('Import automatique indisponible — fichier multi-calques téléchargé.');
+        } catch {
+          showToast('Import automatique indisponible — fichier multi-calques téléchargé.');
+        }
+      } else {
+        // 2. Pas de compte connecté : téléchargement du fichier + fenêtre de connexion
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `${design.title.replace(/[^\w\-]+/g, '_')}_Canva.pptx`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        setTimeout(() => URL.revokeObjectURL(url), 1500);
+        setCanvaModalOpen(true);
+        showToast('Fichier multi-calques téléchargé — connectez Canva pour l\'envoi automatique.');
+      }
+    } catch {
+      showToast('Export Canva impossible.');
+    }
+    setCanvaExporting(false);
+  };
+
+  const handleCanvaConnect = () => {
+    const tok = canvaTokenInput.trim();
+    if (!tok) {
+      showToast('Collez votre jeton d\'accès Canva.');
       return;
     }
-    const file = new File([blob], `${design.title.replace(/[^\w\-]+/g, '_')}_slide_${index + 1}.png`, { type: 'image/png' });
-    if (navigator.canShare?.({ files: [file] })) {
-      try {
-        await navigator.share({ files: [file], title: design.title });
-      } catch {}
-      return;
-    }
-    await handleExportSlide(design, index);
+    try {
+      localStorage.setItem('aura_canva_token', tok);
+    } catch {}
+    setCanvaConnected(true);
+    setCanvaTokenInput('');
+    setCanvaModalOpen(false);
+    showToast('Compte Canva connecté ! Prochain export : envoi automatique.');
   };
 
   // Copy slide text
@@ -893,6 +1042,20 @@ export default function App() {
     const inferred = inferOpts(promptText);
     const resolvedFmt: FormatType = opts.format ?? inferred.format ?? selectedFormat;
     const resolvedCount = opts.count ?? inferred.count ?? carouselSlidesCount;
+
+    // ===== FACTURATION POINTS : 1 image IA générée par slide =====
+    const ptsPerImage = MODEL_POINTS[activeModelId];
+    const aiImagesCount = FORMATS[resolvedFmt].kind === 'carousel' ? resolvedCount : 1;
+    const generationCost = aiImagesCount * ptsPerImage;
+    if (credits < generationCost) {
+      showToast(`Solde insuffisant : ${generationCost} points requis (${credits} restants).`);
+      setModal('upgrade');
+      return;
+    }
+    const remainingCredits = credits - generationCost;
+    setCredits(remainingCredits);
+    setTimeout(() => showToast(`−${generationCost} points · solde : ${remainingCredits} pts`), 1600);
+
     const sessionId = activeSessionId;
     setSelectedFormat(resolvedFmt);
     setCarouselSlidesCount(resolvedCount);
@@ -914,7 +1077,6 @@ export default function App() {
     if (!textToSend) setInputPrompt('');
     setAttachedImages([]);
     setIsGenerating(true);
-    if (isTouch) promptRef.current?.blur();
 
     setTimeout(() => {
       setIsGenerating(false);
@@ -1094,8 +1256,8 @@ export default function App() {
     }, 1100);
   };
 
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    if (e.key === 'Enter' && !e.shiftKey && !isTouch && !e.nativeEvent.isComposing) {
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
       handleSendMessage();
     }
@@ -1120,7 +1282,7 @@ export default function App() {
       showToast('Patientez, génération en cours...');
       return;
     }
-    const msgs = sessionMessagesMap[sessionId] ?? (sessionId === 'sess_1' ? INITIAL_DEMO_MESSAGES : []);
+    const msgs = sessionMessagesMap[sessionId] ?? [];
     setActiveSessionId(sessionId);
     setMessages(msgs);
     closeSidebarOnMobile();
@@ -1173,59 +1335,8 @@ export default function App() {
     );
   }
 
-  const navActive =
-    modal === 'settings'
-      ? 'profile'
-      : isBrandKitOpen
-      ? 'brand'
-      : isTemplatesOpen
-      ? 'templates'
-      : sidebarOpen
-      ? 'recents'
-      : 'create';
-  const navItems: { id: string; label: string; Icon: React.ComponentType<{ className?: string }>; action: () => void }[] = [
-    {
-      id: 'create',
-      label: t('create'),
-      Icon: Sparkles,
-      action: () => {
-        setSidebarOpen(false);
-        if (messages.length === 0) promptRef.current?.focus();
-        else handleNewDesign();
-      },
-    },
-    { id: 'recents', label: t('recents'), Icon: History, action: () => setSidebarOpen((v) => !v) },
-    {
-      id: 'templates',
-      label: t('templates'),
-      Icon: LayoutTemplate,
-      action: () => {
-        setSidebarOpen(false);
-        setIsTemplatesOpen(true);
-      },
-    },
-    {
-      id: 'brand',
-      label: t('brandKit'),
-      Icon: Palette,
-      action: () => {
-        setSidebarOpen(false);
-        setIsBrandKitOpen(true);
-      },
-    },
-    {
-      id: 'profile',
-      label: t('profile'),
-      Icon: UserIcon,
-      action: () => {
-        setSidebarOpen(false);
-        setModal('settings');
-      },
-    },
-  ];
-
   return (
-    <div dir={lang === 'ar' ? 'rtl' : 'ltr'} className="relative flex h-dvh w-full bg-transparent text-gray-900 font-sans overflow-hidden antialiased max-md:pb-[calc(4rem+env(safe-area-inset-bottom))]">
+    <div dir={lang === 'ar' ? 'rtl' : 'ltr'} className="relative flex h-screen w-screen bg-transparent text-gray-900 font-sans overflow-hidden antialiased">
 
       {/* Fond dégradé orange / jaune qui bouge lentement */}
       <div className="aurora" aria-hidden="true">
@@ -1237,17 +1348,10 @@ export default function App() {
       {/* ========================================================= */}
       {/* 1. PANNEAU GAUCHE (SIDEBAR - MENU & HISTORIQUE STYLE GEMINI) */}
       {/* ========================================================= */}
-      {sidebarOpen && (
-        <div
-          className="md:hidden fixed inset-0 z-20 bg-black/30 animate-fade-in"
-          onClick={() => setSidebarOpen(false)}
-          aria-hidden="true"
-        />
-      )}
       <aside
         className={`${
-          sidebarOpen ? 'w-72 max-w-[85vw]' : 'w-0 -translate-x-full'
-        } transition-all duration-300 ease-in-out h-full max-md:h-auto bg-white/85 max-md:bg-white backdrop-blur-xl border-r border-orange-200/40 flex flex-col shrink-0 z-20 overflow-hidden max-md:absolute max-md:top-0 max-md:bottom-[calc(4rem+env(safe-area-inset-bottom))] max-md:left-0 max-md:z-30 max-md:shadow-2xl`}
+          sidebarOpen ? 'w-64 sm:w-72' : 'w-0 -translate-x-full'
+        } transition-all duration-300 ease-in-out h-full bg-white/60 backdrop-blur-xl border-r border-orange-200/40 flex flex-col shrink-0 z-20 overflow-hidden max-md:absolute max-md:inset-y-0 max-md:left-0`}
       >
         {/* En haut : Logo / Titre SaaS */}
         <div className="p-4 flex items-center justify-between">
@@ -1266,7 +1370,7 @@ export default function App() {
           <button
             onClick={() => setSidebarOpen(false)}
             title="Masquer la barre latérale"
-            className="p-2.5 md:p-1.5 rounded-full hover:bg-gray-200/80 text-gray-500 hover:text-gray-900 transition-colors"
+            className="p-1.5 rounded-full hover:bg-gray-200/80 text-gray-500 hover:text-gray-900 transition-colors"
           >
             <Menu className="w-4 h-4" />
           </button>
@@ -1302,7 +1406,7 @@ export default function App() {
               value={sessionSearch}
               onChange={(e) => setSessionSearch(e.target.value)}
               placeholder="Rechercher une session..."
-              className="w-full px-4 py-2 rounded-full bg-white/90 border border-orange-200/60 text-base md:text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-orange-300/50"
+              className="w-full px-4 py-2 rounded-full bg-white/90 border border-orange-200/60 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-orange-300/50"
             />
           )}
 
@@ -1315,13 +1419,16 @@ export default function App() {
             <span>{t('brandKit')}</span>
           </button>
 
-          {/* Templates */}
+          {/* Tarifs & Crédits */}
           <button
-            onClick={() => setIsTemplatesOpen(true)}
+            onClick={() => setModal('upgrade')}
             className="w-full flex items-center gap-3 px-4 py-2 rounded-full hover:bg-gray-200/60 text-gray-600 hover:text-gray-900 text-sm font-medium transition-colors"
           >
-            <LayoutTemplate className="w-4 h-4 text-gray-500" />
-            <span>{t('templates')}</span>
+            <Zap className="w-4 h-4 text-amber-500" />
+            <span>Tarifs & Crédits</span>
+            <span className="ml-auto text-[10px] font-bold text-amber-600 bg-amber-100/80 px-1.5 py-0.5 rounded-full">
+              {credits} pts
+            </span>
           </button>
         </div>
 
@@ -1365,7 +1472,7 @@ export default function App() {
         </div>
 
         {/* En bas : Profil utilisateur "Labbaci Malek" avec avatar et réglages */}
-        <div ref={accountRef} className="relative p-3 border-t border-orange-200/40 bg-white/60">
+        <div ref={accountRef} className="relative p-3 border-t border-orange-200/40 bg-white/40">
           {accountMenuOpen && (
             <div className="absolute bottom-full left-3 right-3 mb-2 rounded-2xl bg-white border border-gray-200 shadow-xl p-1.5 z-40 animate-fade-in">
               {[
@@ -1455,7 +1562,7 @@ export default function App() {
               <div className="min-w-0">
                 <p className="text-xs font-bold text-gray-900 truncate leading-tight">Labbaci {userFirstName}</p>
                 <p className="text-[11px] text-gray-500 truncate">
-                  {t('plan')} {PLANS.find((x) => x.id === plan)?.name}
+                  {t('plan')} {PRICING.find((x) => x.id === plan)?.name}
                 </p>
               </div>
             </div>
@@ -1469,13 +1576,13 @@ export default function App() {
       {/* ========================================================= */}
       <main className="flex-1 flex flex-col h-full relative min-w-0">
         {/* Top Header épuré style Gemini */}
-        <header className="h-[calc(3.5rem+env(safe-area-inset-top))] pt-[env(safe-area-inset-top)] px-4 sm:px-6 flex items-center justify-between z-10 shrink-0">
+        <header className="h-14 px-4 sm:px-6 flex items-center justify-between z-10 shrink-0">
           <div className="flex items-center gap-3">
             {!sidebarOpen && (
               <button
                 onClick={() => setSidebarOpen(true)}
                 title="Ouvrir la barre latérale"
-                className="max-md:hidden p-2 rounded-full hover:bg-gray-100 text-gray-600 transition-colors"
+                className="p-2 rounded-full hover:bg-gray-100 text-gray-600 transition-colors"
               >
                 <Menu className="w-5 h-5" />
               </button>
@@ -1488,34 +1595,82 @@ export default function App() {
                 onClick={() => setIsModelOpen((v) => !v)}
                 className="flex items-center gap-1.5 px-3 py-1 rounded-full hover:bg-white/70 text-gray-900 font-semibold text-sm cursor-pointer transition-colors"
               >
-                <span className="tracking-tight">{model}</span>
+                <span className="tracking-tight">{activeModel.name}</span>
+                <span className="text-[10px] font-bold text-amber-600 bg-amber-100/80 px-1.5 py-0.5 rounded-full">
+                  {activeModel.points} pts
+                </span>
                 <ChevronDown className={`w-3.5 h-3.5 text-gray-500 transition-transform ${isModelOpen ? 'rotate-180' : ''}`} />
               </button>
               {isModelOpen && (
-                <div className="absolute left-0 top-10 w-52 rounded-2xl bg-white border border-gray-200 shadow-xl p-1.5 z-30 space-y-0.5">
+                <div className="absolute left-0 top-10 w-64 rounded-2xl bg-white border border-gray-200 shadow-xl p-1.5 z-30 space-y-0.5">
+                  <div className="px-3 pt-1.5 pb-1 text-[10px] font-bold text-gray-400 uppercase tracking-wider">
+                    Modèle de génération
+                  </div>
                   {MODELS.map((m) => (
                     <button
-                      key={m}
+                      key={m.id}
                       type="button"
                       onClick={() => {
-                        setModel(m);
+                        setActiveModelId(m.id);
                         setIsModelOpen(false);
-                        showToast(`Modèle actif : ${m}`);
+                        showToast(`Modèle actif : ${m.name} · ${m.points} points / image`);
                       }}
                       className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-sm cursor-pointer transition-colors ${
-                        model === m ? 'bg-orange-50 text-orange-800 font-semibold' : 'text-gray-700 hover:bg-gray-100'
+                        activeModelId === m.id ? 'bg-orange-50 text-orange-800 font-semibold' : 'text-gray-700 hover:bg-gray-100'
                       }`}
                     >
-                      <span>{m}</span>
-                      {model === m && <Check className="w-3.5 h-3.5 text-orange-600" />}
+                      <span className="flex items-center gap-2">
+                        {m.name}
+                        {m.badge && (
+                          <span className="text-[9px] font-bold text-amber-700 bg-amber-100 border border-amber-200 px-1.5 py-0.5 rounded-full">
+                            {m.badge}
+                          </span>
+                        )}
+                      </span>
+                      <span className="flex items-center gap-1.5">
+                        <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${activeModelId === m.id ? 'bg-amber-100 text-amber-700' : 'bg-gray-100 text-gray-500'}`}>
+                          {m.points} pts
+                        </span>
+                        {activeModelId === m.id && <Check className="w-3.5 h-3.5 text-orange-600" />}
+                      </span>
                     </button>
                   ))}
+                  <div className="my-1 border-t border-gray-100" />
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsModelOpen(false);
+                      setModal('upgrade');
+                    }}
+                    className="w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-semibold text-amber-700 hover:bg-amber-50 cursor-pointer transition-colors"
+                  >
+                    <span className="flex items-center gap-2">
+                      <Zap className="w-3.5 h-3.5" />
+                      Recharger des points
+                    </span>
+                    <span className="text-[10px] bg-gray-900 text-white px-1.5 py-0.5 rounded-full">{credits} pts</span>
+                  </button>
                 </div>
               )}
             </div>
           </div>
 
           <div className="flex items-center gap-2">
+            {/* Solde de points (clique = page tarifs) */}
+            <button
+              type="button"
+              onClick={() => setModal('upgrade')}
+              title="Voir les packs de points"
+              className={`hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold transition-colors cursor-pointer border ${
+                credits < 20
+                  ? 'bg-red-50 hover:bg-red-100 text-red-700 border-red-200'
+                  : 'bg-white/70 hover:bg-white text-gray-800 border-gray-200/80'
+              }`}
+            >
+              <Zap className={`w-3.5 h-3.5 ${credits < 20 ? 'text-red-500' : 'text-amber-500'}`} />
+              <span>{credits} points</span>
+              <span className="text-gray-400 font-semibold">Recharger</span>
+            </button>
             <button
               onClick={handleShare}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/70 hover:bg-white text-gray-700 text-xs font-semibold transition-colors cursor-pointer"
@@ -1527,7 +1682,7 @@ export default function App() {
         </header>
 
         {/* Flux de discussion (Au centre) */}
-        <div className={`flex-1 overflow-y-auto px-4 sm:px-6 pt-4 flex flex-col ${messages.length === 0 ? 'pb-[calc(54vh+1rem)]' : 'pb-52'}`}>
+        <div className={`flex-1 overflow-y-auto px-4 sm:px-6 pt-4 flex flex-col ${messages.length === 0 ? 'pb-[calc(54vh+1rem)]' : 'pb-36'}`}>
           {messages.length === 0 ? (
             /* ========================================================= */
             /* PAGE D'ACCUEIL NOUVEAU DESIGN STYLE GEMINI */
@@ -1542,16 +1697,6 @@ export default function App() {
               <p className="text-base sm:text-lg text-gray-500 font-normal">
                 {t('subtitle')}
               </p>
-              {installEvt && !isStandalone && (
-                <button
-                  type="button"
-                  onClick={handleInstall}
-                  className="mt-4 inline-flex items-center gap-2 px-4 py-2 rounded-full bg-gray-900 text-white text-xs font-semibold shadow-sm cursor-pointer active:scale-95 transition-transform"
-                >
-                  <Download className="w-3.5 h-3.5" />
-                  {t('install')}
-                </button>
-              )}
             </div>
           ) : (
             <div className="max-w-3xl mx-auto space-y-8 w-full">
@@ -1560,9 +1705,8 @@ export default function App() {
                   const isUser = msg.sender === 'user';
 
                   return (
-                    <m.div
+                    <motion.div
                       key={msg.id}
-                      id={`msg-${msg.id}`}
                       initial={{ opacity: 0, y: 16 }}
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
@@ -1613,30 +1757,58 @@ export default function App() {
 
                           {/* CANVA DE PRÉVISUALISATION VISUELLE INTÉGRÉ AU FLUX (BLOC SOMBRE CONTRASTÉ) */}
                           {msg.design && (
-                            <div className="mt-5 max-sm:-ml-[2.625rem] rounded-3xl bg-zinc-950 text-white border border-zinc-800 p-3 sm:p-6 shadow-xl relative overflow-hidden">
+                            <div className="mt-5 rounded-3xl bg-zinc-950 text-white border border-zinc-800 p-4 sm:p-6 shadow-xl relative overflow-hidden">
                               {/* Ambient glow */}
                               <div className="absolute top-0 right-0 w-64 h-64 bg-amber-500/10 rounded-full blur-3xl pointer-events-none" />
 
                               {/* Canvas Top Controls */}
-                              <div className="flex items-center justify-between gap-2 pb-3 border-b border-zinc-800/80 text-xs">
-                                <div className="flex items-center gap-2 min-w-0">
-                                  <span className="px-2.5 py-1 rounded-full bg-zinc-900 text-amber-400 text-[11px] font-bold border border-amber-500/30 shrink-0">
+                              <div className="flex items-center justify-between pb-4 border-b border-zinc-800/80 text-xs">
+                                <div className="flex items-center gap-2">
+                                  <span className="px-2.5 py-1 rounded-full bg-zinc-900 text-amber-400  text-[11px] font-bold border border-amber-500/30">
                                     {FORMATS[msg.design.format].label}
                                   </span>
-                                  <span className="text-zinc-400 text-xs font-medium truncate">
+                                  <span className="text-zinc-400 text-xs font-medium">
                                     Slide {(msg.design.activeSlideIndex || 0) + 1} sur {msg.design.slides.length}
                                   </span>
                                 </div>
-                                {msg.design.slides.length > 1 && (
+
+                                {/* Actions d'export & copie */}
+                                <div className="flex items-center gap-1.5">
                                   <button
-                                    type="button"
-                                    onClick={() => handleExportAll(msg.design!)}
-                                    className="shrink-0 flex items-center gap-1 px-2.5 py-1.5 rounded-full text-zinc-300 hover:text-white hover:bg-zinc-800 text-[11px] font-semibold transition-colors cursor-pointer"
+                                    onClick={() =>
+                                      handleCopySlideText(msg.design!.slides[msg.design!.activeSlideIndex || 0])
+                                    }
+                                    title="Copier le texte"
+                                    className="p-1.5 rounded-full hover:bg-zinc-800 text-zinc-400 hover:text-white transition-colors"
                                   >
-                                    <Download className="w-3.5 h-3.5" />
-                                    Tout exporter
+                                    {copiedId === msg.design.slides[msg.design.activeSlideIndex || 0].id ? (
+                                      <Check className="w-3.5 h-3.5 text-amber-400" />
+                                    ) : (
+                                      <Copy className="w-3.5 h-3.5" />
+                                    )}
                                   </button>
-                                )}
+
+                                  <button
+                                    onClick={() => handleExportToCanva(msg.design!)}
+                                    title="Ouvrir ce design éditable dans votre compte Canva"
+                                    className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-white border border-gray-200 hover:border-amber-400 hover:bg-amber-50/60 text-gray-800 font-semibold text-xs tracking-wide transition-all cursor-pointer"
+                                  >
+                                    {canvaExporting ? (
+                                      <RefreshCw className="w-3.5 h-3.5 animate-spin text-amber-500" />
+                                    ) : (
+                                      <PencilRuler className="w-3.5 h-3.5 text-amber-600" />
+                                    )}
+                                    <span>Modifier sur Canva</span>
+                                  </button>
+
+                                  <button
+                                    onClick={() => handleExportSlide(msg.design!, msg.design!.activeSlideIndex || 0)}
+                                    className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-black font-semibold text-xs tracking-wide transition-all shadow-sm cursor-pointer"
+                                  >
+                                    <Download className="w-3.5 h-3.5 stroke-[2.5]" />
+                                    <span>PNG HD</span>
+                                  </button>
+                                </div>
                               </div>
 
                               {/* Le Canvas Visuel Actif avec transition animée des slides */}
@@ -1649,29 +1821,20 @@ export default function App() {
                                     }`}
                                   >
                                     <AnimatePresence mode="wait">
-                                      <m.div
+                                      <motion.div
                                         key={`slide_${msg.id}_${msg.design.activeSlideIndex || 0}`}
                                         initial={{ opacity: 0, y: 8, scale: 0.985 }}
                                         animate={{ opacity: 1, y: 0, scale: 1 }}
                                         exit={{ opacity: 0, y: -8, scale: 0.985 }}
                                         transition={{ duration: 0.22, ease: 'easeOut' }}
-                                        drag={msg.design.slides.length > 1 ? 'x' : false}
-                                        dragConstraints={{ left: 0, right: 0 }}
-                                        dragElastic={0.35}
-                                        dragSnapToOrigin
-                                        onDragEnd={(_e: unknown, info: { offset: { x: number }; velocity: { x: number } }) => {
-                                          const cur = msg.design!.activeSlideIndex || 0;
-                                          if (info.offset.x < -60 || info.velocity.x < -450) handleSlideChange(msg.id, cur + 1);
-                                          else if (info.offset.x > 60 || info.velocity.x > 450) handleSlideChange(msg.id, cur - 1);
-                                        }}
-                                        className="w-full h-full touch-pan-y select-none rounded-2xl bg-zinc-900 border border-zinc-800 p-5 sm:p-8 flex flex-col justify-between relative overflow-hidden shadow-lg"
+                                        className="w-full h-full rounded-2xl bg-zinc-900 border border-zinc-800 p-6 sm:p-8 flex flex-col justify-between relative overflow-hidden shadow-lg"
                                       >
                                         {/* Background Image texture if present */}
                                         {slide.image && (
                                           <div className="absolute inset-0 z-0 opacity-20 pointer-events-none">
                                             <img
                                               src={slide.image}
-                                              alt="" loading="lazy" decoding="async" draggable={false}
+                                              alt="Backdrop visual"
                                               className="w-full h-full object-cover filter contrast-125"
                                             />
                                             <div className="absolute inset-0 bg-gradient-to-t from-zinc-950 via-zinc-950/80 to-transparent" />
@@ -1765,180 +1928,65 @@ export default function App() {
                                             </div>
                                           )}
                                         </div>
-                                      </m.div>
+                                      </motion.div>
                                     </AnimatePresence>
                                   </div>
                                 );
                               })()}
 
-                              {(() => {
-                                const idx = msg.design.activeSlideIndex || 0;
-                                const total = msg.design.slides.length;
-                                const cur = msg.design.slides[idx];
-                                const navBtn = (disabled: boolean) =>
-                                  `w-11 h-11 shrink-0 rounded-full flex items-center justify-center transition-colors ${
-                                    disabled
+                              {/* Navigation entre les slides du carrousel */}
+                              <div className="flex items-center justify-between pt-2">
+                                <button
+                                  onClick={() =>
+                                    handleSlideChange(msg.id, (msg.design!.activeSlideIndex || 0) - 1)
+                                  }
+                                  disabled={(msg.design.activeSlideIndex || 0) === 0}
+                                  className={`flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-semibold transition-all ${
+                                    (msg.design.activeSlideIndex || 0) === 0
                                       ? 'text-zinc-600 bg-zinc-900/50 cursor-not-allowed'
-                                      : 'text-zinc-100 bg-zinc-800 hover:bg-zinc-700 active:bg-zinc-600 cursor-pointer'
-                                  }`;
-                                const field =
-                                  'w-full rounded-xl bg-zinc-950 border border-zinc-700 px-3 py-2 text-base sm:text-sm text-white placeholder-zinc-500 focus:outline-none focus:border-amber-500';
-                                return (
-                                  <>
-                                    {/* Navigation + miniatures */}
-                                    {total > 1 && (
-                                      <div className="flex items-center gap-2 pt-1">
-                                        <button
-                                          type="button"
-                                          aria-label="Slide précédent"
-                                          onClick={() => handleSlideChange(msg.id, idx - 1)}
-                                          disabled={idx === 0}
-                                          className={navBtn(idx === 0)}
-                                        >
-                                          <ChevronLeft className="w-5 h-5" />
-                                        </button>
-                                        <SlideThumbs
-                                          slides={msg.design.slides}
-                                          active={idx}
-                                          accent={brandColor}
-                                          onSelect={(i) => handleSlideChange(msg.id, i)}
-                                        />
-                                        <button
-                                          type="button"
-                                          aria-label="Slide suivant"
-                                          onClick={() => handleSlideChange(msg.id, idx + 1)}
-                                          disabled={idx === total - 1}
-                                          className={navBtn(idx === total - 1)}
-                                        >
-                                          <ChevronRight className="w-5 h-5" />
-                                        </button>
-                                      </div>
-                                    )}
+                                      : 'text-zinc-200 bg-zinc-800 hover:bg-zinc-700 cursor-pointer'
+                                  }`}
+                                >
+                                  <ChevronLeft className="w-3.5 h-3.5" />
+                                  <span>Précédent</span>
+                                </button>
 
-                                    {/* Actions tactiles */}
-                                    <div className="grid grid-cols-4 gap-2 pt-3">
-                                      <button
-                                        type="button"
-                                        onClick={() => {
-                                          const opening = editingMsgId !== msg.id;
-                                          setEditingMsgId(opening ? msg.id : null);
-                                          if (opening)
-                                            setTimeout(
-                                              () => document.getElementById(`edit-${msg.id}`)?.scrollIntoView({ behavior: 'smooth', block: 'nearest' }),
-                                              80
-                                            );
-                                        }}
-                                        className={`${ACTION_BTN} ${editingMsgId === msg.id ? '!border-amber-500/60 !text-amber-400' : ''}`}
-                                      >
-                                        <Pencil className="w-4 h-4" />
-                                        {t('edit')}
-                                      </button>
-                                      <button type="button" onClick={() => handleCopySlideText(cur)} className={ACTION_BTN}>
-                                        {copiedId === cur.id ? <Check className="w-4 h-4 text-amber-400" /> : <Copy className="w-4 h-4" />}
-                                        {t('copy')}
-                                      </button>
-                                      <button type="button" onClick={() => handleShareSlide(msg.design!, idx)} className={ACTION_BTN}>
-                                        <Share2 className="w-4 h-4" />
-                                        {t('shareSlide')}
-                                      </button>
-                                      <button
-                                        type="button"
-                                        onClick={() => handleExportSlide(msg.design!, idx)}
-                                        className="flex flex-col items-center justify-center gap-1 min-h-[52px] rounded-2xl text-[11px] font-bold bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 active:brightness-95 text-black transition-all cursor-pointer"
-                                      >
-                                        <Download className="w-4 h-4 stroke-[2.5]" />
-                                        PNG HD
-                                      </button>
-                                    </div>
+                                {/* Dots de slides */}
+                                <div className="flex items-center gap-1.5">
+                                  {msg.design.slides.map((s, idx) => (
+                                    <button
+                                      key={s.id}
+                                      onClick={() => handleSlideChange(msg.id, idx)}
+                                      className={`h-2 rounded-full transition-all ${
+                                        idx === (msg.design!.activeSlideIndex || 0)
+                                          ? 'w-6 bg-amber-400'
+                                          : 'w-2 bg-zinc-700 hover:bg-zinc-500'
+                                      }`}
+                                    />
+                                  ))}
+                                </div>
 
-                                    {/* Panneau d'édition rapide */}
-                                    {editingMsgId === msg.id && (
-                                      <div id={`edit-${msg.id}`} className="mt-3 rounded-2xl bg-zinc-900 border border-zinc-800 p-3 space-y-3 animate-fade-in scroll-mb-24">
-                                        <div className="flex items-center justify-between">
-                                          <span className="text-xs font-semibold text-zinc-200">Éditer le slide {idx + 1}</span>
-                                          <button
-                                            type="button"
-                                            aria-label="Fermer l'édition"
-                                            onClick={() => setEditingMsgId(null)}
-                                            className="w-9 h-9 -mr-1 rounded-full flex items-center justify-center text-zinc-400 hover:text-white hover:bg-zinc-800 cursor-pointer"
-                                          >
-                                            <X className="w-4 h-4" />
-                                          </button>
-                                        </div>
-                                        <label className="block space-y-1">
-                                          <span className="text-[11px] font-semibold text-zinc-400">Étiquette</span>
-                                          <input
-                                            type="text"
-                                            dir="auto"
-                                            value={cur.tag}
-                                            onChange={(e) => handleSlideEdit(msg.id, idx, { tag: e.target.value })}
-                                            className={field}
-                                          />
-                                        </label>
-                                        <label className="block space-y-1">
-                                          <span className="text-[11px] font-semibold text-zinc-400">Titre</span>
-                                          <textarea
-                                            dir="auto"
-                                            rows={2}
-                                            value={cur.title}
-                                            onChange={(e) => handleSlideEdit(msg.id, idx, { title: e.target.value })}
-                                            className={`${field} resize-none`}
-                                          />
-                                        </label>
-                                        <label className="block space-y-1">
-                                          <span className="text-[11px] font-semibold text-zinc-400">Sous-titre</span>
-                                          <textarea
-                                            dir="auto"
-                                            rows={3}
-                                            value={cur.subtitle}
-                                            onChange={(e) => handleSlideEdit(msg.id, idx, { subtitle: e.target.value })}
-                                            className={`${field} resize-none`}
-                                          />
-                                        </label>
-                                        <label className="block space-y-1">
-                                          <span className="text-[11px] font-semibold text-zinc-400">Bouton d'action (CTA)</span>
-                                          <input
-                                            type="text"
-                                            dir="auto"
-                                            value={cur.ctaText ?? ''}
-                                            placeholder="Ex : Réservez maintenant ➔"
-                                            onChange={(e) => handleSlideEdit(msg.id, idx, { ctaText: e.target.value || undefined })}
-                                            className={field}
-                                          />
-                                        </label>
-                                        <div className="space-y-1.5">
-                                          <span className="text-[11px] font-semibold text-zinc-400">Couleur d'accent</span>
-                                          <div className="flex flex-wrap gap-2">
-                                            {BRAND_COLORS.map((color) => (
-                                              <button
-                                                key={color}
-                                                type="button"
-                                                aria-label={`Couleur ${color}`}
-                                                onClick={() => setBrandColor(color)}
-                                                className={`w-9 h-9 rounded-full border-2 transition-transform cursor-pointer ${
-                                                  brandColor === color ? 'border-white scale-110' : 'border-transparent'
-                                                }`}
-                                                style={{ backgroundColor: color }}
-                                              />
-                                            ))}
-                                          </div>
-                                        </div>
-                                        <button
-                                          type="button"
-                                          onClick={() => setEditingMsgId(null)}
-                                          className="w-full min-h-11 rounded-xl bg-amber-500 hover:bg-amber-400 text-black text-sm font-bold cursor-pointer transition-colors"
-                                        >
-                                          Terminé
-                                        </button>
-                                      </div>
-                                    )}
-                                  </>
-                                );
-                              })()}
+                                <button
+                                  onClick={() =>
+                                    handleSlideChange(msg.id, (msg.design!.activeSlideIndex || 0) + 1)
+                                  }
+                                  disabled={
+                                    (msg.design.activeSlideIndex || 0) === msg.design.slides.length - 1
+                                  }
+                                  className={`flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-semibold transition-all ${
+                                    (msg.design.activeSlideIndex || 0) === msg.design.slides.length - 1
+                                      ? 'text-zinc-600 bg-zinc-900/50 cursor-not-allowed'
+                                      : 'text-zinc-200 bg-zinc-800 hover:bg-zinc-700 cursor-pointer'
+                                  }`}
+                                >
+                                  <span>Suivant</span>
+                                <ChevronRight className="w-3.5 h-3.5" />
+                              </button>
                             </div>
-                          )}
+                          </div>
+                        )}
 
-                          {/* Suggestions d'itérations rapides (Pills) */}
+                        {/* Suggestions d'itérations rapides (Pills) */}
                         {msg.suggestions && msg.suggestions.length > 0 && (
                           <div className="mt-3 flex flex-wrap gap-2">
                             {msg.suggestions.map((sug, i) => (
@@ -1984,7 +2032,7 @@ export default function App() {
                         )}
                       </div>
                     </div>
-                  </m.div>
+                  </motion.div>
                 );
               })}
             </AnimatePresence>
@@ -1992,7 +2040,7 @@ export default function App() {
             {/* État de génération IA en cours avec transition */}
             <AnimatePresence>
               {isGenerating && (
-                <m.div
+                <motion.div
                   initial={{ opacity: 0, y: 12 }}
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: -8 }}
@@ -2009,7 +2057,7 @@ export default function App() {
                       <span>Génération et mise en page du visuel dans le Canvas...</span>
                     </div>
                   </div>
-                </m.div>
+                </motion.div>
               )}
             </AnimatePresence>
 
@@ -2021,7 +2069,7 @@ export default function App() {
       {/* ========================================================= */}
         {/* BARRE DE SAISIE (EN BAS, CENTRÉE ET FLOTTANTE STYLE GEMINI) */}
         {/* ========================================================= */}
-        <div className={`absolute left-0 right-0 p-4 sm:p-6 pointer-events-none transition-all duration-300 ${editingMsgId ? 'hidden' : ''} ${messages.length === 0 ? 'top-[46%]' : 'bottom-0 bg-gradient-to-t from-[#fffdf9] via-[#fffdf9]/85 to-transparent'}`}>
+        <div className={`absolute left-0 right-0 p-4 sm:p-6 pointer-events-none transition-all duration-300 ${messages.length === 0 ? 'top-[46%]' : 'bottom-0 bg-gradient-to-t from-[#fff7ec] via-[#fff7ec]/80 to-transparent'}`}>
           <div className="max-w-3xl mx-auto w-full pointer-events-auto">
             {/* Input file caché pour les photos */}
             <input
@@ -2033,164 +2081,178 @@ export default function App() {
               className="hidden"
             />
 
-            {/* Conteneur flottant : texte en haut, outils en dessous (facile au pouce) */}
-            <div className="relative flex flex-col bg-white/95 backdrop-blur-md rounded-3xl px-3 pt-2 pb-2.5 border border-orange-200/60 shadow-md focus-within:shadow-lg focus-within:border-orange-300 focus-within:ring-2 focus-within:ring-orange-400/20 transition-all">
+            {/* Conteneur flottant avec grand rayon de bordure */}
+            <div className="relative flex flex-col bg-white/85 backdrop-blur-md rounded-[28px] px-3 py-2.5 border border-orange-200/60 shadow-md focus-within:shadow-lg focus-within:border-orange-300 focus-within:ring-2 focus-within:ring-orange-400/20 transition-all">
               {/* Preview des photos attachées */}
               {attachedImages.length > 0 && (
-                <div className="flex items-center gap-2 px-1 pt-1 pb-2 border-b border-gray-200/70 mb-1 overflow-x-auto no-scrollbar">
+                <div className="flex items-center gap-2 px-2 pt-1 pb-2 border-b border-gray-200/70 mb-1 overflow-x-auto">
                   {attachedImages.map((img, idx) => (
                     <div
                       key={idx}
-                      className="relative group w-14 h-14 rounded-xl overflow-hidden border border-gray-200 shadow-2xs shrink-0 bg-white"
+                      className="relative group w-12 h-12 rounded-xl overflow-hidden border border-gray-200 shadow-2xs shrink-0 bg-white"
                     >
-                      <img src={img} alt={`Photo ${idx + 1}`} className="w-full h-full object-cover" />
+                      <img src={img} alt={`Attached ${idx}`} className="w-full h-full object-cover" />
                       <button
                         type="button"
-                        aria-label="Retirer la photo"
                         onClick={() => setAttachedImages((prev) => prev.filter((_, i) => i !== idx))}
-                        className="absolute top-0.5 right-0.5 w-5 h-5 bg-gray-900/80 hover:bg-red-500 text-white rounded-full flex items-center justify-center text-xs transition-colors cursor-pointer"
+                        className="absolute top-0.5 right-0.5 w-4 h-4 bg-gray-900/80 hover:bg-red-500 text-white rounded-full flex items-center justify-center text-[10px] transition-colors cursor-pointer"
+                        title="Retirer la photo"
                       >
                         ×
                       </button>
                     </div>
                   ))}
+                  <button
+                    type="button"
+                    onClick={() => photoInputRef.current?.click()}
+                    className="h-12 px-3 rounded-xl border border-dashed border-gray-300 hover:border-gray-400 bg-white hover:bg-gray-50 text-gray-600 text-xs font-medium flex items-center gap-1 shrink-0 transition-colors cursor-pointer"
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                    <span>Ajouter photo</span>
+                  </button>
                 </div>
               )}
 
-              <textarea
-                ref={promptRef}
-                rows={1}
-                dir="auto"
-                value={inputPrompt}
-                onChange={(e) => setInputPrompt(e.target.value)}
-                onKeyDown={handleKeyDown}
-                placeholder={t('placeholder')}
-                enterKeyHint="send"
-                className="w-full resize-none bg-transparent px-2 py-2 text-base text-gray-900 placeholder-gray-400 focus:outline-none max-h-40 leading-snug"
-              />
-
-              <div className="flex items-center gap-1.5 pt-1">
-                {/* Ajouter des photos */}
+              <div className="flex items-center w-full">
+                {/* Icône "+" pour ajouter des photos et images */}
                 <button
                   type="button"
                   onClick={() => photoInputRef.current?.click()}
-                  aria-label="Ajouter des photos"
-                  className="w-10 h-10 rounded-full bg-white hover:bg-gray-100 border border-gray-200/90 text-gray-600 hover:text-gray-900 flex items-center justify-center shrink-0 transition-colors cursor-pointer"
+                  title="Ajouter des photos"
+                  className="w-9 h-9 rounded-full hover:bg-gray-200/80 text-gray-600 hover:text-gray-900 flex items-center justify-center shrink-0 transition-colors cursor-pointer"
                 >
                   <Plus className="w-5 h-5 stroke-[2]" />
                 </button>
 
-                {/* Format */}
-                <div className="relative" ref={dropdownRef}>
-                  <button
-                    type="button"
-                    onClick={() => setIsFormatDropdownOpen(!isFormatDropdownOpen)}
-                    className="h-10 flex items-center gap-1.5 px-3 rounded-full bg-white hover:bg-gray-100 text-gray-700 text-xs font-semibold border border-gray-200/90 shadow-2xs transition-colors cursor-pointer"
-                  >
-                    {currentFormatObj.icon}
-                    <span className="hidden sm:inline">{currentFormatObj.label}</span>
-                    <span className="sm:hidden">{FORMATS[selectedFormat].short}</span>
-                    <ChevronDown className="w-3 h-3 text-gray-400" />
-                  </button>
+                {/* Champ de texte */}
+                <input
+                  type="text"
+                  value={inputPrompt}
+                  onChange={(e) => setInputPrompt(e.target.value)}
+                  onKeyDown={handleKeyDown}
+                  placeholder={t('placeholder')}
+                  className="flex-1 bg-transparent px-3 py-1.5 text-sm sm:text-[15px] text-gray-900 placeholder-gray-400 focus:outline-none"
+                />
 
-                  {isFormatDropdownOpen && (
-                    <div className="absolute left-0 bottom-full mb-2 w-64 rounded-2xl bg-white border border-gray-200 shadow-xl p-1.5 z-30 space-y-0.5 animate-fade-in">
-                      <div className="px-2.5 py-1 text-[11px] font-semibold text-gray-400 uppercase tracking-wider">
-                        Format du design
-                      </div>
-                      {formatOptions.map((fmt) => (
-                        <button
-                          key={fmt.id}
-                          type="button"
-                          onClick={() => {
-                            setSelectedFormat(fmt.id);
-                            setIsFormatDropdownOpen(false);
-                            showToast(`Format actif : ${fmt.label}`);
-                          }}
-                          className={`w-full flex items-center justify-between px-2.5 py-2.5 rounded-xl text-xs font-semibold transition-colors cursor-pointer ${
-                            selectedFormat === fmt.id ? 'bg-amber-50 text-amber-800 font-bold' : 'text-gray-700 hover:bg-gray-100'
-                          }`}
-                        >
-                          <div className="flex items-center gap-2">
-                            {fmt.icon}
-                            <span>{fmt.label}</span>
-                          </div>
-                          {selectedFormat === fmt.id && <Check className="w-3.5 h-3.5 text-amber-600" />}
-                        </button>
-                      ))}
-                    </div>
-                  )}
-                </div>
-
-                {/* Nombre de slides (carrousel / présentation) */}
-                {FORMATS[selectedFormat].kind === 'carousel' && (
-                  <div className="relative" ref={slidesCountDropdownRef}>
+                {/* À droite : Sélecteur déroulant de format, Nombre de slides & bouton d'envoi */}
+                <div className="flex items-center gap-1.5 shrink-0">
+                  {/* Dropdown sélecteur de format */}
+                  <div className="relative" ref={dropdownRef}>
                     <button
                       type="button"
-                      onClick={() => setIsSlidesDropdownOpen(!isSlidesDropdownOpen)}
-                      className="h-10 flex items-center gap-1.5 px-3 rounded-full bg-amber-50 hover:bg-amber-100/90 text-amber-900 border border-amber-200 text-xs font-bold transition-all shadow-2xs cursor-pointer"
-                      title="Nombre de slides du carrousel"
+                      onClick={() => setIsFormatDropdownOpen(!isFormatDropdownOpen)}
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white hover:bg-gray-100 text-gray-700 text-xs font-semibold border border-gray-200/90 shadow-2xs transition-colors cursor-pointer"
                     >
-                      <Layers className="w-3.5 h-3.5 text-amber-700" />
-                      <span>{carouselSlidesCount}</span>
-                      <span className="hidden sm:inline">slides</span>
-                      <ChevronDown className="w-3 h-3 text-amber-700" />
+                      {currentFormatObj.icon}
+                      <span className="hidden md:inline">{currentFormatObj.label}</span>
+                      <span className="md:hidden">
+                        {FORMATS[selectedFormat].short}
+                      </span>
+                      <ChevronDown className="w-3 h-3 text-gray-400" />
                     </button>
 
-                    {isSlidesDropdownOpen && (
-                      <div className="absolute left-0 bottom-full mb-2 w-40 rounded-2xl bg-white border border-gray-200 shadow-xl p-1.5 z-30 space-y-0.5 animate-fade-in">
-                        <div className="px-2.5 py-1 text-[10px] font-bold text-gray-400 uppercase tracking-wider">
-                          Nombre de slides
+                    {/* Menu déroulant format */}
+                    {isFormatDropdownOpen && (
+                      <div className="absolute right-0 bottom-12 w-60 rounded-2xl bg-white border border-gray-200 shadow-xl p-1.5 z-30 space-y-1">
+                        <div className="px-2.5 py-1 text-[11px] font-semibold text-gray-400 uppercase tracking-wider">
+                          Format du design
                         </div>
-                        {[3, 4, 5, 6, 7, 8, 10].map((count) => (
+                        {formatOptions.map((fmt) => (
                           <button
-                            key={count}
+                            key={fmt.id}
                             type="button"
                             onClick={() => {
-                              setCarouselSlidesCount(count);
-                              setIsSlidesDropdownOpen(false);
-                              showToast(`Carrousel configuré à ${count} slides`);
+                              setSelectedFormat(fmt.id);
+                              setIsFormatDropdownOpen(false);
+                              showToast(`Format actif : ${fmt.label}`);
                             }}
                             className={`w-full flex items-center justify-between px-2.5 py-2 rounded-xl text-xs font-semibold transition-colors cursor-pointer ${
-                              carouselSlidesCount === count ? 'bg-amber-100 text-amber-900 font-bold' : 'text-gray-700 hover:bg-gray-100'
+                              selectedFormat === fmt.id
+                                ? 'bg-amber-50 text-amber-800 font-bold'
+                                : 'text-gray-700 hover:bg-gray-100'
                             }`}
                           >
-                            <span>{count} slides</span>
-                            {carouselSlidesCount === count && <Check className="w-3.5 h-3.5 text-amber-700" />}
+                            <div className="flex items-center gap-2">
+                              {fmt.icon}
+                              <span>{fmt.label}</span>
+                            </div>
+                            {selectedFormat === fmt.id && <Check className="w-3.5 h-3.5 text-amber-600" />}
                           </button>
                         ))}
                       </div>
                     )}
                   </div>
-                )}
 
-                <div className="flex-1" />
+                  {/* Bouton du nombre de slides affiché uniquement quand Carrousel est sélectionné */}
+                  {FORMATS[selectedFormat].kind === 'carousel' && (
+                    <div className="relative" ref={slidesCountDropdownRef}>
+                      <button
+                        type="button"
+                        onClick={() => setIsSlidesDropdownOpen(!isSlidesDropdownOpen)}
+                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-amber-50 hover:bg-amber-100/90 text-amber-900 border border-amber-200 text-xs font-bold transition-all shadow-2xs cursor-pointer"
+                        title="Nombre de slides du carrousel"
+                      >
+                        <Layers className="w-3.5 h-3.5 text-amber-700" />
+                        <span>{carouselSlidesCount} slides</span>
+                        <ChevronDown className="w-3 h-3 text-amber-700" />
+                      </button>
 
-                {/* Envoi */}
-                <button
-                  type="button"
-                  aria-label="Générer"
-                  onClick={() => handleSendMessage()}
-                  disabled={(!inputPrompt.trim() && attachedImages.length === 0) || isGenerating}
-                  className={`w-11 h-11 rounded-full flex items-center justify-center shrink-0 transition-all ${
-                    (inputPrompt.trim() || attachedImages.length > 0) && !isGenerating
-                      ? 'bg-gray-900 hover:bg-black active:scale-95 text-white shadow-xs cursor-pointer'
-                      : 'bg-gray-200 text-gray-400 cursor-not-allowed'
-                  }`}
-                >
-                  <ArrowUp className="w-5 h-5 stroke-[2.5]" />
-                </button>
+                      {isSlidesDropdownOpen && (
+                        <div className="absolute right-0 bottom-12 w-36 rounded-2xl bg-white border border-gray-200 shadow-xl p-1.5 z-30 space-y-1">
+                          <div className="px-2.5 py-1 text-[10px] font-bold text-gray-400 uppercase tracking-wider">
+                            Nombre de slides
+                          </div>
+                          {[3, 4, 5, 6, 7, 8, 10].map((count) => (
+                            <button
+                              key={count}
+                              type="button"
+                              onClick={() => {
+                                setCarouselSlidesCount(count);
+                                setIsSlidesDropdownOpen(false);
+                                showToast(`Carrousel configuré à ${count} slides`);
+                              }}
+                              className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-xl text-xs font-semibold transition-colors cursor-pointer ${
+                                carouselSlidesCount === count
+                                  ? 'bg-amber-100 text-amber-900 font-bold'
+                                  : 'text-gray-700 hover:bg-gray-100'
+                              }`}
+                            >
+                              <span>{count} slides</span>
+                              {carouselSlidesCount === count && (
+                                <Check className="w-3.5 h-3.5 text-amber-700" />
+                              )}
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Bouton d'envoi circulaire style Gemini */}
+                  <button
+                    type="button"
+                    onClick={() => handleSendMessage()}
+                    disabled={(!inputPrompt.trim() && attachedImages.length === 0) || isGenerating}
+                    className={`w-9 h-9 rounded-full flex items-center justify-center transition-all ${
+                      (inputPrompt.trim() || attachedImages.length > 0) && !isGenerating
+                        ? 'bg-gray-900 hover:bg-black text-white shadow-xs cursor-pointer'
+                        : 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                    }`}
+                  >
+                    <ArrowUp className="w-4 h-4 stroke-[2.5]" />
+                  </button>
+                </div>
               </div>
             </div>
 
             {messages.length === 0 ? (
-              <div className="flex flex-wrap justify-center gap-2 mt-3">
+              <div className="flex flex-wrap justify-center gap-2 mt-4">
                 {welcomeSuggestions.map((card, idx) => (
                   <button
                     key={idx}
                     type="button"
-                    onClick={() => handleSendMessage(card.prompt, { format: card.format, count: card.slidesCount })}
-                    className="flex items-center gap-2 px-4 py-2 rounded-full bg-white/90 hover:bg-white border border-orange-200/60 text-sm text-gray-700 hover:text-gray-900 shadow-2xs transition-all cursor-pointer"
+                    onClick={() => handleSendMessage(card.prompt)}
+                    className="flex items-center gap-2 px-4 py-2 rounded-full bg-white/75 hover:bg-white border border-orange-200/60 text-sm text-gray-700 hover:text-gray-900 shadow-2xs transition-all cursor-pointer"
                   >
                     {card.icon}
                     <span>{card.title}</span>
@@ -2198,7 +2260,7 @@ export default function App() {
                 ))}
               </div>
             ) : (
-              <p className="hidden md:block text-[11px] text-gray-400 text-center mt-2 font-normal">
+              <p className="text-[11px] text-gray-400 text-center mt-2 font-normal">
                 Aura AI génère des visuels optimisés pour LinkedIn, Instagram et X. Vérifiez les textes avant publication.
               </p>
             )}
@@ -2211,20 +2273,20 @@ export default function App() {
       {/* ========================================================= */}
       <AnimatePresence>
         {isBrandKitOpen && (
-          <m.div
+          <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.2 }}
             onMouseDown={(e) => e.target === e.currentTarget && setIsBrandKitOpen(false)}
-            className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/30 backdrop-blur-2xs p-0 sm:p-4"
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-2xs p-4"
           >
-            <m.div
+            <motion.div
               initial={{ opacity: 0, scale: 0.95, y: 10 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 10 }}
               transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
-              className="bg-white rounded-3xl max-sm:rounded-b-none border border-gray-200 shadow-2xl w-full max-sm:max-h-[88dvh] max-sm:overflow-y-auto max-sm:pb-[calc(1.5rem+env(safe-area-inset-bottom))] max-w-md p-6 space-y-5"
+              className="bg-white rounded-3xl border border-gray-200 shadow-2xl w-full max-w-md p-6 space-y-5"
             >
               <div className="flex items-center justify-between pb-3 border-b border-gray-100">
                 <div className="flex items-center gap-2">
@@ -2323,7 +2385,7 @@ export default function App() {
                       setUserFirstName(e.target.value);
                       localStorage.setItem('aura_user_firstname', e.target.value);
                     }}
-                    className="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 text-base sm:text-sm text-gray-900 focus:outline-none focus:border-amber-500"
+                    className="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 text-sm text-gray-900 focus:outline-none focus:border-amber-500"
                     placeholder="Ex: Malek"
                   />
                 </div>
@@ -2336,7 +2398,7 @@ export default function App() {
                     type="text"
                     value={brandName}
                     onChange={(e) => setBrandName(e.target.value)}
-                    className="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 text-base sm:text-sm text-gray-900 focus:outline-none focus:border-amber-500"
+                    className="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 text-sm text-gray-900 focus:outline-none focus:border-amber-500"
                     placeholder="Ex: Aura Studio"
                   />
                 </div>
@@ -2349,7 +2411,7 @@ export default function App() {
                     type="text"
                     value={brandHandle}
                     onChange={(e) => setBrandHandle(e.target.value)}
-                    className="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 text-base sm:text-sm text-gray-900  focus:outline-none focus:border-amber-500"
+                    className="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 text-sm text-gray-900  focus:outline-none focus:border-amber-500"
                     placeholder="@votrecompte"
                   />
                 </div>
@@ -2358,12 +2420,12 @@ export default function App() {
                   <label className="text-xs font-semibold text-gray-700 block mb-1.5">
                     Couleur d'accentuation
                   </label>
-                  <div className="flex flex-wrap items-center gap-2">
-                    {BRAND_COLORS.map((color) => (
+                  <div className="flex items-center gap-2">
+                    {['#F59E0B', '#EA580C', '#EAB308', '#F97316'].map((color) => (
                       <button
                         key={color}
                         onClick={() => setBrandColor(color)}
-                        className={`w-9 h-9 rounded-full border-2 transition-transform ${
+                        className={`w-8 h-8 rounded-full border-2 transition-transform ${
                           brandColor === color ? 'border-gray-900 scale-110' : 'border-transparent'
                         }`}
                         style={{ backgroundColor: color }}
@@ -2384,104 +2446,47 @@ export default function App() {
                   Enregistrer
                 </button>
               </div>
-            </m.div>
-          </m.div>
-        )}
-      </AnimatePresence>
-
-      {/* ========================================================= */}
-      {/* MODAL TEMPLATES */}
-      {/* ========================================================= */}
-      <AnimatePresence>
-        {isTemplatesOpen && (
-          <m.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.2 }}
-            onMouseDown={(e) => e.target === e.currentTarget && setIsTemplatesOpen(false)}
-            className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/30 backdrop-blur-2xs p-0 sm:p-4"
-          >
-            <m.div
-              initial={{ opacity: 0, scale: 0.95, y: 10 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.95, y: 10 }}
-              transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
-              className="bg-white rounded-3xl max-sm:rounded-b-none border border-gray-200 shadow-2xl w-full max-sm:max-h-[88dvh] max-sm:overflow-y-auto max-sm:pb-[calc(1.5rem+env(safe-area-inset-bottom))] max-w-lg p-6 space-y-4"
-            >
-              <div className="flex items-center justify-between pb-3 border-b border-gray-100">
-                <div className="flex items-center gap-2">
-                  <LayoutTemplate className="w-5 h-5 text-amber-500" />
-                  <h3 className="font-semibold text-gray-900 text-base">Templates Prêts à l'Emploi</h3>
-                </div>
-                <button
-                  onClick={() => setIsTemplatesOpen(false)}
-                  className="p-1 rounded-full hover:bg-gray-100 text-gray-400 hover:text-gray-700 transition-colors"
-                >
-                  <X className="w-4 h-4" />
-                </button>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-96 overflow-y-auto pr-1">
-                {[
-                  { title: 'Carrousel Hacks B2B', fmt: 'scroller' as FormatType, prompt: 'Génère un carrousel 5 slides sur les erreurs fatales des startups en phase de scaling.' },
-                  { title: 'Story Teaser Masterclass', fmt: 'story' as FormatType, prompt: 'Génère une story teaser pour une masterclass IA jeudi à 18h avec compte à rebours.' },
-                  { title: 'Citation Minimaliste', fmt: 'square' as FormatType, prompt: 'Crée un post carré percutant avec une citation sur le focus et la discipline.' },
-                  { title: 'Hero de site web', fmt: 'website' as FormatType, prompt: 'Conçois la section hero d\'un site web pour une agence de marketing digital.' },
-                  { title: 'Fiche produit e-commerce', fmt: 'product' as FormatType, prompt: 'Crée une fiche produit élégante pour une montre minimaliste avec bénéfices et avis clients.' },
-                  { title: 'Affiche événement', fmt: 'poster' as FormatType, prompt: 'Crée une affiche percutante pour un festival de cinéma en plein air ce samedi.' },
-                  { title: 'Pitch deck startup', fmt: 'presentation' as FormatType, prompt: 'Génère une présentation pitch deck en 5 slides pour une startup SaaS.' },
-                  { title: 'Carrousel Avant / Après', fmt: 'scroller' as FormatType, prompt: 'Génère un comparatif avant/après en 4 slides sur l\'optimisation de temps avec l\'IA.' },
-                ].map((tpl, i) => (
-                  <div
-                    key={i}
-                    onClick={() => {
-                      setIsTemplatesOpen(false);
-                      handleSendMessage(tpl.prompt, { format: tpl.fmt });
-                    }}
-                    className="p-3.5 rounded-2xl border border-gray-200 hover:border-amber-500/50 hover:bg-amber-50/30 transition-all cursor-pointer space-y-1.5 group"
-                  >
-                    <span className="text-[10px]  font-bold text-amber-600 uppercase">
-                      {FORMATS[tpl.fmt].label}
-                    </span>
-                    <h4 className="text-xs font-bold text-gray-900 group-hover:text-amber-800">
-                      {tpl.title}
-                    </h4>
-                    <p className="text-[11px] text-gray-500 line-clamp-2">{tpl.prompt}</p>
-                  </div>
-                ))}
-              </div>
-            </m.div>
-          </m.div>
+            </motion.div>
+          </motion.div>
         )}
       </AnimatePresence>
 
       {/* ===== MODALS COMPTE ===== */}
       <AnimatePresence>
         {modal && (
-          <m.div
+          <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.2 }}
             onMouseDown={(e) => e.target === e.currentTarget && setModal(null)}
-            className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/30 backdrop-blur-2xs p-0 sm:p-4"
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-2xs p-4"
           >
-            <m.div
+            <motion.div
               initial={{ opacity: 0, scale: 0.95, y: 10 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 10 }}
               transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
-              className={`bg-white rounded-3xl max-sm:rounded-b-none border border-gray-200 shadow-2xl w-full max-sm:max-h-[88dvh] max-sm:overflow-y-auto max-sm:pb-[calc(1.5rem+env(safe-area-inset-bottom))] p-6 space-y-5 max-h-[90vh] overflow-y-auto ${modal === 'upgrade' ? 'max-w-3xl' : 'max-w-md'}`}
+              className={`bg-white rounded-3xl border border-gray-200 shadow-2xl w-full space-y-5 max-h-[92vh] overflow-y-auto relative ${modal === 'upgrade' ? 'max-w-6xl p-0' : 'max-w-md p-6'}`}
             >
-              <div className="flex items-center justify-between pb-3 border-b border-gray-100">
-                <h3 className="font-semibold text-gray-900 text-base">
-                  {modal === 'settings' ? t('settings') : modal === 'help' ? t('help') : modal === 'upgrade' ? t('upgrade') : t('learnMore')}
-                </h3>
-                <button onClick={() => setModal(null)} className="p-1 rounded-full hover:bg-gray-100 text-gray-400 hover:text-gray-700 transition-colors cursor-pointer">
+              {modal !== 'upgrade' && (
+                <div className="flex items-center justify-between pb-3 border-b border-gray-100">
+                  <h3 className="font-semibold text-gray-900 text-base">
+                    {modal === 'settings' ? t('settings') : modal === 'help' ? t('help') : t('learnMore')}
+                  </h3>
+                  <button onClick={() => setModal(null)} className="p-1 rounded-full hover:bg-gray-100 text-gray-400 hover:text-gray-700 transition-colors cursor-pointer">
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+              )}
+              {modal === 'upgrade' && (
+                <button
+                  onClick={() => setModal(null)}
+                  className="absolute top-4 right-4 z-10 p-2 rounded-full bg-white/80 backdrop-blur-sm hover:bg-gray-100 text-gray-500 hover:text-gray-800 transition-colors cursor-pointer shadow-sm"
+                >
                   <X className="w-4 h-4" />
                 </button>
-              </div>
+              )}
 
               {modal === 'settings' && (
                 <div className="space-y-5">
@@ -2496,7 +2501,7 @@ export default function App() {
                           localStorage.setItem('aura_user_firstname', e.target.value);
                         } catch {}
                       }}
-                      className="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 text-base sm:text-sm text-gray-900 focus:outline-none focus:border-orange-400"
+                      className="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 text-sm text-gray-900 focus:outline-none focus:border-orange-400"
                     />
                   </div>
                   <div>
@@ -2531,6 +2536,24 @@ export default function App() {
                     <button
                       type="button"
                       onClick={() => {
+                        setModal(null);
+                        setCanvaModalOpen(true);
+                      }}
+                      className="w-full flex items-center justify-between gap-2 px-3 py-2.5 rounded-xl border border-gray-200 hover:bg-gray-50 text-sm text-gray-700 cursor-pointer transition-colors"
+                    >
+                      <span className="flex items-center gap-2">
+                        <PencilRuler className="w-4 h-4 text-amber-500" />
+                        Compte Canva
+                      </span>
+                      {canvaConnected ? (
+                        <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-1.5 py-0.5 rounded-full">CONNECTÉ</span>
+                      ) : (
+                        <span className="text-[10px] font-bold text-gray-400">NON CONNECTÉ</span>
+                      )}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
                         setRecentSessions([]);
                         setSessionMessagesMap({});
                         setMessages([]);
@@ -2542,49 +2565,6 @@ export default function App() {
                     >
                       <Trash2 className="w-4 h-4" />
                       Effacer l'historique des sessions
-                    </button>
-                    {!isStandalone && (
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setModal(null);
-                          handleInstall();
-                        }}
-                        className="w-full flex items-center gap-2 px-3 py-2.5 rounded-xl border border-gray-200 hover:bg-gray-50 text-sm text-gray-700 cursor-pointer transition-colors"
-                      >
-                        <Download className="w-4 h-4 text-orange-500" />
-                        {t('install')}
-                      </button>
-                    )}
-                    <button
-                      type="button"
-                      onClick={() => setModal('help')}
-                      className="w-full flex items-center gap-2 px-3 py-2.5 rounded-xl border border-gray-200 hover:bg-gray-50 text-sm text-gray-700 cursor-pointer transition-colors"
-                    >
-                      <CircleHelp className="w-4 h-4 text-gray-500" />
-                      {t('help')}
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setModal('upgrade')}
-                      className="w-full flex items-center gap-2 px-3 py-2.5 rounded-xl border border-gray-200 hover:bg-gray-50 text-sm text-gray-700 cursor-pointer transition-colors"
-                    >
-                      <Zap className="w-4 h-4 text-orange-500" />
-                      {t('upgrade')}
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        try {
-                          localStorage.setItem('aura_logged_out', '1');
-                        } catch {}
-                        setModal(null);
-                        setLoggedOut(true);
-                      }}
-                      className="w-full flex items-center gap-2 px-3 py-2.5 rounded-xl border border-red-100 hover:bg-red-50 text-sm text-red-600 cursor-pointer transition-colors"
-                    >
-                      <LogOut className="w-4 h-4" />
-                      {t('logout')}
                     </button>
                   </div>
                 </div>
@@ -2619,81 +2599,118 @@ export default function App() {
               )}
 
               {modal === 'upgrade' && (
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                  {PLANS.map((pl) => (
-                    <div
-                      key={pl.id}
-                      className={`rounded-2xl border p-4 flex flex-col gap-3 ${pl.id === plan ? 'border-orange-400 bg-orange-50/50' : 'border-gray-200'}`}
-                    >
-                      <div>
-                        <h4 className="font-semibold text-gray-900">{pl.name}</h4>
-                        <p className="text-xs text-gray-500">{pl.desc}</p>
-                      </div>
-                      <ul className="space-y-1.5 flex-1">
-                        {pl.features.map((f) => (
-                          <li key={f} className="flex items-start gap-2 text-xs text-gray-700">
-                            <Check className="w-3.5 h-3.5 text-orange-500 shrink-0 mt-0.5" />
-                            {f}
-                          </li>
-                        ))}
-                      </ul>
-                      <button
-                        type="button"
-                        disabled={pl.id === plan}
-                        onClick={() => {
-                          setPlan(pl.id);
-                          showToast(`Forfait ${pl.name} activé.`);
-                          setModal(null);
-                        }}
-                        className={`w-full px-3 py-2 rounded-full text-xs font-semibold transition-colors ${
-                          pl.id === plan ? 'bg-gray-100 text-gray-400 cursor-default' : 'bg-gray-900 hover:bg-black text-white cursor-pointer'
-                        }`}
-                      >
-                        {pl.id === plan ? 'Forfait actuel' : 'Choisir'}
-                      </button>
-                    </div>
-                  ))}
-                </div>
+                <PricingPage
+                  currentPlan={plan}
+                  credits={credits}
+                  onChoose={(packId) => {
+                    if (packId === plan) return;
+                    setPlan(packId);
+                    if (packId === 'free') setCredits(20);
+                    if (packId === 'starter') setCredits(150);
+                    if (packId === 'pro') setCredits(450);
+                    const pack = PRICING.find((p) => p.id === packId);
+                    showToast(`Pack ${pack?.name} activé · ${pack?.points} !`);
+                    setModal(null);
+                  }}
+                />
               )}
-            </m.div>
-          </m.div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* ========================================================= */}
+      {/* MODAL CONNEXION CANVA */}
+      {/* ========================================================= */}
+      <AnimatePresence>
+        {canvaModalOpen && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            onMouseDown={(e) => e.target === e.currentTarget && setCanvaModalOpen(false)}
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-2xs p-4"
+          >
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 10 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 10 }}
+              transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
+              className="bg-white rounded-3xl border border-gray-200 shadow-2xl w-full max-w-md p-6 space-y-5"
+            >
+              <div className="flex items-center justify-between pb-3 border-b border-gray-100">
+                <div className="flex items-center gap-2">
+                  <PencilRuler className="w-5 h-5 text-amber-500" />
+                  <h3 className="font-semibold text-gray-900 text-base">Connecter votre compte Canva</h3>
+                </div>
+                <button onClick={() => setCanvaModalOpen(false)} className="p-1 rounded-full hover:bg-gray-100 text-gray-400 hover:text-gray-700 transition-colors cursor-pointer">
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+
+              <div className="space-y-3 text-sm text-gray-600 leading-relaxed">
+                <p>
+                  Ouvrez vos designs <span className="font-semibold text-gray-900">100% éditables</span> (textes, calques et couleurs séparés) directement dans votre éditeur Canva.
+                </p>
+                <ol className="list-decimal list-inside space-y-1.5 text-xs text-gray-500 bg-gray-50 rounded-2xl p-3.5">
+                  <li>Créez une app gratuite sur <span className="font-semibold text-gray-700">canva.dev</span> (Canva Connect API).</li>
+                  <li>Copiez votre jeton d'accès personnel.</li>
+                  <li>Collez-le ici : vos prochains exports arriveront <span className="font-semibold text-gray-700">automatiquement dans votre compte Canva</span>.</li>
+                </ol>
+                {canvaConnected && (
+                  <div className="flex items-center gap-2 text-xs font-semibold text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-xl px-3 py-2">
+                    <CheckCircle2 className="w-4 h-4" />
+                    Compte Canva connecté — envoi automatique actif.
+                  </div>
+                )}
+              </div>
+
+              <div>
+                <label className="text-xs font-semibold text-gray-700 block mb-1.5">Jeton d'accès Canva</label>
+                <input
+                  type="password"
+                  value={canvaTokenInput}
+                  onChange={(e) => setCanvaTokenInput(e.target.value)}
+                  placeholder="Collez votre jeton ici..."
+                  className="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 text-sm text-gray-900 focus:outline-none focus:border-amber-500"
+                />
+              </div>
+
+              <div className="pt-1 flex justify-between gap-2">
+                {canvaConnected ? (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      try {
+                        localStorage.removeItem('aura_canva_token');
+                      } catch {}
+                      setCanvaConnected(false);
+                      showToast('Compte Canva déconnecté.');
+                    }}
+                    className="px-4 py-2 rounded-full text-xs font-semibold text-red-600 hover:bg-red-50 transition-colors cursor-pointer"
+                  >
+                    Déconnecter
+                  </button>
+                ) : <span />}
+                <button
+                  type="button"
+                  onClick={handleCanvaConnect}
+                  className="px-4 py-2 rounded-full bg-gray-900 hover:bg-black text-white text-xs font-bold transition-colors cursor-pointer"
+                >
+                  {canvaConnected ? 'Mettre à jour le jeton' : 'Connecter Canva'}
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
         )}
       </AnimatePresence>
 
       {/* ========================================================= */}
       {/* TOAST NOTIFICATION FLOTTANT */}
       {/* ========================================================= */}
-      {/* ========================================================= */}
-      {/* BARRE DE NAVIGATION BASSE (MOBILE) */}
-      {/* ========================================================= */}
-      <nav
-        aria-label="Navigation principale"
-        className="md:hidden fixed bottom-0 inset-x-0 z-40 bg-white/95 backdrop-blur-xl border-t border-orange-200/50 pb-[env(safe-area-inset-bottom)]"
-      >
-        <div className="grid grid-cols-5 h-16">
-          {navItems.map(({ id, label, Icon, action }) => {
-            const active = navActive === id;
-            return (
-              <button
-                key={id}
-                type="button"
-                onClick={action}
-                aria-current={active ? 'page' : undefined}
-                className={`relative flex flex-col items-center justify-center gap-0.5 text-[10px] font-semibold transition-colors cursor-pointer active:bg-orange-50 ${
-                  active ? 'text-orange-600' : 'text-gray-500'
-                }`}
-              >
-                {active && <span className="absolute top-0 h-0.5 w-8 rounded-full bg-orange-500" />}
-                <Icon className={`w-[22px] h-[22px] ${active ? 'stroke-[2.4]' : 'stroke-[1.9]'}`} />
-                <span className="truncate max-w-full px-1">{label}</span>
-              </button>
-            );
-          })}
-        </div>
-      </nav>
-
       {toastMessage && (
-        <div className="fixed top-[calc(3.75rem+env(safe-area-inset-top))] md:top-auto md:bottom-24 left-1/2 -translate-x-1/2 md:left-auto md:translate-x-0 md:right-6 z-50 max-w-[90vw] flex items-center gap-2.5 px-4 py-2.5 rounded-full bg-gray-900 text-white shadow-xl text-xs font-medium animate-fade-in">
+        <div className="fixed bottom-24 right-6 z-50 flex items-center gap-2.5 px-4 py-2.5 rounded-full bg-gray-900 text-white shadow-xl text-xs font-medium animate-fade-in">
           <Sparkles className="w-3.5 h-3.5 text-amber-400 shrink-0" />
           <span>{toastMessage}</span>
         </div>
