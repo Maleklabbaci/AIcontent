@@ -391,30 +391,35 @@ async function handleImage(apiKey: string, body: Record<string, unknown>): Promi
   // image_size n'est supporté que par les modèles Gemini 3 (pas gemini-2.5-flash-image)
   const sendSize = modelId !== 'flash';
 
-  const extractB64 = (data: any): string | undefined => {
-    if (data?.output_image?.data) return data.output_image.data;
-    if (Array.isArray(data?.steps)) {
-      for (const step of data.steps) {
-        const f = step?.content?.find((c: any) => c?.type === 'image' && typeof c?.data === 'string' && c.data.length > 0);
-        if (f?.data) return f.data;
-      }
-    }
+  // Gemini 3 (modèles "thinking") peut renvoyer des images intermédiaires (thought: true) :
+  // on les ignore et on prend la dernière image finale.
+  const extractImage = (data: any): { mime: string; b64: string } | null => {
     const parts = data?.candidates?.[0]?.content?.parts;
-    if (Array.isArray(parts)) {
-      for (const p of parts) {
-        const d = p?.inlineData?.data || p?.inline_data?.data;
-        if (typeof d === 'string' && d.length > 0) return d;
+    if (!Array.isArray(parts)) return null;
+    let found: { mime: string; b64: string } | null = null;
+    for (const p of parts) {
+      if (p?.thought === true) continue;
+      const inl = p?.inlineData || p?.inline_data;
+      const d = inl?.data;
+      if (typeof d === 'string' && d.length > 0) {
+        found = { mime: String(inl?.mimeType || inl?.mime_type || 'image/png'), b64: d };
       }
     }
-    return undefined;
+    return found;
+  };
+  // Raison d'un refus (sécurité, texte à la place de l'image…) pour le diagnostic
+  const explainEmpty = (data: any): string => {
+    const reason = data?.promptFeedback?.blockReason || data?.candidates?.[0]?.finishReason || '';
+    const txt = (data?.candidates?.[0]?.content?.parts || []).find((p: any) => typeof p?.text === 'string')?.text || '';
+    return `${reason} ${String(txt).slice(0, 300)}`.trim();
   };
 
   let lastStatus = 502;
   let lastDetail = '';
   const imgCfg = { aspectRatio: aspect, ...(sendSize ? { imageSize: size } : {}) };
-  // Deux variantes de config image : imageConfig (historique, accepte 4:5) puis responseFormat.image.
+  // Variantes de config image : imageConfig (accepte 4:5), puis responseFormat.image, puis sans config (ratio demandé dans le prompt).
   // Un 400 = requête rejetée, non facturée : on tente la variante suivante.
-  const variants: Record<string, unknown>[] = [{ imageConfig: imgCfg }, { responseFormat: { image: imgCfg } }];
+  const variants: Record<string, unknown>[] = [{ imageConfig: imgCfg }, { responseFormat: { image: imgCfg } }, {}];
 
   for (const model of candidates) {
     let notFound = false;
@@ -446,9 +451,13 @@ async function handleImage(apiKey: string, body: Record<string, unknown>): Promi
         } catch {
           return json({ error: 'image_invalid_response' }, 502);
         }
-        const b64 = extractB64(data);
-        if (!b64) return json({ error: 'image_missing' }, 502);
-        return json({ configured: true, stage: 'image', model, image: `data:image/png;base64,${b64}` });
+        const img = extractImage(data);
+        if (!img) {
+          const why = explainEmpty(data);
+          console.error('image missing', model, why);
+          return json({ error: 'image_missing', detail: why }, 502);
+        }
+        return json({ configured: true, stage: 'image', model, image: `data:${img.mime};base64,${img.b64}` });
       }
 
       lastStatus = res.status;
