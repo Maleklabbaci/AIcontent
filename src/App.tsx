@@ -142,6 +142,30 @@ const FORMAT_SLASH: { id: FormatType; keys: string[] }[] = [
   { id: 'presentation', keys: ['presentation', 'pitch', 'deck'] },
 ];
 
+// ===== CHIPS D'AMBIANCE (dizaines de styles pour différencier les prompts) =====
+const STYLE_CHIPS: { cmd: string; label: string; emoji: string }[] = [
+  { cmd: 'minimaliste', label: 'Minimaliste', emoji: '⬜' },
+  { cmd: 'luxe', label: 'Luxe & premium', emoji: '👑' },
+  { cmd: 'vintage', label: 'Vintage rétro', emoji: '📻' },
+  { cmd: 'neon', label: 'Néon cyberpunk', emoji: '🌆' },
+  { cmd: 'pastel', label: 'Pastel doux', emoji: '🍬' },
+  { cmd: 'corporate', label: 'Corporate pro', emoji: '💼' },
+  { cmd: 'fun', label: 'Fun & coloré', emoji: '🎉' },
+  { cmd: 'elegant', label: 'Élégant', emoji: '🥂' },
+  { cmd: 'audacieux', label: 'Audacieux', emoji: '🔥' },
+  { cmd: 'dramatique', label: 'Dramatique', emoji: '🎬' },
+  { cmd: 'dore', label: 'Doré scintillant', emoji: '✨' },
+  { cmd: 'naturel', label: 'Naturel organique', emoji: '🌿' },
+  { cmd: 'tech', label: 'Tech futuriste', emoji: '🤖' },
+  { cmd: 'romantique', label: 'Romantique', emoji: '🌹' },
+  { cmd: 'sportif', label: 'Sportif énergique', emoji: '⚡' },
+  { cmd: 'food', label: 'Food appétissant', emoji: '🍽️' },
+  { cmd: 'boho', label: 'Boho chic', emoji: '🪶' },
+  { cmd: 'gradient', label: 'Dégradés vifs', emoji: '🌈' },
+  { cmd: 'monochrome', label: 'Monochrome', emoji: '◼️' },
+  { cmd: 'collage', label: 'Collage magazine', emoji: '📰' },
+];
+
 // Nombre de projets autorisés par pack
 const PACK_PROJECT_LIMIT: Record<PlanId, number> = { free: 1, starter: 3, pro: 10, business: Infinity };
 
@@ -1095,6 +1119,339 @@ function LandingPage({
   );
 }
 
+// ============================================================
+// PAGE /brand — Espaces & Brand Kit (page dédiée)
+// ============================================================
+function BrandPage({
+  projects,
+  activeProjectId,
+  plan,
+  credits,
+  brandName,
+  brandHandle,
+  brandColor,
+  brandLogo,
+  onSwitch,
+  onCreate,
+  onDelete,
+  onName,
+  onHandle,
+  onColor,
+  onLogo,
+  onBack,
+  onPricing,
+}: {
+  projects: BrandProject[];
+  activeProjectId: string;
+  plan: PlanId;
+  credits: number;
+  brandName: string;
+  brandHandle: string;
+  brandColor: string;
+  brandLogo: string | null;
+  onSwitch: (id: string) => void;
+  onCreate: () => void;
+  onDelete: (id: string) => void;
+  onName: (v: string) => void;
+  onHandle: (v: string) => void;
+  onColor: (v: string) => void;
+  onLogo: (dataUrl: string | null) => void;
+  onBack: () => void;
+  onPricing: () => void;
+}) {
+  const [dragging, setDragging] = useState(false);
+  const logoInputRef = useRef<HTMLInputElement>(null);
+  const limit = PACK_PROJECT_LIMIT[plan];
+
+  const handleLogo = (file: File) => {
+    if (file && (file.type.startsWith('image/') || file.name.endsWith('.svg'))) {
+      const reader = new FileReader();
+      reader.onload = (e) => onLogo(e.target?.result as string);
+      reader.readAsDataURL(file);
+    }
+  };
+
+  return (
+    <div className="relative h-screen w-screen overflow-hidden font-sans text-gray-900 antialiased">
+      <div className="aurora" aria-hidden="true">
+        <span className="blob blob-a" />
+        <span className="blob blob-b" />
+        <span className="blob blob-c" />
+        <span className="blob blob-d" />
+      </div>
+
+      <div className="relative z-10 h-full overflow-y-auto">
+        <header className="sticky top-0 z-20 backdrop-blur-md bg-white/75 border-b border-orange-200/40">
+          <div className="max-w-6xl mx-auto px-4 sm:px-6 h-14 flex items-center justify-between">
+            <button type="button" onClick={onBack} className="flex items-center gap-2.5 cursor-pointer">
+              <div className="w-8 h-8 rounded-full bg-gradient-to-br from-amber-400 via-amber-500 to-orange-500 flex items-center justify-center shadow-sm">
+                <Sparkles className="w-4 h-4 text-white stroke-[2.5]" />
+              </div>
+              <div className="flex items-center gap-1.5">
+                <span className="font-semibold text-gray-900 text-lg tracking-tight">Aura</span>
+                <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-gray-200/80 text-gray-700">Design</span>
+              </div>
+            </button>
+            <div className="flex items-center gap-2">
+              <span className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white border border-gray-200/80 text-xs font-bold text-gray-800">
+                <Zap className="w-3.5 h-3.5 text-amber-500" />
+                {credits} points
+              </span>
+              <button type="button" onClick={onBack} className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-gray-900 hover:bg-black text-white text-xs font-bold transition-colors cursor-pointer">
+                <ArrowLeft className="w-3.5 h-3.5" />
+                Retour à l'atelier
+              </button>
+            </div>
+          </div>
+        </header>
+
+        <main className="max-w-6xl mx-auto px-4 sm:px-6 pb-14">
+          <div className="pt-8 pb-6 space-y-1.5">
+            <h1 className="text-xl sm:text-2xl font-semibold tracking-tight">Espaces & Brand Kit</h1>
+            <p className="text-sm text-gray-500">
+              Chaque espace possède sa propre identité : logo, nom, @handle et couleur appliqués automatiquement à tous vos designs.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-[340px_1fr] gap-5 items-start">
+            {/* --- Liste des espaces --- */}
+            <section className="rounded-3xl border border-gray-200 bg-white/90 backdrop-blur p-4 space-y-2">
+              <div className="flex items-center justify-between px-1 pb-1">
+                <h2 className="text-xs font-bold text-gray-400 uppercase tracking-wider">Mes espaces</h2>
+                <span className="text-[10px] font-bold text-gray-400">
+                  {projects.length}/{limit === Infinity ? '∞' : limit}
+                </span>
+              </div>
+              {projects.map((pk) => {
+                const isActive = pk.id === activeProjectId;
+                return (
+                  <div
+                    key={pk.id}
+                    className={`group rounded-2xl border p-3 transition-all cursor-pointer ${
+                      isActive ? 'border-amber-400 bg-amber-50/60 shadow-sm' : 'border-gray-200 hover:border-amber-300/60 hover:bg-gray-50'
+                    }`}
+                    onClick={() => onSwitch(pk.id)}
+                  >
+                    <div className="flex items-center gap-3">
+                      <span
+                        className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 overflow-hidden text-sm font-bold text-white shadow-sm"
+                        style={{ backgroundColor: pk.color }}
+                      >
+                        {pk.logo ? <img src={pk.logo} alt="" className="w-full h-full object-contain p-1" /> : pk.name.slice(0, 1).toUpperCase()}
+                      </span>
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-1.5">
+                          <h3 className="text-sm font-semibold text-gray-900 truncate">{pk.name}</h3>
+                          {isActive && (
+                            <span className="text-[9px] font-bold text-orange-700 bg-orange-100 border border-orange-200 px-1.5 py-0.5 rounded-full shrink-0">ACTIF</span>
+                          )}
+                        </div>
+                        <p className="text-[11px] text-gray-400 truncate">{pk.handle}</p>
+                      </div>
+                      {projects.length > 1 && (
+                        <button
+                          type="button"
+                          title="Supprimer cet espace"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onDelete(pk.id);
+                          }}
+                          className="p-1.5 rounded-full text-gray-300 hover:text-red-500 hover:bg-red-50 opacity-0 group-hover:opacity-100 transition-all cursor-pointer shrink-0"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+
+              {projects.length < limit ? (
+                <button
+                  type="button"
+                  onClick={onCreate}
+                  className="w-full flex items-center justify-center gap-2 rounded-2xl border border-dashed border-amber-400/70 bg-amber-50/40 hover:bg-amber-50 px-3 py-3 text-xs font-bold text-amber-800 cursor-pointer transition-colors"
+                >
+                  <Plus className="w-4 h-4" />
+                  Nouvel espace
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={onPricing}
+                  className="w-full flex flex-col items-center gap-1 rounded-2xl border border-dashed border-gray-300 bg-gray-50 px-3 py-3 text-xs font-bold text-gray-500 hover:border-amber-300 hover:text-amber-700 cursor-pointer transition-colors"
+                >
+                  <span className="flex items-center gap-1.5">
+                    <Zap className="w-3.5 h-3.5" />
+                    Limite du pack atteinte
+                  </span>
+                  <span className="text-[10px] font-semibold text-gray-400">Passez à un pack supérieur pour plus d'espaces</span>
+                </button>
+              )}
+            </section>
+
+            {/* --- Éditeur du Brand Kit actif --- */}
+            <section className="rounded-3xl border border-gray-200 bg-white/90 backdrop-blur p-6 space-y-6">
+              <div className="flex items-center justify-between flex-wrap gap-2">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-9 h-9 rounded-2xl bg-gradient-to-br from-amber-400 to-orange-500 text-white flex items-center justify-center shadow-md shadow-amber-200/70">
+                    <Palette className="w-4.5 h-4.5 w-[18px] h-[18px]" />
+                  </div>
+                  <div>
+                    <h2 className="font-semibold text-gray-900">Brand Kit</h2>
+                    <p className="text-[11px] text-gray-400">Espace actif : {brandName || 'Sans nom'}</p>
+                  </div>
+                </div>
+                <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2.5 py-1 rounded-full">
+                  Enregistré automatiquement ✓
+                </span>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {/* Formulaire */}
+                <div className="space-y-4">
+                  {/* Logo */}
+                  <div>
+                    <label className="text-xs font-semibold text-gray-700 block mb-1.5">Logo de la marque</label>
+                    <div
+                      onDragOver={(e) => {
+                        e.preventDefault();
+                        setDragging(true);
+                      }}
+                      onDragLeave={() => setDragging(false)}
+                      onDrop={(e) => {
+                        e.preventDefault();
+                        setDragging(false);
+                        if (e.dataTransfer.files?.[0]) handleLogo(e.dataTransfer.files[0]);
+                      }}
+                      onClick={() => logoInputRef.current?.click()}
+                      className={`border-dashed border-2 ${dragging ? 'border-amber-500 bg-amber-50/50' : 'border-gray-300 hover:border-gray-400 bg-gray-50'} rounded-2xl p-4 text-center cursor-pointer transition-colors flex items-center justify-center gap-3`}
+                    >
+                      <input
+                        ref={logoInputRef}
+                        type="file"
+                        accept="image/png,image/jpeg,image/svg+xml,.png,.jpg,.jpeg,.svg"
+                        className="hidden"
+                        onChange={(e) => {
+                          if (e.target.files?.[0]) handleLogo(e.target.files[0]);
+                          e.target.value = '';
+                        }}
+                      />
+                      {brandLogo ? (
+                        <>
+                          <img src={brandLogo} alt="Logo" className="w-11 h-11 object-contain rounded-xl border border-gray-200 bg-white p-1 shadow-xs" />
+                          <div className="text-left">
+                            <p className="text-xs font-bold text-gray-900">Logo importé</p>
+                            <p className="text-[11px] text-gray-500">Cliquer pour remplacer</p>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onLogo(null);
+                            }}
+                            className="ml-2 text-xs text-red-500 hover:text-red-700 font-semibold cursor-pointer"
+                          >
+                            Retirer
+                          </button>
+                        </>
+                      ) : (
+                        <div className="flex items-center gap-3">
+                          <UploadCloud className="w-7 h-7 text-gray-400" />
+                          <div className="text-left">
+                            <p className="text-xs font-semibold text-gray-700">Glissez votre logo ou parcourez</p>
+                            <p className="text-[11px] text-gray-400">PNG, JPG, SVG — carré recommandé</p>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="text-xs font-semibold text-gray-700 block mb-1.5">Nom de la marque</label>
+                    <input
+                      type="text"
+                      value={brandName}
+                      onChange={(e) => onName(e.target.value)}
+                      className="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 text-sm text-gray-900 focus:outline-none focus:border-amber-500"
+                      placeholder="Ex: Boutique Sarah"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="text-xs font-semibold text-gray-700 block mb-1.5">Identifiant social (@handle)</label>
+                    <input
+                      type="text"
+                      value={brandHandle}
+                      onChange={(e) => onHandle(e.target.value)}
+                      className="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 text-sm text-gray-900 focus:outline-none focus:border-amber-500"
+                      placeholder="@votrecompte"
+                    />
+                    <p className="text-[10px] text-gray-400 mt-1">Affiché en bas de chaque design, avec une coche de vérification.</p>
+                  </div>
+
+                  <div>
+                    <label className="text-xs font-semibold text-gray-700 block mb-1.5">Couleur d'accentuation</label>
+                    <div className="flex flex-wrap items-center gap-2">
+                      {['#F59E0B', '#EA580C', '#EAB308', '#F97316', '#2563EB', '#059669', '#7C3AED', '#DC2626'].map((color) => (
+                        <button
+                          key={color}
+                          type="button"
+                          onClick={() => onColor(color)}
+                          className={`w-8 h-8 rounded-full border-2 transition-transform ${brandColor === color ? 'border-gray-900 scale-110' : 'border-transparent'}`}
+                          style={{ backgroundColor: color }}
+                        />
+                      ))}
+                      <label
+                        className="w-8 h-8 rounded-full border-2 border-dashed border-gray-300 flex items-center justify-center cursor-pointer relative overflow-hidden"
+                        title="Couleur personnalisée"
+                      >
+                        <span className="text-[10px]">🎨</span>
+                        <input type="color" value={brandColor} onChange={(e) => onColor(e.target.value)} className="absolute inset-0 opacity-0 cursor-pointer" />
+                      </label>
+                    </div>
+                    <p className="text-[10px] text-gray-400 mt-1">Utilisée pour les tags, chiffres clés, boutons et bordures. Code : <span className="font-mono">{brandColor.toUpperCase()}</span></p>
+                  </div>
+                </div>
+
+                {/* Aperçu live */}
+                <div className="space-y-3">
+                  <label className="text-xs font-semibold text-gray-700 block">Aperçu en direct</label>
+                  <div className="rounded-2xl bg-zinc-900 border border-zinc-800 p-5 aspect-[4/5] max-w-[280px] mx-auto flex flex-col justify-between text-left overflow-hidden relative">
+                    <div className="absolute -top-8 -right-8 w-24 h-24 rounded-full blur-2xl opacity-30" style={{ backgroundColor: brandColor }} />
+                    <div className="flex items-center gap-2">
+                      <span className="w-6 h-6 rounded-lg flex items-center justify-center text-[10px] font-bold text-black overflow-hidden" style={{ backgroundColor: brandColor }}>
+                        {brandLogo ? <img src={brandLogo} alt="" className="w-full h-full object-contain p-0.5" /> : brandName.slice(0, 2).toUpperCase()}
+                      </span>
+                      <span className="text-[10px] font-bold tracking-wider text-white uppercase truncate">{brandName || 'Votre marque'}</span>
+                    </div>
+                    <div className="space-y-1.5">
+                      <span className="text-[9px] font-bold uppercase tracking-wider" style={{ color: brandColor }}>
+                        Aperçu du design
+                      </span>
+                      <h3 className="text-base font-semibold text-white leading-snug">Votre marque sur chaque design, automatiquement.</h3>
+                      <div className="inline-block text-[10px] font-bold px-2 py-1 rounded-lg border" style={{ color: brandColor, borderColor: `${brandColor}55`, backgroundColor: `${brandColor}18` }}>
+                        Votre CTA ici ➔
+                      </div>
+                    </div>
+                    <div className="flex items-center justify-between text-[9px] text-zinc-500 border-t border-zinc-800 pt-2">
+                      <span className="text-white font-semibold truncate">{brandHandle || '@votrecompte'}</span>
+                      <span style={{ color: brandColor }}>✓</span>
+                    </div>
+                  </div>
+                  <p className="text-[10px] text-gray-400 text-center leading-relaxed max-w-[280px] mx-auto">
+                    Cet aperçu utilise vos réglages en temps réel. Tout est appliqué à l'écran, en PNG HD, PDF et dans l'export multi-calques Canva.
+                  </p>
+                </div>
+              </div>
+            </section>
+          </div>
+        </main>
+      </div>
+    </div>
+  );
+}
+
 export default function App() {
   // Sidebar state
   const [sidebarOpen, setSidebarOpen] = useState(true);
@@ -1209,7 +1566,6 @@ export default function App() {
   });
 
   // ===== ESPACES (PROJETS) + BRAND KIT state =====
-  const [isBrandKitOpen, setIsBrandKitOpen] = useState(false);
   const [projects, setProjects] = useState<BrandProject[]>(getInitialProjects);
   const [activeProjectId, setActiveProjectId] = useState<string>(() => {
     try {
@@ -1267,6 +1623,19 @@ export default function App() {
     showToast(`Espace « ${pk?.name} » activé — Brand Kit appliqué !`);
   };
 
+  const deleteProject = (id: string) => {
+    if (projects.length <= 1) {
+      showToast('Impossible : gardez au moins un espace.');
+      return;
+    }
+    const remaining = projects.filter((pk) => pk.id !== id);
+    setProjects(remaining);
+    if (id === activeProjectId) {
+      setActiveProjectId(remaining[0].id);
+    }
+    showToast('Espace supprimé.');
+  };
+
   const createProject = () => {
     const limit = PACK_PROJECT_LIMIT[plan];
     if (projects.length >= limit) {
@@ -1283,23 +1652,8 @@ export default function App() {
     ]);
     setActiveProjectId(id);
     setProjectsOpen(false);
-    setIsBrandKitOpen(true);
-    showToast('Projet créé — configurez son Brand Kit !');
-  };
-  const [isDragging, setIsDragging] = useState(false);
-  const fileInputRef = useRef<HTMLInputElement>(null);
-
-  const handleLogoFile = (file: File) => {
-    if (file && (file.type.startsWith('image/') || file.name.endsWith('.svg'))) {
-      const reader = new FileReader();
-      reader.onload = (event) => {
-        setBrandLogo(event.target?.result as string);
-        showToast('Logo de marque importé avec succès !');
-      };
-      reader.readAsDataURL(file);
-    } else {
-      showToast('Format non supporté. Veuillez choisir un fichier PNG, JPG ou SVG.');
-    }
+    navigate('/brand');
+    showToast('Espace créé — configurez son Brand Kit !');
   };
 
   // Chat & Input state
@@ -1315,7 +1669,8 @@ export default function App() {
   const [pendingFormat, setPendingFormat] = useState<FormatType | null>(null);
   const [pendingStyle, setPendingStyle] = useState<'dark' | 'light' | null>(null);
   const [pendingProjectId, setPendingProjectId] = useState<string | null>(null);
-  const composerInputRef = useRef<HTMLInputElement>(null);
+  const [pendingChips, setPendingChips] = useState<string[]>([]);
+  const composerInputRef = useRef<HTMLTextAreaElement>(null);
   const highlightTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   // Clic sur une suggestion : préremplit le champ au lieu de générer à l'aveugle
   const prefillComposer = (text: string) => {
@@ -1443,7 +1798,6 @@ export default function App() {
     }
     function handleEscape(event: KeyboardEvent) {
       if (event.key === 'Escape') {
-        setIsBrandKitOpen(false);
         setProjectsOpen(false);
         setIsFormatDropdownOpen(false);
         setIsComposerModelOpen(false);
@@ -1736,6 +2090,7 @@ export default function App() {
     const inferred = inferOpts(promptText);
     const resolvedFmt: FormatType = opts.format ?? pendingFormat ?? inferred.format ?? selectedFormat;
     const resolvedStyle: 'dark' | 'light' = pendingStyle ?? 'dark';
+    const sentChips = pendingChips.map((c) => STYLE_CHIPS.find((x) => x.cmd === c)?.label || c);
     const resolvedCount = opts.count ?? inferred.count ?? carouselSlidesCount;
 
     // ===== FACTURATION POINTS : 1 image IA générée par slide =====
@@ -1774,6 +2129,7 @@ export default function App() {
     setPendingFormat(null);
     setPendingStyle(null);
     setPendingProjectId(null);
+    setPendingChips([]);
     setIsGenerating(true);
 
     setTimeout(() => {
@@ -1929,9 +2285,13 @@ export default function App() {
 
       const fmtLabel = FORMATS[activeFmt].label;
       const isCarousel = FORMATS[activeFmt].kind === 'carousel';
-      const aiMsgText = isCarousel
+      let aiMsgText = isCarousel
         ? `Voici votre ${activeFmt === 'presentation' ? 'présentation' : 'carrousel'} de **${resolvedCount} slides** au format **${fmtLabel}**${currentPhotos.length > 0 ? ` avec vos ${currentPhotos.length} photo(s) intégrée(s)` : ''}. Le Canvas ci-dessous vous permet de faire défiler les slides et d'exporter en haute résolution.`
         : `Voici votre nouveau design au format **${fmtLabel}**${resolvedStyle === 'light' ? ' en **style clair**' : ''}${currentPhotos.length > 0 ? ` avec vos ${currentPhotos.length} photo(s) intégrée(s)` : ''}. Le Canvas ci-dessous vous permet de le visualiser et de l'exporter en haute résolution.`;
+
+      if (sentChips.length > 0) {
+        aiMsgText += ` Ambiance appliquée : **${sentChips.join(', ')}**.`;
+      }
 
       const aiMsg: Message = {
         id: `ast_${Date.now()}`,
@@ -1979,13 +2339,22 @@ export default function App() {
         ]
           .filter((st) => st.cmd.startsWith(slashQuery) || st.cmd.includes(slashQuery))
           .map((st) => ({ kind: 'style' as const, ...st }));
+  const slashChipItems =
+    slashQuery === null
+      ? []
+      : STYLE_CHIPS.filter((c) => c.cmd.startsWith(slashQuery) || c.label.toLowerCase().includes(slashQuery)).map((c) => ({
+          kind: 'chip' as const,
+          cmd: c.cmd,
+          label: c.label,
+          emoji: c.emoji,
+        }));
   const slashProjectItems =
     slashQuery === null
       ? []
       : projects
           .filter((pk) => slugify(pk.name).includes(slashQuery))
           .map((pk) => ({ kind: 'project' as const, id: pk.id, cmd: slugify(pk.name), label: pk.name }));
-  const slashItems = [...slashFormatItems, ...slashStyleItems, ...slashProjectItems];
+  const slashItems = [...slashFormatItems, ...slashStyleItems, ...slashChipItems, ...slashProjectItems];
   useEffect(() => {
     setSlashIndex(0);
   }, [inputPrompt]);
@@ -1998,6 +2367,17 @@ export default function App() {
     } else if (item.kind === 'style') {
       setPendingStyle(item.style);
       showToast(`Style ${item.style === 'dark' ? 'sombre' : 'clair'} appliqué à la prochaine génération`);
+    } else if (item.kind === 'chip') {
+      setPendingChips((prev) => {
+        if (prev.includes(item.cmd)) return prev.filter((c) => c !== item.cmd);
+        if (prev.length >= 3) {
+          showToast('Maximum 3 ambiances par design.');
+          return prev;
+        }
+        const chip = STYLE_CHIPS.find((c) => c.cmd === item.cmd);
+        showToast(`Ambiance ${chip?.emoji || ''} ${chip?.label} ajoutée !`);
+        return [...prev, item.cmd];
+      });
     } else {
       setPendingProjectId(item.id);
       const pk = projects.find((x) => x.id === item.id);
@@ -2006,7 +2386,12 @@ export default function App() {
     composerInputRef.current?.focus();
   };
 
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+  const autoResizeComposer = (el: HTMLTextAreaElement) => {
+    el.style.height = 'auto';
+    el.style.height = `${Math.min(el.scrollHeight, 160)}px`;
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (slashItems.length > 0 && slashQuery !== null) {
       if (e.key === 'ArrowDown') {
         e.preventDefault();
@@ -2094,6 +2479,34 @@ export default function App() {
             navigate('/app');
             setReferralOpen(true);
           }}
+        />
+        {toastEl}
+      </div>
+    );
+  }
+
+  // ===== PAGE /brand — ESPACES & BRAND KIT =====
+  if (route === '/brand') {
+    return (
+      <div dir={lang === 'ar' ? 'rtl' : 'ltr'}>
+        <BrandPage
+          projects={projects}
+          activeProjectId={activeProjectId}
+          plan={plan}
+          credits={credits}
+          brandName={brandName}
+          brandHandle={brandHandle}
+          brandColor={brandColor}
+          brandLogo={brandLogo}
+          onSwitch={switchProject}
+          onCreate={createProject}
+          onDelete={deleteProject}
+          onName={setBrandName}
+          onHandle={setBrandHandle}
+          onColor={setBrandColor}
+          onLogo={setBrandLogo}
+          onBack={() => navigate('/app')}
+          onPricing={() => navigate('/pricing')}
         />
         {toastEl}
       </div>
@@ -2293,7 +2706,7 @@ export default function App() {
                   type="button"
                   onClick={() => {
                     setProjectsOpen(false);
-                    setIsBrandKitOpen(true);
+                    navigate('/brand');
                   }}
                   className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-xl text-xs font-semibold text-gray-600 hover:bg-gray-100 cursor-pointer transition-colors"
                 >
@@ -3010,6 +3423,20 @@ export default function App() {
                     </button>
                   </span>
                 )}
+                {pendingChips.map((cmd) => {
+                  const chip = STYLE_CHIPS.find((c) => c.cmd === cmd);
+                  return (
+                    <span
+                      key={cmd}
+                      className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-gradient-to-r from-amber-100 to-orange-100 border border-amber-300/70 text-[10px] font-bold text-amber-900 shadow-2xs"
+                    >
+                      {chip?.emoji} {chip?.label}
+                      <button type="button" onClick={() => setPendingChips((prev) => prev.filter((c) => c !== cmd))} className="text-amber-400 hover:text-amber-700 cursor-pointer">
+                        <X className="w-3 h-3" />
+                      </button>
+                    </span>
+                  );
+                })}
                 {pendingStyle && (
                   <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-zinc-900 text-white border border-zinc-700 text-[10px] font-bold shadow-2xs">
                     {pendingStyle === 'dark' ? <Moon className="w-3 h-3" /> : <Sun className="w-3 h-3" />}
@@ -3077,6 +3504,34 @@ export default function App() {
                       <span className="font-mono text-[11px] text-gray-500 shrink-0">/{it.cmd}</span>
                       <span className="flex-1 text-left truncate font-semibold">{it.label}</span>
                       <span className="text-[9px] font-semibold text-gray-400">Style</span>
+                    </button>
+                  );
+                })}
+
+                {slashChipItems.length > 0 && (
+                  <div className="px-2.5 pt-1 text-[9px] font-bold text-gray-300 uppercase tracking-wider">Ambiance</div>
+                )}
+                {slashChipItems.map((it) => {
+                  const flatIdx = slashItems.indexOf(it);
+                  const active = pendingChips.includes(it.cmd);
+                  return (
+                    <button
+                      key={`sc_${it.cmd}`}
+                      type="button"
+                      onMouseEnter={() => setSlashIndex(flatIdx)}
+                      onClick={() => acceptSlash(it)}
+                      className={`w-full flex items-center gap-2.5 px-2.5 py-2 rounded-xl text-xs cursor-pointer transition-colors ${
+                        flatIdx === slashIndex ? 'bg-amber-50 text-amber-900 font-bold' : 'text-gray-700 hover:bg-gray-100'
+                      }`}
+                    >
+                      <span className="w-6 h-6 rounded-lg bg-gray-100 flex items-center justify-center shrink-0 text-sm">{it.emoji}</span>
+                      <span className="font-mono text-[11px] text-gray-500 shrink-0">/{it.cmd}</span>
+                      <span className="flex-1 text-left truncate font-semibold">{it.label}</span>
+                      {active ? (
+                        <span className="text-[9px] font-bold text-emerald-600 bg-emerald-50 border border-emerald-200 px-1.5 py-0.5 rounded-full">AJOUTÉE</span>
+                      ) : (
+                        <span className="text-[9px] font-semibold text-gray-400">Ambiance</span>
+                      )}
                     </button>
                   );
                 })}
@@ -3156,14 +3611,18 @@ export default function App() {
                 </button>
 
                 {/* Champ de texte */}
-                <input
+                <textarea
                   ref={composerInputRef}
-                  type="text"
+                  rows={1}
                   value={inputPrompt}
-                  onChange={(e) => setInputPrompt(e.target.value)}
+                  onChange={(e) => {
+                    setInputPrompt(e.target.value);
+                    autoResizeComposer(e.target);
+                  }}
                   onKeyDown={handleKeyDown}
                   placeholder={t('placeholder')}
-                  className="flex-1 bg-transparent px-3 py-1.5 text-sm sm:text-[15px] text-gray-900 placeholder-gray-400 focus:outline-none"
+                  className="flex-1 bg-transparent px-3 py-1.5 text-sm sm:text-[15px] text-gray-900 placeholder-gray-400 focus:outline-none resize-none leading-relaxed overflow-y-auto"
+                  style={{ maxHeight: '160px' }}
                 />
 
                 {/* À droite : Sélecteur déroulant de format, Nombre de slides & bouton d'envoi */}
@@ -3275,9 +3734,10 @@ export default function App() {
                   </button>
                 </div>
               </div>
+            </div>
 
-              {/* Barre d'outils sous le champ de texte (façon Claude) */}
-              <div className="flex items-center justify-between px-1.5 pt-1.5 pb-0.5">
+            {/* Barre d'outils sous le box (hors du conteneur blanc) */}
+            <div className="flex items-center justify-between gap-2 px-1.5 pt-2">
                 <div className="relative" ref={composerModelRef}>
                   <button
                     type="button"
@@ -3341,7 +3801,7 @@ export default function App() {
                     </div>
                   )}
                 </div>
-                <span className="flex items-center gap-1.5 text-[10px] text-gray-400 min-w-0">
+                <span className="hidden sm:flex items-center gap-1.5 text-[10px] text-gray-400 min-w-0">
                   <Lightbulb className="w-3 h-3 text-amber-400 shrink-0" />
                   <span className="truncate">{activeModel.desc}</span>
                 </span>
@@ -3355,7 +3815,6 @@ export default function App() {
                     Solde faible — voir les packs
                   </button>
                 )}
-              </div>
             </div>
 
             {messages.length === 0 ? (
@@ -3380,189 +3839,6 @@ export default function App() {
           </div>
         </div>
       </main>
-
-      {/* ========================================================= */}
-      {/* MODAL BRAND KIT */}
-      {/* ========================================================= */}
-      <AnimatePresence>
-        {isBrandKitOpen && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.2 }}
-            onMouseDown={(e) => e.target === e.currentTarget && setIsBrandKitOpen(false)}
-            className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-2xs p-4"
-          >
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95, y: 10 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.95, y: 10 }}
-              transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
-              className="bg-white rounded-3xl border border-gray-200 shadow-2xl w-full max-w-md p-6 space-y-5"
-            >
-              <div className="flex items-center justify-between pb-3 border-b border-gray-100">
-                <div className="flex items-center gap-2">
-                  <Palette className="w-5 h-5 text-amber-500" />
-                  <h3 className="font-semibold text-gray-900 text-base">Brand Kit · {brandName || 'Projet'}</h3>
-                </div>
-                <button
-                  onClick={() => setIsBrandKitOpen(false)}
-                  className="p-1 rounded-full hover:bg-gray-100 text-gray-400 hover:text-gray-700 transition-colors"
-                >
-                  <X className="w-4 h-4" />
-                </button>
-              </div>
-
-              <div className="space-y-4">
-                {/* Zone d'upload pour le logo de la marque (Drag & Drop) */}
-                <div>
-                  <label className="text-xs font-semibold text-gray-700 block mb-1.5">
-                    Logo de la marque
-                  </label>
-                  <div
-                    onDragOver={(e) => {
-                      e.preventDefault();
-                      setIsDragging(true);
-                    }}
-                    onDragLeave={() => setIsDragging(false)}
-                    onDrop={(e) => {
-                      e.preventDefault();
-                      setIsDragging(false);
-                      if (e.dataTransfer.files && e.dataTransfer.files[0]) {
-                        handleLogoFile(e.dataTransfer.files[0]);
-                      }
-                    }}
-                    onClick={() => fileInputRef.current?.click()}
-                    className={`w-full border-dashed border-2 ${
-                      isDragging
-                        ? 'border-amber-500 bg-amber-50/50'
-                        : 'border-gray-300 hover:border-gray-400 bg-gray-50 hover:bg-gray-100'
-                    } rounded-2xl p-5 text-center cursor-pointer transition-colors duration-200 flex flex-col items-center justify-center`}
-                  >
-                    <input
-                      ref={fileInputRef}
-                      type="file"
-                      accept="image/png,image/jpeg,image/svg+xml,.png,.jpg,.jpeg,.svg"
-                      onChange={(e) => {
-                        if (e.target.files && e.target.files[0]) {
-                          handleLogoFile(e.target.files[0]);
-                        }
-                      }}
-                      className="hidden"
-                    />
-
-                    {brandLogo ? (
-                      <div className="flex items-center gap-3">
-                        <img
-                          src={brandLogo}
-                          alt="Logo de marque"
-                          className="w-10 h-10 object-contain rounded-xl border border-gray-200 bg-white p-1 shadow-xs"
-                        />
-                        <div className="text-left">
-                          <p className="text-xs font-bold text-gray-900">Logo importé avec succès</p>
-                          <p className="text-[11px] text-gray-500">Cliquer pour remplacer</p>
-                        </div>
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setBrandLogo(null);
-                            showToast('Logo retiré');
-                          }}
-                          className="ml-2 text-xs text-red-500 hover:text-red-700 font-semibold cursor-pointer"
-                        >
-                          Supprimer
-                        </button>
-                      </div>
-                    ) : (
-                      <>
-                        <UploadCloud className="w-8 h-8 text-gray-400 mb-1" />
-                        <p className="text-xs font-semibold text-gray-700">
-                          Glissez votre logo ici ou parcourez
-                        </p>
-                        <p className="text-[11px] text-gray-400 mt-0.5">(PNG, JPG, SVG)</p>
-                      </>
-                    )}
-                  </div>
-                </div>
-
-                <div>
-                  <label className="text-xs font-semibold text-gray-700 block mb-1.5">
-                    Votre prénom (affiché à l'accueil)
-                  </label>
-                  <input
-                    type="text"
-                    value={userFirstName}
-                    onChange={(e) => {
-                      setUserFirstName(e.target.value);
-                      localStorage.setItem('aura_user_firstname', e.target.value);
-                    }}
-                    className="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 text-sm text-gray-900 focus:outline-none focus:border-amber-500"
-                    placeholder="Ex: Malek"
-                  />
-                </div>
-
-                <div>
-                  <label className="text-xs font-semibold text-gray-700 block mb-1.5">
-                    Nom de la marque / Créateur
-                  </label>
-                  <input
-                    type="text"
-                    value={brandName}
-                    onChange={(e) => setBrandName(e.target.value)}
-                    className="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 text-sm text-gray-900 focus:outline-none focus:border-amber-500"
-                    placeholder="Ex: Aura Studio"
-                  />
-                </div>
-
-                <div>
-                  <label className="text-xs font-semibold text-gray-700 block mb-1.5">
-                    Identifiant social (@handle)
-                  </label>
-                  <input
-                    type="text"
-                    value={brandHandle}
-                    onChange={(e) => setBrandHandle(e.target.value)}
-                    className="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 text-sm text-gray-900  focus:outline-none focus:border-amber-500"
-                    placeholder="@votrecompte"
-                  />
-                </div>
-
-                <div>
-                  <label className="text-xs font-semibold text-gray-700 block mb-1.5">
-                    Couleur d'accentuation
-                  </label>
-                  <div className="flex items-center gap-2">
-                    {['#F59E0B', '#EA580C', '#EAB308', '#F97316', '#2563EB', '#059669', '#7C3AED', '#DC2626'].map((color) => (
-                      <button
-                        key={color}
-                        onClick={() => setBrandColor(color)}
-                        className={`w-8 h-8 rounded-full border-2 transition-transform ${
-                          brandColor === color ? 'border-gray-900 scale-110' : 'border-transparent'
-                        }`}
-                        style={{ backgroundColor: color }}
-                      />
-                    ))}
-                  </div>
-                </div>
-              </div>
-
-              <div className="pt-2 flex justify-end gap-2">
-                <button
-                  onClick={() => {
-                    setIsBrandKitOpen(false);
-                    showToast('Brand Kit enregistré.');
-                  }}
-                  className="px-4 py-2 rounded-full bg-gray-900 hover:bg-black text-white text-xs font-bold transition-colors cursor-pointer"
-                >
-                  Enregistrer
-                </button>
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
 
       {/* ===== MODALS COMPTE ===== */}
       <AnimatePresence>
@@ -3629,7 +3905,7 @@ export default function App() {
                       type="button"
                       onClick={() => {
                         setModal(null);
-                        setIsBrandKitOpen(true);
+                        navigate('/brand');
                       }}
                       className="w-full flex items-center gap-2 px-3 py-2.5 rounded-xl border border-gray-200 hover:bg-gray-50 text-sm text-gray-700 cursor-pointer transition-colors"
                     >
