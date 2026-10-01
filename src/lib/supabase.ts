@@ -65,3 +65,14 @@ export async function ensureSupabaseUser(): Promise<User | null> {
   if (error) throw error;
   return data.user;
 }
+
+/** Jeton d'accès de la session courante (envoyé au Worker pour la bibliothèque de templates partagée). */
+export async function getAccessToken(): Promise<string | null> {
+  if (!supabase) return null;
+  try {
+    const { data } = await supabase.auth.getSession();
+    return data.session?.access_token ?? null;
+  } catch {
+    return null;
+  }
+}
