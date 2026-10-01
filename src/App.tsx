@@ -457,22 +457,19 @@ const PRICING_TIPS: { icon: 'lightbulb' | 'rocket'; tone: 'eco' | 'pro'; title: 
 ];
 
 // ============================================================
-// PAGE /pricing — les packs à payer d'un côté, vos points de l'autre.
-// Le choix du modèle de génération se fait directement dans le box de texte de l'atelier.
+// PAGE /pricing — design d'origine (grille de packs) dans une page dédiée
 // ============================================================
 function PricingPage({
   currentPlan,
   credits,
-  onChoosePack,
+  onChoose,
   onBack,
 }: {
   currentPlan: PlanId;
   credits: number;
-  onChoosePack: (packId: PlanId) => void;
+  onChoose: (packId: PlanId) => void;
   onBack: () => void;
 }) {
-  const currentPack = PRICING.find((p) => p.id === currentPlan);
-
   return (
     <div className="relative h-screen w-screen overflow-hidden font-sans text-gray-900 antialiased">
       <div className="aurora" aria-hidden="true">
@@ -496,7 +493,7 @@ function PricingPage({
               </div>
             </button>
             <div className="flex items-center gap-2">
-              <span className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white border border-gray-200/80 text-xs font-bold text-gray-800">
+              <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white border border-gray-200/80 text-xs font-bold text-gray-800">
                 <Zap className="w-3.5 h-3.5 text-amber-500" />
                 {credits} points
               </span>
@@ -512,159 +509,122 @@ function PricingPage({
           </div>
         </header>
 
-        <main className="max-w-6xl mx-auto px-4 sm:px-6 pb-16">
-          {/* --- Hero --- */}
-          <section className="text-center space-y-3 pt-10 pb-8">
-            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/80 border border-amber-200/70 text-[11px] font-bold text-amber-700 shadow-xs">
-              <Zap className="w-3 h-3" />
-              TARIFS & PACKS
-            </span>
-            <h1 className="text-2xl sm:text-3xl font-semibold text-gray-900 tracking-tight">
-              Choisissez votre <span className="text-transparent bg-clip-text bg-gradient-to-r from-amber-500 to-orange-500">pack</span>, générez en liberté
-            </h1>
-            <p className="text-sm text-gray-500 max-w-xl mx-auto leading-relaxed">
-              1 image générée = <span className="font-bold text-gray-700">5 pts</span> avec <span className="font-semibold">Aura Flash</span> ·{' '}
-              <span className="font-bold text-gray-700">10 pts</span> avec <span className="font-semibold">Aura Studio</span> ·{' '}
-              <span className="font-bold text-gray-700">20 pts</span> avec <span className="font-semibold">Aura Pro Max</span>.
-            </p>
-          </section>
-
-          {/* --- Packs à gauche · Points à droite --- */}
-          <section className="grid grid-cols-1 lg:grid-cols-[1fr_340px] gap-5 items-start">
-            <div className="space-y-3">
-              <h2 className="text-xs font-bold text-gray-400 uppercase tracking-wider px-1">Choisissez votre pack</h2>
-              {PRICING.map((pk) => {
-                const isCurrent = pk.id === currentPlan && pk.price !== 'Sur devis';
-                const isDevis = pk.price === 'Sur devis';
-                return (
-                  <div
-                    key={pk.name}
-                    className={`relative rounded-3xl border p-5 transition-all ${
-                      pk.highlight
-                        ? 'border-amber-400 bg-gradient-to-b from-amber-50/90 to-white shadow-lg shadow-amber-100/60'
-                        : isCurrent
-                        ? 'border-orange-300 bg-orange-50/40'
-                        : 'border-gray-200 bg-white/80 hover:border-amber-300/70 hover:shadow-md'
-                    }`}
-                  >
-                    {pk.ribbon && (
-                      <span className="absolute -top-2.5 right-5 px-3 py-0.5 rounded-full bg-gradient-to-r from-amber-500 to-orange-500 text-white text-[9px] font-bold tracking-wider shadow-sm whitespace-nowrap">
-                        {pk.ribbon}
-                      </span>
-                    )}
-
-                    <div className="flex flex-wrap items-start justify-between gap-3">
-                      <div className="space-y-1 min-w-0">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <h3 className="font-semibold text-gray-900">{pk.name}</h3>
-                          {isCurrent && (
-                            <span className="text-[9px] font-bold text-orange-700 bg-orange-100 border border-orange-200 px-1.5 py-0.5 rounded-full">
-                              ACTUEL
-                            </span>
-                          )}
-                          {pk.points && (
-                            <span
-                              className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold border ${
-                                pk.highlight
-                                  ? 'bg-amber-100/80 text-amber-800 border-amber-200'
-                                  : 'bg-gray-100 text-gray-700 border-gray-200'
-                              }`}
-                            >
-                              <Zap className="w-3 h-3 text-amber-500" />
-                              {pk.points}
-                            </span>
-                          )}
-                        </div>
-                        <p className="text-[11px] text-gray-500">{pk.tagline}</p>
-                      </div>
-                      <div className="text-right shrink-0">
-                        <div
-                          className={`text-2xl font-bold tracking-tight ${
-                            pk.highlight ? 'text-transparent bg-clip-text bg-gradient-to-r from-amber-600 to-orange-500' : 'text-gray-900'
-                          }`}
-                        >
-                          {pk.price}
-                        </div>
-                        {pk.period && <div className="text-[11px] text-gray-400">{pk.period}</div>}
-                      </div>
-                    </div>
-
-                    <ul className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-1.5">
-                      {pk.features.map((f) => (
-                        <li key={f} className="flex items-start gap-2 text-xs text-gray-600">
-                          <Check className="w-3.5 h-3.5 text-amber-500 shrink-0 mt-0.5 stroke-[2.5]" />
-                          {f}
-                        </li>
-                      ))}
-                    </ul>
-
-                    <button
-                      type="button"
-                      disabled={isCurrent}
-                      onClick={() => {
-                        if (isDevis) {
-                          window.location.href = 'mailto:contact@auradesign.dz?subject=Pack%20Business%20%26%20Agences%20%E2%80%94%20Aura%20Design';
-                          return;
-                        }
-                        onChoosePack(pk.id);
-                      }}
-                      className={`mt-4 w-full px-3 py-2.5 rounded-full text-xs font-bold transition-all ${
-                        isCurrent
-                          ? 'bg-gray-100 text-gray-400 cursor-default'
-                          : pk.highlight
-                          ? 'bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-white shadow-md shadow-amber-200/60 cursor-pointer'
-                          : 'bg-gray-900 hover:bg-black text-white cursor-pointer'
-                      }`}
-                    >
-                      {isCurrent ? 'Pack actuel' : pk.cta}
-                    </button>
-                  </div>
-                );
-              })}
+        <main className="max-w-6xl mx-auto px-4 sm:px-6 pb-10 space-y-6">
+          {/* --- En-tête Hero (comme à l'origine) --- */}
+          <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-amber-50 via-orange-50/70 to-white px-6 sm:px-10 pt-10 pb-8 border border-orange-100 shadow-sm mt-6">
+            <div className="aurora opacity-40" aria-hidden="true">
+              <span className="blob blob-a" />
+              <span className="blob blob-b" />
             </div>
-
-            {/* --- Panneau Vos Points (collant à droite) --- */}
-            <aside className="rounded-3xl border border-gray-200 bg-white/90 backdrop-blur p-6 space-y-5 lg:sticky lg:top-20 shadow-lg">
-              <div className="flex items-center gap-2.5">
-                <div className="w-10 h-10 rounded-full bg-amber-100 text-amber-600 flex items-center justify-center shrink-0">
-                  <Zap className="w-5 h-5" />
-                </div>
-                <div>
-                  <h3 className="font-semibold text-lg text-gray-900">Vos points</h3>
-                  <p className="text-[11px] text-gray-500">Pack {currentPack?.name || 'Gratuit'}</p>
-                </div>
+            <div className="relative z-10 text-center space-y-3 max-w-2xl mx-auto">
+              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/80 border border-amber-200/70 text-[11px] font-bold text-amber-700 shadow-xs">
+                <Zap className="w-3 h-3" />
+                TARIFS & PACKS
+              </span>
+              <h2 className="text-2xl sm:text-3xl font-semibold text-gray-900 tracking-tight">
+                Choisissez votre <span className="text-transparent bg-clip-text bg-gradient-to-r from-amber-500 to-orange-500">pack</span>, générez en liberté
+              </h2>
+              <p className="text-sm text-gray-500 leading-relaxed">
+                1 image générée = <span className="font-bold text-gray-700">5 pts</span> avec <span className="font-semibold">Aura Flash</span> ·{' '}
+                <span className="font-bold text-gray-700">10 pts</span> avec <span className="font-semibold">Aura Studio</span> ·{' '}
+                <span className="font-bold text-gray-700">20 pts</span> avec <span className="font-semibold">Aura Pro Max</span>.
+              </p>
+              <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white border border-gray-200 shadow-xs text-xs font-semibold text-gray-700">
+                <Sparkles className="w-3.5 h-3.5 text-amber-500" />
+                Votre solde actuel :
+                <span className="font-bold text-amber-600">{credits} points</span>
               </div>
+            </div>
+          </div>
 
-              <div className="rounded-2xl border border-amber-200/80 bg-gradient-to-b from-amber-50/80 to-orange-50/40 p-4 text-center space-y-0.5">
-                <div className="text-4xl font-bold text-gray-900 tracking-tight">{credits}</div>
-                <div className="text-[10px] font-bold text-amber-700 uppercase tracking-wider">points disponibles</div>
-              </div>
+          {/* --- Grille des packs (comme à l'origine) --- */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+            {PRICING.map((pk) => {
+              const isCurrent = pk.id === currentPlan && pk.price !== 'Sur devis';
+              const isDevis = pk.price === 'Sur devis';
+              return (
+                <div
+                  key={pk.name}
+                  className={`relative rounded-3xl border flex flex-col gap-4 p-5 transition-all ${
+                    pk.highlight
+                      ? 'border-amber-400 bg-gradient-to-b from-amber-50/80 to-white shadow-lg shadow-amber-100/60 xl:-translate-y-1'
+                      : isCurrent
+                      ? 'border-orange-300 bg-orange-50/40'
+                      : 'border-gray-200 bg-white/80 hover:border-amber-300/70 hover:shadow-md'
+                  }`}
+                >
+                  {pk.ribbon && (
+                    <span className="absolute -top-2.5 left-1/2 -translate-x-1/2 px-3 py-0.5 rounded-full bg-gradient-to-r from-amber-500 to-orange-500 text-white text-[9px] font-bold tracking-wider shadow-sm whitespace-nowrap">
+                      {pk.ribbon}
+                    </span>
+                  )}
 
-              <div className="space-y-1.5">
-                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Coût par image générée</p>
-                {MODELS.map((m) => (
-                  <div key={m.id} className="flex items-center justify-between rounded-xl border border-gray-200 bg-white px-3 py-2">
-                    <span className="flex items-center gap-2 text-xs font-semibold text-gray-800">
-                      {m.name}
-                      {m.badge && (
-                        <span className="text-[9px] font-bold text-amber-700 bg-amber-100 border border-amber-200 px-1.5 py-0.5 rounded-full">
-                          {m.badge}
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-2">
+                      <h4 className="font-semibold text-gray-900">{pk.name}</h4>
+                      {isCurrent && (
+                        <span className="text-[9px] font-bold text-orange-700 bg-orange-100 border border-orange-200 px-1.5 py-0.5 rounded-full">
+                          ACTUEL
                         </span>
                       )}
-                    </span>
-                    <span className="text-[10px] font-bold text-amber-600 bg-amber-100/80 px-1.5 py-0.5 rounded-full">{m.points} pts</span>
+                    </div>
+                    <p className="text-[11px] text-gray-500">{pk.tagline}</p>
                   </div>
-                ))}
-              </div>
 
-              <p className="text-[11px] text-gray-500 leading-relaxed">
-                Pour obtenir plus de points, choisissez un pack dans la liste. Un point non utilisé reste dans votre solde.
-              </p>
-            </aside>
-          </section>
+                  <div className="flex items-end gap-1.5">
+                    <span className={`text-2xl font-bold tracking-tight ${pk.highlight ? 'text-transparent bg-clip-text bg-gradient-to-r from-amber-600 to-orange-500' : 'text-gray-900'}`}>
+                      {pk.price}
+                    </span>
+                    {pk.period && <span className="text-[11px] text-gray-400 pb-1">{pk.period}</span>}
+                  </div>
+
+                  {pk.points && (
+                    <div className={`flex items-center gap-1.5 w-fit px-3 py-1 rounded-full text-[11px] font-bold border ${
+                      pk.highlight
+                        ? 'bg-amber-100/80 text-amber-800 border-amber-200'
+                        : 'bg-gray-100 text-gray-700 border-gray-200'
+                    }`}>
+                      <Zap className="w-3 h-3 text-amber-500" />
+                      {pk.points}
+                    </div>
+                  )}
+
+                  <ul className="space-y-2 flex-1 pt-1">
+                    {pk.features.map((f) => (
+                      <li key={f} className="flex items-start gap-2 text-xs text-gray-600">
+                        <Check className="w-3.5 h-3.5 text-amber-500 shrink-0 mt-0.5 stroke-[2.5]" />
+                        {f}
+                      </li>
+                    ))}
+                  </ul>
+
+                  <button
+                    type="button"
+                    disabled={isCurrent}
+                    onClick={() => {
+                      if (isDevis) {
+                        window.location.href = 'mailto:contact@auradesign.dz?subject=Pack%20Business%20%26%20Agences%20%E2%80%94%20Aura%20Design';
+                        return;
+                      }
+                      onChoose(pk.id);
+                    }}
+                    className={`w-full px-3 py-2.5 rounded-full text-xs font-bold transition-all ${
+                      isCurrent
+                        ? 'bg-gray-100 text-gray-400 cursor-default'
+                        : pk.highlight
+                        ? 'bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-white shadow-md shadow-amber-200/60 cursor-pointer'
+                        : 'bg-gray-900 hover:bg-black text-white cursor-pointer'
+                    }`}
+                  >
+                    {isCurrent ? 'Pack actuel' : pk.cta}
+                  </button>
+                </div>
+              );
+            })}
+          </div>
 
           {/* --- Remarques de consommation --- */}
-          <section className="mt-8 grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             {PRICING_TIPS.map((tip) => (
               <div
                 key={tip.title}
@@ -685,10 +645,10 @@ function PricingPage({
                 </div>
               </div>
             ))}
-          </section>
+          </div>
 
           {/* --- Note de facturation --- */}
-          <p className="text-[11px] text-gray-400 text-center pt-6 leading-relaxed max-w-xl mx-auto">
+          <p className="text-[11px] text-gray-400 text-center leading-relaxed max-w-xl mx-auto">
             Les points sont déduits uniquement lorsque vous générez un visuel — un point non utilisé reste dans votre solde.
             L'export PNG HD, l'export multi-calques Canva et l'envoi vers votre compte Canva sont toujours inclus gratuitement.
           </p>
@@ -800,8 +760,6 @@ export default function App() {
   }, [plan]);
   const [searchOpen, setSearchOpen] = useState(false);
   const [sessionSearch, setSessionSearch] = useState('');
-  const [isModelOpen, setIsModelOpen] = useState(false);
-  const modelRef = useRef<HTMLDivElement>(null);
   const [feedback, setFeedback] = useState<Record<string, 'up' | 'down'>>({});
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -925,9 +883,6 @@ export default function App() {
       if (slidesCountDropdownRef.current && !slidesCountDropdownRef.current.contains(event.target as Node)) {
         setIsSlidesDropdownOpen(false);
       }
-      if (modelRef.current && !modelRef.current.contains(event.target as Node)) {
-        setIsModelOpen(false);
-      }
       if (accountRef.current && !accountRef.current.contains(event.target as Node)) {
         setAccountMenuOpen(false);
         setLangMenuOpen(false);
@@ -939,7 +894,6 @@ export default function App() {
         setIsFormatDropdownOpen(false);
         setIsComposerModelOpen(false);
         setIsSlidesDropdownOpen(false);
-        setIsModelOpen(false);
         setAccountMenuOpen(false);
         setModal(null);
       }
@@ -1428,7 +1382,7 @@ export default function App() {
         <PricingPage
           currentPlan={plan}
           credits={credits}
-          onChoosePack={(packId) => {
+          onChoose={(packId) => {
             if (packId === plan) return;
             setPlan(packId);
             if (packId === 'free') setCredits(20);
@@ -1729,89 +1683,35 @@ export default function App() {
               </button>
             )}
 
-            {/* Sélecteur de modèle style Gemini */}
-            <div className="relative" ref={modelRef}>
-              <button
-                type="button"
-                onClick={() => setIsModelOpen((v) => !v)}
-                className="flex items-center gap-1.5 px-3 py-1 rounded-full hover:bg-white/70 text-gray-900 font-semibold text-sm cursor-pointer transition-colors"
-              >
-                <span className="tracking-tight">{activeModel.name}</span>
-                <span className="text-[10px] font-bold text-amber-600 bg-amber-100/80 px-1.5 py-0.5 rounded-full">
-                  {activeModel.points} pts
-                </span>
-                <ChevronDown className={`w-3.5 h-3.5 text-gray-500 transition-transform ${isModelOpen ? 'rotate-180' : ''}`} />
-              </button>
-              {isModelOpen && (
-                <div className="absolute left-0 top-10 w-64 rounded-2xl bg-white border border-gray-200 shadow-xl p-1.5 z-30 space-y-0.5">
-                  <div className="px-3 pt-1.5 pb-1 text-[10px] font-bold text-gray-400 uppercase tracking-wider">
-                    Modèle de génération
-                  </div>
-                  {MODELS.map((m) => (
-                    <button
-                      key={m.id}
-                      type="button"
-                      onClick={() => {
-                        setActiveModelId(m.id);
-                        setIsModelOpen(false);
-                        showToast(`Modèle actif : ${m.name} · ${m.points} points / image`);
-                      }}
-                      className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-sm cursor-pointer transition-colors ${
-                        activeModelId === m.id ? 'bg-orange-50 text-orange-800 font-semibold' : 'text-gray-700 hover:bg-gray-100'
-                      }`}
-                    >
-                      <span className="flex items-center gap-2">
-                        {m.name}
-                        {m.badge && (
-                          <span className="text-[9px] font-bold text-amber-700 bg-amber-100 border border-amber-200 px-1.5 py-0.5 rounded-full">
-                            {m.badge}
-                          </span>
-                        )}
-                      </span>
-                      <span className="flex items-center gap-1.5">
-                        <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${activeModelId === m.id ? 'bg-amber-100 text-amber-700' : 'bg-gray-100 text-gray-500'}`}>
-                          {m.points} pts
-                        </span>
-                        {activeModelId === m.id && <Check className="w-3.5 h-3.5 text-orange-600" />}
-                      </span>
-                    </button>
-                  ))}
-                  <div className="my-1 border-t border-gray-100" />
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setIsModelOpen(false);
-                      navigate('/pricing');
-                    }}
-                    className="w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-semibold text-amber-700 hover:bg-amber-50 cursor-pointer transition-colors"
-                  >
-                    <span className="flex items-center gap-2">
-                      <Zap className="w-3.5 h-3.5" />
-                      Voir les packs
-                    </span>
-                    <span className="text-[10px] bg-gray-900 text-white px-1.5 py-0.5 rounded-full">{credits} pts</span>
-                  </button>
-                </div>
-              )}
-            </div>
-          </div>
-
-          <div className="flex items-center gap-2">
-            {/* Solde de points (clique = page tarifs) */}
+            {/* Pack choisi (clique = page tarifs) */}
             <button
               type="button"
               onClick={() => navigate('/pricing')}
-              title="Voir les packs de points"
-              className={`hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold transition-colors cursor-pointer border ${
-                credits < 20
-                  ? 'bg-red-50 hover:bg-red-100 text-red-700 border-red-200'
-                  : 'bg-white/70 hover:bg-white text-gray-800 border-gray-200/80'
-              }`}
+              title="Votre pack"
+              className="flex items-center gap-1.5 px-3 py-1 rounded-full hover:bg-white/70 text-gray-900 font-semibold text-sm cursor-pointer transition-colors"
             >
-              <Zap className={`w-3.5 h-3.5 ${credits < 20 ? 'text-red-500' : 'text-amber-500'}`} />
-              <span>{credits} points</span>
-              <span className="text-gray-400 font-semibold">Packs</span>
+              <Zap className="w-3.5 h-3.5 text-amber-500" />
+              <span className="tracking-tight">Pack {PRICING.find((pk) => pk.id === plan)?.name || 'Gratuit'}</span>
+              <ChevronDown className="w-3.5 h-3.5 text-gray-500" />
             </button>
+          </div>
+
+          <div className="flex items-center gap-2">
+            {/* Points façon Manus : Packs | points */}
+            <div className="hidden sm:flex items-center gap-2.5 px-3.5 py-1.5 rounded-full bg-white border border-gray-200/80 text-xs font-semibold shadow-2xs">
+              <button
+                type="button"
+                onClick={() => navigate('/pricing')}
+                className="text-amber-600 font-bold cursor-pointer hover:text-amber-700 transition-colors"
+              >
+                Packs
+              </button>
+              <span className="w-px h-3.5 bg-gray-200" />
+              <span className={`flex items-center gap-1 font-bold ${credits < 20 ? 'text-red-600' : 'text-gray-900'}`}>
+                <Zap className={`w-3.5 h-3.5 ${credits < 20 ? 'text-red-500' : 'text-amber-500'}`} />
+                {credits}
+              </span>
+            </div>
             <button
               onClick={handleShare}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/70 hover:bg-white text-gray-700 text-xs font-semibold transition-colors cursor-pointer"
@@ -2277,74 +2177,6 @@ export default function App() {
 
                 {/* À droite : Sélecteur déroulant de format, Nombre de slides & bouton d'envoi */}
                 <div className="flex items-center gap-1.5 shrink-0">
-                  {/* Dropdown sélecteur de modèle (dans le box de texte) */}
-                  <div className="relative" ref={composerModelRef}>
-                    <button
-                      type="button"
-                      onClick={() => setIsComposerModelOpen((v) => !v)}
-                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-amber-50 hover:bg-amber-100/90 text-amber-900 text-xs font-bold border border-amber-200 shadow-2xs transition-colors cursor-pointer"
-                      title="Modèle de génération"
-                    >
-                      <Sparkles className="w-3.5 h-3.5 text-amber-600" />
-                      <span className="hidden md:inline">{activeModel.name}</span>
-                      <span className="text-[10px] font-bold text-amber-700 bg-white/80 px-1.5 py-0.5 rounded-full">{activeModel.points} pts</span>
-                      <ChevronDown className={`w-3 h-3 text-amber-600 transition-transform ${isComposerModelOpen ? 'rotate-180' : ''}`} />
-                    </button>
-
-                    {isComposerModelOpen && (
-                      <div className="absolute right-0 bottom-12 w-72 rounded-2xl bg-white border border-gray-200 shadow-xl p-1.5 z-30 space-y-0.5">
-                        <div className="px-2.5 py-1 text-[11px] font-semibold text-gray-400 uppercase tracking-wider">
-                          Modèle de génération
-                        </div>
-                        {MODELS.map((m) => (
-                          <button
-                            key={m.id}
-                            type="button"
-                            onClick={() => {
-                              setActiveModelId(m.id);
-                              setIsComposerModelOpen(false);
-                              showToast(`Modèle actif : ${m.name} · ${m.points} points / image`);
-                            }}
-                            className={`w-full flex items-center justify-between gap-2 px-2.5 py-2 rounded-xl text-xs cursor-pointer transition-colors ${
-                              activeModelId === m.id ? 'bg-amber-50 text-amber-900 font-bold' : 'text-gray-700 hover:bg-gray-100'
-                            }`}
-                          >
-                            <span className="min-w-0">
-                              <span className="flex items-center gap-1.5">
-                                {m.name}
-                                {m.badge && (
-                                  <span className="text-[9px] font-bold text-amber-700 bg-amber-100 border border-amber-200 px-1.5 py-0.5 rounded-full">
-                                    {m.badge}
-                                  </span>
-                                )}
-                              </span>
-                              <span className="block text-[10px] text-gray-400 font-normal truncate">{m.desc}</span>
-                            </span>
-                            <span className="flex items-center gap-1.5 shrink-0">
-                              <span className="text-[10px] font-bold text-amber-600 bg-amber-100/80 px-1.5 py-0.5 rounded-full">{m.points} pts</span>
-                              {activeModelId === m.id && <Check className="w-3.5 h-3.5 text-amber-600" />}
-                            </span>
-                          </button>
-                        ))}
-                        <div className="my-1 border-t border-gray-100" />
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setIsComposerModelOpen(false);
-                            navigate('/pricing');
-                          }}
-                          className="w-full flex items-center justify-between px-2.5 py-2 rounded-xl text-xs font-semibold text-amber-700 hover:bg-amber-50 cursor-pointer transition-colors"
-                        >
-                          <span className="flex items-center gap-2">
-                            <Zap className="w-3.5 h-3.5" />
-                            Voir les packs
-                          </span>
-                          <span className="text-[10px] font-bold text-gray-500">{credits} pts</span>
-                        </button>
-                      </div>
-                    )}
-                  </div>
-
                   {/* Dropdown sélecteur de format */}
                   <div className="relative" ref={dropdownRef}>
                     <button
@@ -2451,6 +2283,77 @@ export default function App() {
                     <ArrowUp className="w-4 h-4 stroke-[2.5]" />
                   </button>
                 </div>
+              </div>
+
+              {/* Barre d'outils sous le champ de texte (façon Claude) */}
+              <div className="flex items-center justify-between px-1.5 pt-1.5 pb-0.5">
+                <div className="relative" ref={composerModelRef}>
+                  <button
+                    type="button"
+                    onClick={() => setIsComposerModelOpen((v) => !v)}
+                    className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-amber-50 hover:bg-amber-100/90 text-amber-900 text-[11px] font-bold border border-amber-200/80 transition-colors cursor-pointer"
+                    title="Modèle de génération"
+                  >
+                    <Sparkles className="w-3 h-3 text-amber-600" />
+                    <span>{activeModel.name}</span>
+                    <span className="text-[9px] font-bold text-amber-700 bg-white/80 px-1 py-0.5 rounded-full">{activeModel.points} pts</span>
+                    <ChevronDown className={`w-2.5 h-2.5 text-amber-600 transition-transform ${isComposerModelOpen ? 'rotate-180' : ''}`} />
+                  </button>
+
+                  {isComposerModelOpen && (
+                    <div className="absolute left-0 bottom-10 w-72 rounded-2xl bg-white border border-gray-200 shadow-xl p-1.5 z-30 space-y-0.5">
+                      <div className="px-2.5 py-1 text-[11px] font-semibold text-gray-400 uppercase tracking-wider">
+                        Modèle de génération
+                      </div>
+                      {MODELS.map((m) => (
+                        <button
+                          key={m.id}
+                          type="button"
+                          onClick={() => {
+                            setActiveModelId(m.id);
+                            setIsComposerModelOpen(false);
+                            showToast(`Modèle actif : ${m.name} · ${m.points} points / image`);
+                          }}
+                          className={`w-full flex items-center justify-between gap-2 px-2.5 py-2 rounded-xl text-xs cursor-pointer transition-colors ${
+                            activeModelId === m.id ? 'bg-amber-50 text-amber-900 font-bold' : 'text-gray-700 hover:bg-gray-100'
+                          }`}
+                        >
+                          <span className="min-w-0">
+                            <span className="flex items-center gap-1.5">
+                              {m.name}
+                              {m.badge && (
+                                <span className="text-[9px] font-bold text-amber-700 bg-amber-100 border border-amber-200 px-1.5 py-0.5 rounded-full">
+                                  {m.badge}
+                                </span>
+                              )}
+                            </span>
+                            <span className="block text-[10px] text-gray-400 font-normal truncate">{m.desc}</span>
+                          </span>
+                          <span className="flex items-center gap-1.5 shrink-0">
+                            <span className="text-[10px] font-bold text-amber-600 bg-amber-100/80 px-1.5 py-0.5 rounded-full">{m.points} pts</span>
+                            {activeModelId === m.id && <Check className="w-3.5 h-3.5 text-amber-600" />}
+                          </span>
+                        </button>
+                      ))}
+                      <div className="my-1 border-t border-gray-100" />
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setIsComposerModelOpen(false);
+                          navigate('/pricing');
+                        }}
+                        className="w-full flex items-center justify-between px-2.5 py-2 rounded-xl text-xs font-semibold text-amber-700 hover:bg-amber-50 cursor-pointer transition-colors"
+                      >
+                        <span className="flex items-center gap-2">
+                          <Zap className="w-3.5 h-3.5" />
+                          Voir les packs
+                        </span>
+                        <span className="text-[10px] font-bold text-gray-500">{credits} pts</span>
+                      </button>
+                    </div>
+                  )}
+                </div>
+                <span className="text-[10px] font-semibold text-gray-400">{credits} points disponibles</span>
               </div>
             </div>
 
