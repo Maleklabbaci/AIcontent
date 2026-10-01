@@ -5,7 +5,6 @@ import {
   Plus,
   Search,
   Palette,
-  LayoutTemplate,
   Settings,
   MoreVertical,
   ChevronDown,
@@ -39,15 +38,20 @@ import {
   Info,
   Zap,
   LogOut,
-  FileImage
+  FileImage,
+  Lightbulb,
+  Rocket,
+  PencilRuler,
+  RefreshCw
 } from 'lucide-react';
+import { createEditableCanvaPptx } from './utils/canvaExport';
 import imgAbstract from './assets/images/social_abstract_accent_1790812839231.jpg';
 import imgMarketing from './assets/images/social_marketing_visual_1790812851560.jpg';
 
 // Format types
 type FormatType = 'scroller' | 'story' | 'square' | 'website' | 'product' | 'poster' | 'presentation';
 type Lang = 'fr' | 'en' | 'ar';
-type PlanId = 'free' | 'pro' | 'business';
+type PlanId = 'free' | 'starter' | 'pro' | 'business';
 
 interface Slide {
   id: string;
@@ -85,82 +89,6 @@ interface RecentSession {
   format: FormatType;
 }
 
-const INITIAL_DEMO_MESSAGES: Message[] = [
-  {
-    id: 'msg_1',
-    sender: 'user',
-    text: 'Génère un carrousel B2B au format 4:5 sur les erreurs de copywriting en 2026, avec un style minimaliste et percutant.',
-    timestamp: '14:28',
-  },
-  {
-    id: 'msg_2',
-    sender: 'assistant',
-    text: "J'ai conçu un carrousel de 4 slides optimisé pour LinkedIn et Instagram. La typographie est ultra-contrastée pour maximiser le scroll-stop rate, avec des accents ambrés subtils pour guider l'œil vers les points clés.",
-    timestamp: '14:29',
-    design: {
-      format: 'scroller',
-      title: 'Les Erreurs de Copywriting B2B',
-      activeSlideIndex: 0,
-      slides: [
-        {
-          id: 'sl_1',
-          slideNumber: 1,
-          tag: 'COPYWRITING & CONVERSION 2026',
-          title: '90% des posts B2B ne convertissent pas.',
-          subtitle: 'Voici la structure en 4 étapes que les meilleurs créateurs utilisent pour captiver et vendre sans forcer.',
-          highlightWord: 'convertissent',
-          image: imgAbstract,
-          ctaText: 'Faites glisser pour découvrir ➔',
-        },
-        {
-          id: 'sl_2',
-          slideNumber: 2,
-          tag: 'ERREUR #1 · LE JARGON TECHNIQUE',
-          title: 'Tuez les phrases creuses dès la 1ère seconde.',
-          subtitle: "Si votre accroche ne pose pas un paradoxe ou une tension immédiate, votre lecteur passe au post suivant.",
-          highlightWord: 'immédiate',
-          bulletPoints: [
-            'Bannissez "Dans le paysage dynamique d\'aujourd\'hui..."',
-            'Commencez par un coût d\'inaction chiffré',
-            'Limitez le hook à moins de 8 mots percutants',
-          ],
-        },
-        {
-          id: 'sl_3',
-          slideNumber: 3,
-          tag: 'ERREUR #2 · L\'ABSENCE DE PREUVES',
-          title: 'Remplacez les promesses par des métriques réelles.',
-          subtitle: 'Les décideurs sont immunisés contre les adjectifs vagues. Donnez-leur des chiffres irréfutables.',
-          stat: {
-            value: '+318%',
-            label: 'Taux de clics qualifiés mesuré après refonte du framework narratif',
-          },
-          image: imgMarketing,
-        },
-        {
-          id: 'sl_4',
-          slideNumber: 4,
-          tag: 'RÉCAPITULATIF & PASSAGE À L\'ACTION',
-          title: 'Prêt à transformer votre portée organique ?',
-          subtitle: 'Enregistrez ce carrousel pour l\'appliquer à votre prochaine campagne et partagez-le à votre équipe.',
-          bulletPoints: [
-            'Hook paradoxal en moins de 8 mots',
-            'Une seule idée force par slide',
-            'CTA orienté bénéfice mesurable',
-          ],
-          ctaText: 'Enregistrer le post · Suivre @aurastudio.ai',
-        },
-      ],
-    },
-    suggestions: [
-      'Passer au format Story 9:16',
-      'Rendre le hook plus provocateur',
-      'Ajouter une slide statistique',
-      'Télécharger les slides en PNG',
-    ],
-  },
-];
-
 const FORMATS: Record<
   FormatType,
   {
@@ -195,11 +123,6 @@ const LANGS: { id: Lang; label: string }[] = [
   { id: 'fr', label: 'Français' },
   { id: 'en', label: 'English' },
   { id: 'ar', label: 'العربية' },
-];
-const PLANS: { id: PlanId; name: string; desc: string; features: string[] }[] = [
-  { id: 'free', name: 'Gratuit', desc: 'Pour découvrir', features: ['10 designs / mois', 'Export PNG', '1 Brand Kit'] },
-  { id: 'pro', name: 'Pro', desc: 'Pour les créateurs', features: ['Designs illimités', 'Export HD', 'Tous les formats', 'Brand Kits multiples'] },
-  { id: 'business', name: 'Business', desc: 'Pour les équipes', features: ['Tout Pro', 'Espace d\'équipe', 'Support prioritaire'] },
 ];
 const FAQ: { q: string; a: string }[] = [
   { q: 'Quels types de designs puis-je créer ?', a: 'Posts et stories pour les réseaux sociaux, carrousels, sites web, fiches produit, affiches et présentations. Choisissez le format dans la barre de saisie.' },
@@ -420,7 +343,270 @@ const loadBrand = (): { name?: string; handle?: string; color?: string } => {
   }
 };
 
-const MODELS = ['Aura 2.5 Social', 'Aura 2.5 Pro'];
+export type ModelId = 'flash' | 'studio' | 'pro';
+const MODELS: { id: ModelId; name: string; points: number; badge?: string }[] = [
+  { id: 'flash', name: 'Aura Flash', points: 5 },
+  { id: 'studio', name: 'Aura Studio', points: 10 },
+  { id: 'pro', name: 'Aura Pro Max', points: 20, badge: 'MAX QUALITÉ' },
+];
+const MODEL_POINTS: Record<ModelId, number> = { flash: 5, studio: 10, pro: 20 };
+
+// ---------- PACKS COMMERCIAUX (Option A) ----------
+// 1 image générée = 5 pts (Flash) / 10 pts (Studio) / 20 pts (Pro Max)
+const PRICING: {
+  id: PlanId | 'business';
+  name: string;
+  price?: string;
+  period?: string;
+  points?: string;
+  tagline: string;
+  features: string[];
+  cta: string;
+  highlight?: boolean;
+  ribbon?: string;
+}[] = [
+  {
+    id: 'free',
+    name: 'Gratuit',
+    price: '0 DA',
+    period: 'pour toujours',
+    points: '20 points offerts',
+    tagline: 'Pour découvrir la magie',
+    features: ['20 points de bienvenue', 'Aura Flash inclus (5 pts/image)', 'Export PNG HD', '1 Brand Kit', 'Export multi-calques Canva'],
+    cta: 'Commencer gratuitement',
+  },
+  {
+    id: 'starter',
+    name: 'Starter',
+    price: '1 900 DA',
+    period: '/ mois',
+    points: '150 points / mois',
+    tagline: 'Pour les créateurs & indépendants',
+    features: [
+      '150 points chaque mois',
+      'Les 3 modèles : Flash · Studio · Pro Max',
+      'Carrousels multi-slides',
+      'Export PNG HD illimité',
+      'Brand Kit complet (logo, couleurs)',
+      'Envoi direct vers Canva',
+    ],
+    cta: 'Choisir Starter',
+    highlight: true,
+    ribbon: 'LE PLUS POPULAIRE',
+  },
+  {
+    id: 'pro',
+    name: 'Pro',
+    price: '4 900 DA',
+    period: '/ mois',
+    points: '450 points / mois',
+    tagline: 'Pour les marques en croissance',
+    features: [
+      '450 points chaque mois',
+      'Les 3 modèles : Flash · Studio · Pro Max',
+      'Carrousels multi-slides illimités',
+      'Export PNG HD illimité',
+      '3 Brand Kits multiples',
+      'Envoi direct vers Canva',
+      'Support prioritaire',
+    ],
+    cta: 'Choisir Pro',
+  },
+  {
+    id: 'business',
+    name: 'Business & Agences',
+    price: 'Sur devis',
+    period: 'tarification négociée',
+    points: 'Points sur mesure',
+    tagline: 'Volume élevé, équipe & revente',
+    features: [
+      'Volume de points personnalisé',
+      'Tarifs dégressifs par volume',
+      'Espace multi-équipes',
+      'Droits commerciaux (revendeur)',
+      'Onboarding & support dédié',
+    ],
+    cta: 'Contacter l\'équipe',
+  },
+];
+
+// Remarques de consommation affichées sur la page tarifs
+const PRICING_TIPS: { icon: 'lightbulb' | 'rocket'; tone: 'eco' | 'pro'; title: string; text: string }[] = [
+  {
+    icon: 'lightbulb',
+    tone: 'eco',
+    title: "Petits visuels, posts quotidiens, stories simples ?",
+    text: "Économisez vos points avec Aura Flash (5 pts) — rapide, léger et parfait pour les contenus du quotidien.",
+  },
+  {
+    icon: 'rocket',
+    tone: 'pro',
+    title: 'Lancement produit, campagne majeure, visuel premium ?',
+    text: "Utilisez Aura Pro Max (20 pts) : la qualité maximale pour vos projets les plus importants. Aura Studio (10 pts) reste le juste milieu HD.",
+  },
+];
+
+// ============================================================
+// PAGE TARIFS & CRÉDITS (design inspiré de l'interface Aura)
+// ============================================================
+function PricingPage({
+  currentPlan,
+  credits,
+  onChoose,
+}: {
+  currentPlan: PlanId;
+  credits: number;
+  onChoose: (packId: PlanId) => void;
+}) {
+  return (
+    <div className="space-y-6">
+      {/* --- En-tête Hero --- */}
+      <div className="relative overflow-hidden rounded-t-3xl bg-gradient-to-br from-amber-50 via-orange-50/70 to-white px-6 sm:px-10 pt-10 pb-8 border-b border-orange-100">
+        <div className="aurora opacity-40" aria-hidden="true">
+          <span className="blob blob-a" />
+          <span className="blob blob-b" />
+        </div>
+        <div className="relative z-10 text-center space-y-3 max-w-2xl mx-auto">
+          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/80 border border-amber-200/70 text-[11px] font-bold text-amber-700 shadow-xs">
+            <Zap className="w-3 h-3" />
+            TARIFS & CRÉDITS
+          </span>
+          <h2 className="text-2xl sm:text-3xl font-semibold text-gray-900 tracking-tight">
+            Rechargez en <span className="text-transparent bg-clip-text bg-gradient-to-r from-amber-500 to-orange-500">points</span>, générez en liberté
+          </h2>
+          <p className="text-sm text-gray-500 leading-relaxed">
+            1 image générée = <span className="font-bold text-gray-700">5 pts</span> avec <span className="font-semibold">Aura Flash</span> ·{' '}
+            <span className="font-bold text-gray-700">10 pts</span> avec <span className="font-semibold">Aura Studio</span> ·{' '}
+            <span className="font-bold text-gray-700">20 pts</span> avec <span className="font-semibold">Aura Pro Max</span>.
+          </p>
+          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white border border-gray-200 shadow-xs text-xs font-semibold text-gray-700">
+            <Sparkles className="w-3.5 h-3.5 text-amber-500" />
+            Votre solde actuel :
+            <span className="font-bold text-amber-600">{credits} points</span>
+          </div>
+        </div>
+      </div>
+
+      {/* --- Grille des packs --- */}
+      <div className="px-6 sm:px-10">
+        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+          {PRICING.map((pk) => {
+            const isCurrent = pk.id === currentPlan && pk.price !== 'Sur devis';
+            const isDevis = pk.price === 'Sur devis';
+            return (
+              <div
+                key={pk.name}
+                className={`relative rounded-3xl border flex flex-col gap-4 p-5 transition-all ${
+                  pk.highlight
+                    ? 'border-amber-400 bg-gradient-to-b from-amber-50/80 to-white shadow-lg shadow-amber-100/60 xl:-translate-y-1'
+                    : isCurrent
+                    ? 'border-orange-300 bg-orange-50/40'
+                    : 'border-gray-200 hover:border-amber-300/70 hover:shadow-md'
+                }`}
+              >
+                {pk.ribbon && (
+                  <span className="absolute -top-2.5 left-1/2 -translate-x-1/2 px-3 py-0.5 rounded-full bg-gradient-to-r from-amber-500 to-orange-500 text-white text-[9px] font-bold tracking-wider shadow-sm whitespace-nowrap">
+                    {pk.ribbon}
+                  </span>
+                )}
+
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2">
+                    <h4 className="font-semibold text-gray-900">{pk.name}</h4>
+                    {isCurrent && (
+                      <span className="text-[9px] font-bold text-orange-700 bg-orange-100 border border-orange-200 px-1.5 py-0.5 rounded-full">
+                        ACTUEL
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-[11px] text-gray-500">{pk.tagline}</p>
+                </div>
+
+                <div className="flex items-end gap-1.5">
+                  <span className={`text-2xl font-bold tracking-tight ${pk.highlight ? 'text-transparent bg-clip-text bg-gradient-to-r from-amber-600 to-orange-500' : 'text-gray-900'}`}>
+                    {pk.price}
+                  </span>
+                  {pk.period && <span className="text-[11px] text-gray-400 pb-1">{pk.period}</span>}
+                </div>
+
+                {pk.points && (
+                  <div className={`flex items-center gap-1.5 w-fit px-3 py-1 rounded-full text-[11px] font-bold border ${
+                    pk.highlight
+                      ? 'bg-amber-100/80 text-amber-800 border-amber-200'
+                      : 'bg-gray-100 text-gray-700 border-gray-200'
+                  }`}>
+                    <Zap className="w-3 h-3 text-amber-500" />
+                    {pk.points}
+                  </div>
+                )}
+
+                <ul className="space-y-2 flex-1 pt-1">
+                  {pk.features.map((f) => (
+                    <li key={f} className="flex items-start gap-2 text-xs text-gray-600">
+                      <Check className="w-3.5 h-3.5 text-amber-500 shrink-0 mt-0.5 stroke-[2.5]" />
+                      {f}
+                    </li>
+                  ))}
+                </ul>
+
+                <button
+                  type="button"
+                  disabled={isCurrent}
+                  onClick={() => {
+                    if (isDevis) {
+                      window.location.href = 'mailto:contact@auradesign.dz?subject=Pack%20Business%20%26%20Agences%20%E2%80%94%20Aura%20Design';
+                      return;
+                    }
+                    onChoose(pk.id);
+                  }}
+                  className={`w-full px-3 py-2.5 rounded-full text-xs font-bold transition-all ${
+                    isCurrent
+                      ? 'bg-gray-100 text-gray-400 cursor-default'
+                      : pk.highlight
+                      ? 'bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-white shadow-md shadow-amber-200/60 cursor-pointer'
+                      : 'bg-gray-900 hover:bg-black text-white cursor-pointer'
+                  }`}
+                >
+                  {isCurrent ? 'Pack actuel' : pk.cta}
+                </button>
+              </div>
+            );
+          })}
+        </div>
+
+        {/* --- Remarques de consommation --- */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-5">
+          {PRICING_TIPS.map((tip) => (
+            <div
+              key={tip.title}
+              className={`flex items-start gap-3 rounded-2xl border p-4 ${
+                tip.tone === 'eco' ? 'border-emerald-200/80 bg-emerald-50/40' : 'border-amber-200/80 bg-amber-50/50'
+              }`}
+            >
+              <div
+                className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${
+                  tip.tone === 'eco' ? 'bg-emerald-100 text-emerald-600' : 'bg-amber-100 text-amber-600'
+                }`}
+              >
+                {tip.icon === 'lightbulb' ? <Lightbulb className="w-4 h-4" /> : <Rocket className="w-4 h-4" />}
+              </div>
+              <div className="space-y-0.5">
+                <p className="text-xs font-bold text-gray-900">{tip.title}</p>
+                <p className="text-[11px] text-gray-500 leading-relaxed">{tip.text}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* --- Note de facturation --- */}
+        <p className="text-[11px] text-gray-400 text-center pt-4 pb-6 leading-relaxed max-w-xl mx-auto">
+          Les points sont déduits uniquement lorsque vous générez un visuel — un point non utilisé reste dans votre solde.
+          L'export PNG HD, l'export multi-calques Canva et l'envoi vers votre compte Canva sont toujours inclus gratuitement.
+        </p>
+      </div>
+    </div>
+  );
+}
 
 export default function App() {
   // Sidebar state
@@ -444,6 +630,45 @@ export default function App() {
       return 'free';
     }
   });
+  // ===== SYSTÈME DE CRÉDITS (POINTS) =====
+  const [credits, setCredits] = useState<number>(() => {
+    try {
+      const stored = Number(localStorage.getItem('aura_credits'));
+      return Number.isFinite(stored) ? stored : 20;
+    } catch {
+      return 20;
+    }
+  });
+  useEffect(() => {
+    try {
+      localStorage.setItem('aura_credits', String(credits));
+    } catch {}
+  }, [credits]);
+  const [activeModelId, setActiveModelId] = useState<ModelId>(() => {
+    try {
+      return (localStorage.getItem('aura_model') as ModelId) || 'flash';
+    } catch {
+      return 'flash';
+    }
+  });
+  const activeModel = MODELS.find((m) => m.id === activeModelId) || MODELS[0];
+  useEffect(() => {
+    try {
+      localStorage.setItem('aura_model', activeModelId);
+    } catch {}
+  }, [activeModelId]);
+  // Coût total de la prochaine génération (images IA réellement générées × points du modèle)
+  // ===== CONNEXION CANVA =====
+  const [canvaConnected, setCanvaConnected] = useState<boolean>(() => {
+    try {
+      return localStorage.getItem('aura_canva_token') ? true : false;
+    } catch {
+      return false;
+    }
+  });
+  const [canvaModalOpen, setCanvaModalOpen] = useState(false);
+  const [canvaTokenInput, setCanvaTokenInput] = useState('');
+  const [canvaExporting, setCanvaExporting] = useState(false);
   const [loggedOut, setLoggedOut] = useState(() => {
     try {
       return localStorage.getItem('aura_logged_out') === '1';
@@ -471,7 +696,6 @@ export default function App() {
   }, [plan]);
   const [searchOpen, setSearchOpen] = useState(false);
   const [sessionSearch, setSessionSearch] = useState('');
-  const [model, setModel] = useState(MODELS[0]);
   const [isModelOpen, setIsModelOpen] = useState(false);
   const modelRef = useRef<HTMLDivElement>(null);
   const [feedback, setFeedback] = useState<Record<string, 'up' | 'down'>>({});
@@ -512,9 +736,6 @@ export default function App() {
     }
   };
 
-  // Templates Modal state
-  const [isTemplatesOpen, setIsTemplatesOpen] = useState(false);
-
   // Chat & Input state
   const [inputPrompt, setInputPrompt] = useState('');
   const [selectedFormat, setSelectedFormat] = useState<FormatType>('scroller');
@@ -551,33 +772,24 @@ export default function App() {
   };
 
   // Sessions list
-  const [recentSessions, setRecentSessions] = useState<RecentSession[]>([
-    { id: 'sess_1', title: 'Carrousel B2B (Démo)', format: 'scroller' },
-    { id: 'sess_2', title: 'Story Sawtify', format: 'story' },
-    { id: 'sess_3', title: 'Lancement Produit SaaS', format: 'scroller' },
-    { id: 'sess_4', title: 'Citation Steve Jobs', format: 'square' },
-    { id: 'sess_5', title: 'Framework Growth Q1', format: 'scroller' },
-  ]);
+  const [recentSessions, setRecentSessions] = useState<RecentSession[]>([]);
 
   // Messages list - starts empty so user immediately lands on the Gemini greeting screen!
   const [messages, setMessages] = useState<Message[]>([]);
-  const [sessionMessagesMap, setSessionMessagesMap] = useState<Record<string, Message[]>>({
-    sess_1: INITIAL_DEMO_MESSAGES,
-  });
+  const [sessionMessagesMap, setSessionMessagesMap] = useState<Record<string, Message[]>>({});
 
   // Salutation dynamique Gemini
   const greetingSalutation = t('greeting');
 
   // Suggestions d'inspiration sur la page d'accueil style Gemini
   const welcomeSuggestions = [
-    { title: 'Carrousel B2B', format: 'scroller' as FormatType, slidesCount: 5, prompt: 'Génère un carrousel B2B en 5 slides sur les erreurs fatales que font les startups en phase de scaling.' },
-    { title: 'Story Instagram', format: 'story' as FormatType, prompt: 'Génère une story teaser ultra-captivante pour une masterclass IA jeudi à 18h avec compte à rebours.' },
-    { title: 'Site web', format: 'website' as FormatType, prompt: 'Conçois la section hero d\'un site web pour une agence de marketing digital moderne.' },
-    { title: 'Fiche produit', format: 'product' as FormatType, prompt: 'Crée une fiche produit élégante pour une montre minimaliste, avec bénéfices clés et preuve sociale.' },
-    { title: 'Affiche événement', format: 'poster' as FormatType, prompt: 'Crée une affiche percutante pour un festival de cinéma en plein air ce samedi soir.' },
-    { title: 'Présentation pitch', format: 'presentation' as FormatType, slidesCount: 5, prompt: 'Génère une présentation pitch deck en 5 slides pour une startup SaaS en phase de lancement.' },
+    { title: 'Lancement de ma boutique', prompt: 'Crée un visuel de lancement percutant pour l\'ouverture de ma nouvelle boutique en ligne.' },
+    { title: 'Promotion -30%', prompt: 'Génère un visuel promotionnel pour une réduction de -30% valable ce week-end seulement.' },
+    { title: 'Conseils pour ma clientèle', prompt: 'Crée un contenu éducatif donnant 5 conseils pratiques à mes clients pour progresser rapidement.' },
+    { title: 'Citation inspirante', prompt: 'Crée un visuel avec une citation inspirante sur la réussite et la discipline pour LinkedIn.' },
   ].map((c) => {
-    const F = FORMATS[c.format].Icon;
+    const inferred = inferOpts(c.prompt);
+    const F = FORMATS[inferred.format || 'square'].Icon;
     return { ...c, icon: <F className="w-4 h-4 text-orange-600" /> };
   });
 
@@ -615,7 +827,6 @@ export default function App() {
     function handleEscape(event: KeyboardEvent) {
       if (event.key === 'Escape') {
         setIsBrandKitOpen(false);
-        setIsTemplatesOpen(false);
         setIsFormatDropdownOpen(false);
         setIsSlidesDropdownOpen(false);
         setIsModelOpen(false);
@@ -696,6 +907,95 @@ export default function App() {
     showToast('Tous les slides sont téléchargés !');
   };
 
+  // ===== EXPORT MULTI-CALQUES VERS CANVA =====
+  const getCanvaToken = (): string | null => {
+    try {
+      return localStorage.getItem('aura_canva_token');
+    } catch {
+      return null;
+    }
+  };
+
+  const handleExportToCanva = async (design: DesignContent) => {
+    setCanvaExporting(true);
+    showToast('Préparation du fichier multi-calques...');
+    try {
+      const fmt = FORMATS[design.format];
+      const blob = createEditableCanvaPptx({
+        title: design.title,
+        widthPx: fmt.w,
+        heightPx: fmt.h,
+        slides: design.slides.map((s) => ({
+          slideNumber: s.slideNumber,
+          tag: s.tag,
+          title: s.title,
+          subtitle: s.subtitle,
+          bulletPoints: s.bulletPoints,
+          stat: s.stat,
+          image: s.image,
+          ctaText: s.ctaText,
+        })),
+        brand: { name: brandName, handle: brandHandle, color: brandColor, logo: brandLogo },
+      });
+
+      const token = getCanvaToken();
+      if (token) {
+        // 1. Envoi automatique dans le compte Canva via Canva Connect (backend Cloudflare)
+        try {
+          const res = await fetch('/api/canva/import', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/octet-stream',
+              'X-Canva-Token': token,
+              'X-Design-Title': design.title,
+            },
+            body: blob,
+          });
+          const data = await res.json();
+          if (data.edit_url) {
+            window.open(data.edit_url as string, '_blank', 'noopener');
+            showToast('Design ouvert dans votre compte Canva !');
+            setCanvaExporting(false);
+            return;
+          }
+          showToast('Import automatique indisponible — fichier multi-calques téléchargé.');
+        } catch {
+          showToast('Import automatique indisponible — fichier multi-calques téléchargé.');
+        }
+      } else {
+        // 2. Pas de compte connecté : téléchargement du fichier + fenêtre de connexion
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `${design.title.replace(/[^\w\-]+/g, '_')}_Canva.pptx`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        setTimeout(() => URL.revokeObjectURL(url), 1500);
+        setCanvaModalOpen(true);
+        showToast('Fichier multi-calques téléchargé — connectez Canva pour l\'envoi automatique.');
+      }
+    } catch {
+      showToast('Export Canva impossible.');
+    }
+    setCanvaExporting(false);
+  };
+
+  const handleCanvaConnect = () => {
+    const tok = canvaTokenInput.trim();
+    if (!tok) {
+      showToast('Collez votre jeton d\'accès Canva.');
+      return;
+    }
+    try {
+      localStorage.setItem('aura_canva_token', tok);
+    } catch {}
+    setCanvaConnected(true);
+    setCanvaTokenInput('');
+    setCanvaModalOpen(false);
+    showToast('Compte Canva connecté ! Prochain export : envoi automatique.');
+  };
+
   // Copy slide text
   const handleCopySlideText = async (slide: Slide) => {
     const text = `${slide.tag}\n\n${slide.title}\n\n${slide.subtitle}\n\n${slide.bulletPoints?.join('\n') || ''}`;
@@ -742,6 +1042,20 @@ export default function App() {
     const inferred = inferOpts(promptText);
     const resolvedFmt: FormatType = opts.format ?? inferred.format ?? selectedFormat;
     const resolvedCount = opts.count ?? inferred.count ?? carouselSlidesCount;
+
+    // ===== FACTURATION POINTS : 1 image IA générée par slide =====
+    const ptsPerImage = MODEL_POINTS[activeModelId];
+    const aiImagesCount = FORMATS[resolvedFmt].kind === 'carousel' ? resolvedCount : 1;
+    const generationCost = aiImagesCount * ptsPerImage;
+    if (credits < generationCost) {
+      showToast(`Solde insuffisant : ${generationCost} points requis (${credits} restants).`);
+      setModal('upgrade');
+      return;
+    }
+    const remainingCredits = credits - generationCost;
+    setCredits(remainingCredits);
+    setTimeout(() => showToast(`−${generationCost} points · solde : ${remainingCredits} pts`), 1600);
+
     const sessionId = activeSessionId;
     setSelectedFormat(resolvedFmt);
     setCarouselSlidesCount(resolvedCount);
@@ -968,7 +1282,7 @@ export default function App() {
       showToast('Patientez, génération en cours...');
       return;
     }
-    const msgs = sessionMessagesMap[sessionId] ?? (sessionId === 'sess_1' ? INITIAL_DEMO_MESSAGES : []);
+    const msgs = sessionMessagesMap[sessionId] ?? [];
     setActiveSessionId(sessionId);
     setMessages(msgs);
     closeSidebarOnMobile();
@@ -1105,13 +1419,16 @@ export default function App() {
             <span>{t('brandKit')}</span>
           </button>
 
-          {/* Templates */}
+          {/* Tarifs & Crédits */}
           <button
-            onClick={() => setIsTemplatesOpen(true)}
+            onClick={() => setModal('upgrade')}
             className="w-full flex items-center gap-3 px-4 py-2 rounded-full hover:bg-gray-200/60 text-gray-600 hover:text-gray-900 text-sm font-medium transition-colors"
           >
-            <LayoutTemplate className="w-4 h-4 text-gray-500" />
-            <span>{t('templates')}</span>
+            <Zap className="w-4 h-4 text-amber-500" />
+            <span>Tarifs & Crédits</span>
+            <span className="ml-auto text-[10px] font-bold text-amber-600 bg-amber-100/80 px-1.5 py-0.5 rounded-full">
+              {credits} pts
+            </span>
           </button>
         </div>
 
@@ -1245,7 +1562,7 @@ export default function App() {
               <div className="min-w-0">
                 <p className="text-xs font-bold text-gray-900 truncate leading-tight">Labbaci {userFirstName}</p>
                 <p className="text-[11px] text-gray-500 truncate">
-                  {t('plan')} {PLANS.find((x) => x.id === plan)?.name}
+                  {t('plan')} {PRICING.find((x) => x.id === plan)?.name}
                 </p>
               </div>
             </div>
@@ -1278,34 +1595,82 @@ export default function App() {
                 onClick={() => setIsModelOpen((v) => !v)}
                 className="flex items-center gap-1.5 px-3 py-1 rounded-full hover:bg-white/70 text-gray-900 font-semibold text-sm cursor-pointer transition-colors"
               >
-                <span className="tracking-tight">{model}</span>
+                <span className="tracking-tight">{activeModel.name}</span>
+                <span className="text-[10px] font-bold text-amber-600 bg-amber-100/80 px-1.5 py-0.5 rounded-full">
+                  {activeModel.points} pts
+                </span>
                 <ChevronDown className={`w-3.5 h-3.5 text-gray-500 transition-transform ${isModelOpen ? 'rotate-180' : ''}`} />
               </button>
               {isModelOpen && (
-                <div className="absolute left-0 top-10 w-52 rounded-2xl bg-white border border-gray-200 shadow-xl p-1.5 z-30 space-y-0.5">
+                <div className="absolute left-0 top-10 w-64 rounded-2xl bg-white border border-gray-200 shadow-xl p-1.5 z-30 space-y-0.5">
+                  <div className="px-3 pt-1.5 pb-1 text-[10px] font-bold text-gray-400 uppercase tracking-wider">
+                    Modèle de génération
+                  </div>
                   {MODELS.map((m) => (
                     <button
-                      key={m}
+                      key={m.id}
                       type="button"
                       onClick={() => {
-                        setModel(m);
+                        setActiveModelId(m.id);
                         setIsModelOpen(false);
-                        showToast(`Modèle actif : ${m}`);
+                        showToast(`Modèle actif : ${m.name} · ${m.points} points / image`);
                       }}
                       className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-sm cursor-pointer transition-colors ${
-                        model === m ? 'bg-orange-50 text-orange-800 font-semibold' : 'text-gray-700 hover:bg-gray-100'
+                        activeModelId === m.id ? 'bg-orange-50 text-orange-800 font-semibold' : 'text-gray-700 hover:bg-gray-100'
                       }`}
                     >
-                      <span>{m}</span>
-                      {model === m && <Check className="w-3.5 h-3.5 text-orange-600" />}
+                      <span className="flex items-center gap-2">
+                        {m.name}
+                        {m.badge && (
+                          <span className="text-[9px] font-bold text-amber-700 bg-amber-100 border border-amber-200 px-1.5 py-0.5 rounded-full">
+                            {m.badge}
+                          </span>
+                        )}
+                      </span>
+                      <span className="flex items-center gap-1.5">
+                        <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${activeModelId === m.id ? 'bg-amber-100 text-amber-700' : 'bg-gray-100 text-gray-500'}`}>
+                          {m.points} pts
+                        </span>
+                        {activeModelId === m.id && <Check className="w-3.5 h-3.5 text-orange-600" />}
+                      </span>
                     </button>
                   ))}
+                  <div className="my-1 border-t border-gray-100" />
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsModelOpen(false);
+                      setModal('upgrade');
+                    }}
+                    className="w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-semibold text-amber-700 hover:bg-amber-50 cursor-pointer transition-colors"
+                  >
+                    <span className="flex items-center gap-2">
+                      <Zap className="w-3.5 h-3.5" />
+                      Recharger des points
+                    </span>
+                    <span className="text-[10px] bg-gray-900 text-white px-1.5 py-0.5 rounded-full">{credits} pts</span>
+                  </button>
                 </div>
               )}
             </div>
           </div>
 
           <div className="flex items-center gap-2">
+            {/* Solde de points (clique = page tarifs) */}
+            <button
+              type="button"
+              onClick={() => setModal('upgrade')}
+              title="Voir les packs de points"
+              className={`hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold transition-colors cursor-pointer border ${
+                credits < 20
+                  ? 'bg-red-50 hover:bg-red-100 text-red-700 border-red-200'
+                  : 'bg-white/70 hover:bg-white text-gray-800 border-gray-200/80'
+              }`}
+            >
+              <Zap className={`w-3.5 h-3.5 ${credits < 20 ? 'text-red-500' : 'text-amber-500'}`} />
+              <span>{credits} points</span>
+              <span className="text-gray-400 font-semibold">Recharger</span>
+            </button>
             <button
               onClick={handleShare}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/70 hover:bg-white text-gray-700 text-xs font-semibold transition-colors cursor-pointer"
@@ -1421,6 +1786,19 @@ export default function App() {
                                     ) : (
                                       <Copy className="w-3.5 h-3.5" />
                                     )}
+                                  </button>
+
+                                  <button
+                                    onClick={() => handleExportToCanva(msg.design!)}
+                                    title="Ouvrir ce design éditable dans votre compte Canva"
+                                    className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-white border border-gray-200 hover:border-amber-400 hover:bg-amber-50/60 text-gray-800 font-semibold text-xs tracking-wide transition-all cursor-pointer"
+                                  >
+                                    {canvaExporting ? (
+                                      <RefreshCw className="w-3.5 h-3.5 animate-spin text-amber-500" />
+                                    ) : (
+                                      <PencilRuler className="w-3.5 h-3.5 text-amber-600" />
+                                    )}
+                                    <span>Modifier sur Canva</span>
                                   </button>
 
                                   <button
@@ -1873,7 +2251,7 @@ export default function App() {
                   <button
                     key={idx}
                     type="button"
-                    onClick={() => handleSendMessage(card.prompt, { format: card.format, count: card.slidesCount })}
+                    onClick={() => handleSendMessage(card.prompt)}
                     className="flex items-center gap-2 px-4 py-2 rounded-full bg-white/75 hover:bg-white border border-orange-200/60 text-sm text-gray-700 hover:text-gray-900 shadow-2xs transition-all cursor-pointer"
                   >
                     {card.icon}
@@ -2073,73 +2451,6 @@ export default function App() {
         )}
       </AnimatePresence>
 
-      {/* ========================================================= */}
-      {/* MODAL TEMPLATES */}
-      {/* ========================================================= */}
-      <AnimatePresence>
-        {isTemplatesOpen && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.2 }}
-            onMouseDown={(e) => e.target === e.currentTarget && setIsTemplatesOpen(false)}
-            className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-2xs p-4"
-          >
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95, y: 10 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.95, y: 10 }}
-              transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
-              className="bg-white rounded-3xl border border-gray-200 shadow-2xl w-full max-w-lg p-6 space-y-4"
-            >
-              <div className="flex items-center justify-between pb-3 border-b border-gray-100">
-                <div className="flex items-center gap-2">
-                  <LayoutTemplate className="w-5 h-5 text-amber-500" />
-                  <h3 className="font-semibold text-gray-900 text-base">Templates Prêts à l'Emploi</h3>
-                </div>
-                <button
-                  onClick={() => setIsTemplatesOpen(false)}
-                  className="p-1 rounded-full hover:bg-gray-100 text-gray-400 hover:text-gray-700 transition-colors"
-                >
-                  <X className="w-4 h-4" />
-                </button>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-96 overflow-y-auto pr-1">
-                {[
-                  { title: 'Carrousel Hacks B2B', fmt: 'scroller' as FormatType, prompt: 'Génère un carrousel 5 slides sur les erreurs fatales des startups en phase de scaling.' },
-                  { title: 'Story Teaser Masterclass', fmt: 'story' as FormatType, prompt: 'Génère une story teaser pour une masterclass IA jeudi à 18h avec compte à rebours.' },
-                  { title: 'Citation Minimaliste', fmt: 'square' as FormatType, prompt: 'Crée un post carré percutant avec une citation sur le focus et la discipline.' },
-                  { title: 'Hero de site web', fmt: 'website' as FormatType, prompt: 'Conçois la section hero d\'un site web pour une agence de marketing digital.' },
-                  { title: 'Fiche produit e-commerce', fmt: 'product' as FormatType, prompt: 'Crée une fiche produit élégante pour une montre minimaliste avec bénéfices et avis clients.' },
-                  { title: 'Affiche événement', fmt: 'poster' as FormatType, prompt: 'Crée une affiche percutante pour un festival de cinéma en plein air ce samedi.' },
-                  { title: 'Pitch deck startup', fmt: 'presentation' as FormatType, prompt: 'Génère une présentation pitch deck en 5 slides pour une startup SaaS.' },
-                  { title: 'Carrousel Avant / Après', fmt: 'scroller' as FormatType, prompt: 'Génère un comparatif avant/après en 4 slides sur l\'optimisation de temps avec l\'IA.' },
-                ].map((tpl, i) => (
-                  <div
-                    key={i}
-                    onClick={() => {
-                      setIsTemplatesOpen(false);
-                      handleSendMessage(tpl.prompt, { format: tpl.fmt });
-                    }}
-                    className="p-3.5 rounded-2xl border border-gray-200 hover:border-amber-500/50 hover:bg-amber-50/30 transition-all cursor-pointer space-y-1.5 group"
-                  >
-                    <span className="text-[10px]  font-bold text-amber-600 uppercase">
-                      {FORMATS[tpl.fmt].label}
-                    </span>
-                    <h4 className="text-xs font-bold text-gray-900 group-hover:text-amber-800">
-                      {tpl.title}
-                    </h4>
-                    <p className="text-[11px] text-gray-500 line-clamp-2">{tpl.prompt}</p>
-                  </div>
-                ))}
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
       {/* ===== MODALS COMPTE ===== */}
       <AnimatePresence>
         {modal && (
@@ -2156,16 +2467,26 @@ export default function App() {
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 10 }}
               transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
-              className={`bg-white rounded-3xl border border-gray-200 shadow-2xl w-full p-6 space-y-5 max-h-[90vh] overflow-y-auto ${modal === 'upgrade' ? 'max-w-3xl' : 'max-w-md'}`}
+              className={`bg-white rounded-3xl border border-gray-200 shadow-2xl w-full space-y-5 max-h-[92vh] overflow-y-auto relative ${modal === 'upgrade' ? 'max-w-6xl p-0' : 'max-w-md p-6'}`}
             >
-              <div className="flex items-center justify-between pb-3 border-b border-gray-100">
-                <h3 className="font-semibold text-gray-900 text-base">
-                  {modal === 'settings' ? t('settings') : modal === 'help' ? t('help') : modal === 'upgrade' ? t('upgrade') : t('learnMore')}
-                </h3>
-                <button onClick={() => setModal(null)} className="p-1 rounded-full hover:bg-gray-100 text-gray-400 hover:text-gray-700 transition-colors cursor-pointer">
+              {modal !== 'upgrade' && (
+                <div className="flex items-center justify-between pb-3 border-b border-gray-100">
+                  <h3 className="font-semibold text-gray-900 text-base">
+                    {modal === 'settings' ? t('settings') : modal === 'help' ? t('help') : t('learnMore')}
+                  </h3>
+                  <button onClick={() => setModal(null)} className="p-1 rounded-full hover:bg-gray-100 text-gray-400 hover:text-gray-700 transition-colors cursor-pointer">
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+              )}
+              {modal === 'upgrade' && (
+                <button
+                  onClick={() => setModal(null)}
+                  className="absolute top-4 right-4 z-10 p-2 rounded-full bg-white/80 backdrop-blur-sm hover:bg-gray-100 text-gray-500 hover:text-gray-800 transition-colors cursor-pointer shadow-sm"
+                >
                   <X className="w-4 h-4" />
                 </button>
-              </div>
+              )}
 
               {modal === 'settings' && (
                 <div className="space-y-5">
@@ -2215,6 +2536,24 @@ export default function App() {
                     <button
                       type="button"
                       onClick={() => {
+                        setModal(null);
+                        setCanvaModalOpen(true);
+                      }}
+                      className="w-full flex items-center justify-between gap-2 px-3 py-2.5 rounded-xl border border-gray-200 hover:bg-gray-50 text-sm text-gray-700 cursor-pointer transition-colors"
+                    >
+                      <span className="flex items-center gap-2">
+                        <PencilRuler className="w-4 h-4 text-amber-500" />
+                        Compte Canva
+                      </span>
+                      {canvaConnected ? (
+                        <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-1.5 py-0.5 rounded-full">CONNECTÉ</span>
+                      ) : (
+                        <span className="text-[10px] font-bold text-gray-400">NON CONNECTÉ</span>
+                      )}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
                         setRecentSessions([]);
                         setSessionMessagesMap({});
                         setMessages([]);
@@ -2260,42 +2599,108 @@ export default function App() {
               )}
 
               {modal === 'upgrade' && (
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                  {PLANS.map((pl) => (
-                    <div
-                      key={pl.id}
-                      className={`rounded-2xl border p-4 flex flex-col gap-3 ${pl.id === plan ? 'border-orange-400 bg-orange-50/50' : 'border-gray-200'}`}
-                    >
-                      <div>
-                        <h4 className="font-semibold text-gray-900">{pl.name}</h4>
-                        <p className="text-xs text-gray-500">{pl.desc}</p>
-                      </div>
-                      <ul className="space-y-1.5 flex-1">
-                        {pl.features.map((f) => (
-                          <li key={f} className="flex items-start gap-2 text-xs text-gray-700">
-                            <Check className="w-3.5 h-3.5 text-orange-500 shrink-0 mt-0.5" />
-                            {f}
-                          </li>
-                        ))}
-                      </ul>
-                      <button
-                        type="button"
-                        disabled={pl.id === plan}
-                        onClick={() => {
-                          setPlan(pl.id);
-                          showToast(`Forfait ${pl.name} activé.`);
-                          setModal(null);
-                        }}
-                        className={`w-full px-3 py-2 rounded-full text-xs font-semibold transition-colors ${
-                          pl.id === plan ? 'bg-gray-100 text-gray-400 cursor-default' : 'bg-gray-900 hover:bg-black text-white cursor-pointer'
-                        }`}
-                      >
-                        {pl.id === plan ? 'Forfait actuel' : 'Choisir'}
-                      </button>
-                    </div>
-                  ))}
-                </div>
+                <PricingPage
+                  currentPlan={plan}
+                  credits={credits}
+                  onChoose={(packId) => {
+                    if (packId === plan) return;
+                    setPlan(packId);
+                    if (packId === 'free') setCredits(20);
+                    if (packId === 'starter') setCredits(150);
+                    if (packId === 'pro') setCredits(450);
+                    const pack = PRICING.find((p) => p.id === packId);
+                    showToast(`Pack ${pack?.name} activé · ${pack?.points} !`);
+                    setModal(null);
+                  }}
+                />
               )}
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* ========================================================= */}
+      {/* MODAL CONNEXION CANVA */}
+      {/* ========================================================= */}
+      <AnimatePresence>
+        {canvaModalOpen && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            onMouseDown={(e) => e.target === e.currentTarget && setCanvaModalOpen(false)}
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-2xs p-4"
+          >
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 10 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 10 }}
+              transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
+              className="bg-white rounded-3xl border border-gray-200 shadow-2xl w-full max-w-md p-6 space-y-5"
+            >
+              <div className="flex items-center justify-between pb-3 border-b border-gray-100">
+                <div className="flex items-center gap-2">
+                  <PencilRuler className="w-5 h-5 text-amber-500" />
+                  <h3 className="font-semibold text-gray-900 text-base">Connecter votre compte Canva</h3>
+                </div>
+                <button onClick={() => setCanvaModalOpen(false)} className="p-1 rounded-full hover:bg-gray-100 text-gray-400 hover:text-gray-700 transition-colors cursor-pointer">
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+
+              <div className="space-y-3 text-sm text-gray-600 leading-relaxed">
+                <p>
+                  Ouvrez vos designs <span className="font-semibold text-gray-900">100% éditables</span> (textes, calques et couleurs séparés) directement dans votre éditeur Canva.
+                </p>
+                <ol className="list-decimal list-inside space-y-1.5 text-xs text-gray-500 bg-gray-50 rounded-2xl p-3.5">
+                  <li>Créez une app gratuite sur <span className="font-semibold text-gray-700">canva.dev</span> (Canva Connect API).</li>
+                  <li>Copiez votre jeton d'accès personnel.</li>
+                  <li>Collez-le ici : vos prochains exports arriveront <span className="font-semibold text-gray-700">automatiquement dans votre compte Canva</span>.</li>
+                </ol>
+                {canvaConnected && (
+                  <div className="flex items-center gap-2 text-xs font-semibold text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-xl px-3 py-2">
+                    <CheckCircle2 className="w-4 h-4" />
+                    Compte Canva connecté — envoi automatique actif.
+                  </div>
+                )}
+              </div>
+
+              <div>
+                <label className="text-xs font-semibold text-gray-700 block mb-1.5">Jeton d'accès Canva</label>
+                <input
+                  type="password"
+                  value={canvaTokenInput}
+                  onChange={(e) => setCanvaTokenInput(e.target.value)}
+                  placeholder="Collez votre jeton ici..."
+                  className="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 text-sm text-gray-900 focus:outline-none focus:border-amber-500"
+                />
+              </div>
+
+              <div className="pt-1 flex justify-between gap-2">
+                {canvaConnected ? (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      try {
+                        localStorage.removeItem('aura_canva_token');
+                      } catch {}
+                      setCanvaConnected(false);
+                      showToast('Compte Canva déconnecté.');
+                    }}
+                    className="px-4 py-2 rounded-full text-xs font-semibold text-red-600 hover:bg-red-50 transition-colors cursor-pointer"
+                  >
+                    Déconnecter
+                  </button>
+                ) : <span />}
+                <button
+                  type="button"
+                  onClick={handleCanvaConnect}
+                  className="px-4 py-2 rounded-full bg-gray-900 hover:bg-black text-white text-xs font-bold transition-colors cursor-pointer"
+                >
+                  {canvaConnected ? 'Mettre à jour le jeton' : 'Connecter Canva'}
+                </button>
+              </div>
             </motion.div>
           </motion.div>
         )}
