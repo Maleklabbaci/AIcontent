@@ -71,6 +71,7 @@ interface Slide {
   id: string;
   slideNumber: number;
   heroShot?: boolean;
+  fullImage?: boolean;
   tag: string;
   title: string;
   subtitle: string;
@@ -421,15 +422,18 @@ async function slideToPngBlob(
   ctx.fillStyle = isLight ? '#FFFFFF' : '#18181b';
   ctx.fillRect(0, 0, w, h);
 
+  let fullImg = false;
   if (slide.image) {
     const img = await loadImage(slide.image);
     if (img) {
       const r = Math.max(w / img.width, h / img.height);
-      ctx.globalAlpha = slide.heroShot ? 1 : 0.22;
+      ctx.globalAlpha = slide.heroShot || slide.fullImage ? 1 : 0.22;
       ctx.drawImage(img, (w - img.width * r) / 2, (h - img.height * r) / 2, img.width * r, img.height * r);
       ctx.globalAlpha = 1;
+      fullImg = !!slide.fullImage;
     }
   }
+  if (!fullImg) {
   const grad = ctx.createLinearGradient(0, h, 0, 0);
   grad.addColorStop(0, isLight ? 'rgba(255,255,255,0.97)' : 'rgba(9,9,11,0.95)');
   grad.addColorStop(0.6, isLight ? 'rgba(255,255,255,0.75)' : 'rgba(9,9,11,0.7)');
@@ -528,6 +532,8 @@ async function slideToPngBlob(
     ctx.fillText(slide.ctaText.slice(0, 40), w - pad, h - 90);
     ctx.textAlign = 'left';
   }
+
+  } // fin calques texte (non utilisés quand l'image IA est complète)
 
   // Filigrane pack Gratuit
   if (opts?.watermark) {
@@ -2255,13 +2261,13 @@ export default function App() {
         fonts: design.fonts,
         slides: design.slides.map((s) => ({
           slideNumber: s.slideNumber,
-          tag: s.tag,
-          title: s.title,
-          subtitle: s.subtitle,
-          bulletPoints: s.bulletPoints,
-          stat: s.stat,
+          tag: s.fullImage ? '' : s.tag,
+          title: s.fullImage ? '' : s.title,
+          subtitle: s.fullImage ? '' : s.subtitle,
+          bulletPoints: s.fullImage ? undefined : s.bulletPoints,
+          stat: s.fullImage ? undefined : s.stat,
           image: s.image,
-          ctaText: s.ctaText,
+          ctaText: s.fullImage ? undefined : s.ctaText,
         })),
         brand: { name: brandName, handle: brandHandle, color: brandColor, logo: brandLogo },
       });
@@ -2658,6 +2664,8 @@ export default function App() {
               references: refImages,
               productImages,
               profile: brandProfile,
+              total: engineSlides.length,
+              fonts: { title: brandTitleFont || engineFonts.title, body: brandBodyFont || engineFonts.body },
               slide: {
                 slideNumber: sl.slideNumber,
                 tag: sl.tag,
@@ -2687,7 +2695,7 @@ export default function App() {
           return;
         }
 
-        const delivered = received.map((r) => ({ ...engineSlides[r.idx], image: r.dataUrl, heroShot: productImages.length > 0 }));
+        const delivered = received.map((r) => ({ ...engineSlides[r.idx], image: r.dataUrl, heroShot: productImages.length > 0, fullImage: true }));
         deliverDesign(delivered, { partial: delivered.length < engineSlides.length, total: engineSlides.length });
         sendingRef.current = false;
         return;
@@ -3665,9 +3673,13 @@ export default function App() {
                                         animate={{ opacity: 1, y: 0, scale: 1 }}
                                         exit={{ opacity: 0, y: -8, scale: 0.985 }}
                                         transition={{ duration: 0.22, ease: 'easeOut' }}
-                                        className={`w-full h-full rounded-2xl p-6 sm:p-8 flex flex-col justify-between relative overflow-hidden shadow-lg border ${isLight ? 'bg-white border-gray-200' : 'bg-zinc-900 border-zinc-800'}`}
+                                        className={`w-full h-full rounded-2xl ${slide.fullImage && slide.image ? '' : 'p-6 sm:p-8'} flex flex-col justify-between relative overflow-hidden shadow-lg border ${isLight ? 'bg-white border-gray-200' : 'bg-zinc-900 border-zinc-800'}`}
                                         style={{ fontFamily: `'${dFonts.body}', Poppins, system-ui, sans-serif` }}
                                       >
+                                        {slide.fullImage && slide.image ? (
+                                          <img src={slide.image} alt={slide.title} className="absolute inset-0 w-full h-full object-cover" />
+                                        ) : (
+                                        <>
                                         {/* Background Image texture if present */}
                                         {slide.image && (
                                           <div className="absolute inset-0 z-0 pointer-events-none">
@@ -3778,6 +3790,8 @@ export default function App() {
                                             </div>
                                           )}
                                         </div>
+                                        </>
+                                        )}
                                       </motion.div>
                                     </AnimatePresence>
                                   </div>
