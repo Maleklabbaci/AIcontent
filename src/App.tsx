@@ -1192,6 +1192,18 @@ export default function App() {
   const [isComposerModelOpen, setIsComposerModelOpen] = useState(false);
   const [resizeOpenId, setResizeOpenId] = useState<string | null>(null);
   const [referralOpen, setReferralOpen] = useState(false);
+  const [composerHighlight, setComposerHighlight] = useState(false);
+  const composerInputRef = useRef<HTMLInputElement>(null);
+  const highlightTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Clic sur une suggestion : préremplit le champ au lieu de générer à l'aveugle
+  const prefillComposer = (text: string) => {
+    setInputPrompt(text);
+    composerInputRef.current?.focus();
+    setComposerHighlight(true);
+    if (highlightTimer.current) clearTimeout(highlightTimer.current);
+    highlightTimer.current = setTimeout(() => setComposerHighlight(false), 2200);
+    showToast('Personnalisez votre idée puis envoyez ✨');
+  };
   const [carouselSlidesCount, setCarouselSlidesCount] = useState<number>(4);
   const [isSlidesDropdownOpen, setIsSlidesDropdownOpen] = useState(false);
   const [attachedImages, setAttachedImages] = useState<string[]>([]);
@@ -1580,7 +1592,7 @@ export default function App() {
       handleSendMessage(lastUser, opts);
       return;
     }
-    handleSendMessage(sug);
+    prefillComposer(sug);
   };
 
   // Handle send prompt
@@ -2694,7 +2706,7 @@ export default function App() {
             />
 
             {/* Conteneur flottant avec grand rayon de bordure */}
-            <div className="relative flex flex-col bg-white/90 backdrop-blur-md rounded-[28px] px-3 py-2.5 border border-orange-200/60 shadow-md focus-within:shadow-lg focus-within:border-orange-300 focus-within:ring-2 focus-within:ring-orange-400/20 transition-all">
+            <div className={`relative flex flex-col backdrop-blur-md rounded-[28px] px-3 py-2.5 border shadow-md transition-all ${composerHighlight ? 'bg-white border-amber-400 ring-4 ring-amber-300/40 shadow-lg' : 'bg-white/90 border-orange-200/60 focus-within:shadow-lg focus-within:border-orange-300 focus-within:ring-2 focus-within:ring-orange-400/20'}`}>
               {/* Preview des photos attachées */}
               {attachedImages.length > 0 && (
                 <div className="flex items-center gap-2 px-2 pt-1 pb-2 border-b border-gray-200/70 mb-1 overflow-x-auto">
@@ -2738,6 +2750,7 @@ export default function App() {
 
                 {/* Champ de texte */}
                 <input
+                  ref={composerInputRef}
                   type="text"
                   value={inputPrompt}
                   onChange={(e) => setInputPrompt(e.target.value)}
@@ -2944,7 +2957,7 @@ export default function App() {
                   <button
                     key={idx}
                     type="button"
-                    onClick={() => handleSendMessage(card.prompt)}
+                    onClick={() => prefillComposer(card.prompt)}
                     className="flex items-center gap-2 px-4 py-2 rounded-full bg-white/85 hover:bg-white border border-orange-200/60 text-sm text-gray-700 hover:text-gray-900 shadow-2xs transition-all cursor-pointer"
                   >
                     {card.icon}
