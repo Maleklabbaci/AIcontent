@@ -3,12 +3,28 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Aura Studio - Social Media AI Canvas</title>
-    <meta name="description" content="Interface SaaS IA conversationnelle dédiée à la génération en temps réel de designs pour réseaux sociaux : carrousels, stories et posters." />
-    <meta property="og:title" content="Aura Studio - Social Media AI Canvas" />
-    <meta property="og:description" content="Interface SaaS IA conversationnelle dédiée à la génération en temps réel de designs pour réseaux sociaux : carrousels, stories et posters." />
+    <title>Aura Design — Créez des designs IA en seconde</title>
+    <meta name="description" content="Générez des designs pour réseaux sociaux en seconde : posts, stories, carrousels, affiches. Export PNG HD, PDF et envoi direct vers Canva." />
+    <meta property="og:title" content="Aura Design — Créez des designs IA en seconde" />
+    <meta property="og:description" content="Générez des designs pour réseaux sociaux en seconde : posts, stories, carrousels, affiches. Export PNG HD, PDF et envoi direct vers Canva." />
     <meta property="og:type" content="website" />
     <meta name="twitter:card" content="summary_large_image" />
+    <!-- PWA -->
+    <link rel="manifest" href="/manifest.json" />
+    <meta name="theme-color" content="#F59E0B" />
+    <link rel="icon" type="image/png" sizes="96x96" href="/icons/icon-96.png" />
+    <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="apple-mobile-web-app-title" content="Aura Design" />
+    <script>
+      // Enregistrement du Service Worker (PWA installable)
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', function () {
+          navigator.serviceWorker.register('/sw.js').catch(function () {});
+        });
+      }
+    </script>
     <script>
       // Fix for "Cannot set property fetch of #<Window> which has only a getter"
       // In some iframe/browser environments, window.fetch only has a getter on Window.prototype.

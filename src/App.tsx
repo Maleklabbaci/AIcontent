@@ -34,6 +34,7 @@ import {
   ShoppingBag,
   BadgePercent,
   Quote,
+  Gift,
   Presentation,
   Languages,
   CircleHelp,
@@ -396,6 +397,19 @@ const loadJson = <T,>(key: string, fallback: T): T => {
 };
 
 export type ModelId = 'flash' | 'studio' | 'pro';
+
+const getReferralCode = (): string => {
+  try {
+    let code = localStorage.getItem('aura_ref_code');
+    if (!code) {
+      code = `AURA-${Math.random().toString(36).slice(2, 8).toUpperCase()}`;
+      localStorage.setItem('aura_ref_code', code);
+    }
+    return code;
+  } catch {
+    return 'AURA-DESIGN';
+  }
+};
 const MODELS: { id: ModelId; name: string; points: number; desc: string; badge?: string }[] = [
   { id: 'flash', name: 'Aura Flash', points: 5, desc: 'Rapide et économique — parfait pour les petits visuels et posts quotidiens.', badge: 'ÉCO' },
   { id: 'studio', name: 'Aura Studio', points: 10, desc: 'HD équilibré — le juste milieu qualité / points pour vos contenus réguliers.' },
@@ -709,6 +723,276 @@ function PricingPage({
   );
 }
 
+// ============================================================
+// PAGE /home — LANDING PUBLIQUE (page de vente)
+// ============================================================
+function LandingPage({
+  credits,
+  onEnter,
+  onPricing,
+  onReferral,
+}: {
+  credits: number;
+  onEnter: () => void;
+  onPricing: () => void;
+  onReferral: () => void;
+}) {
+  const steps = [
+    { n: '1', title: 'Décrivez votre idée', text: "« Post de lancement pour ma boutique de bijoux » — une phrase suffit, l'IA fait le reste." },
+    { n: '2', title: 'Choisissez modèle & format', text: 'Flash, Studio ou Pro Max — puis Story, Post carré, Carrousel, Affiche…' },
+    { n: '3', title: 'Exportez partout', text: 'PNG HD, PDF multi-pages ou envoi direct dans votre compte Canva, calques éditables inclus.' },
+  ];
+  const features = [
+    { icon: Sparkles, title: '3 modèles IA', text: 'Aura Flash pour la vitesse, Studio pour le HD, Pro Max pour vos plus gros projets.' },
+    { icon: PencilRuler, title: 'Export Canva multi-calques', text: 'Vos textes et éléments restent modifiables calque par calque dans Canva.' },
+    { icon: Maximize2, title: 'Magic Resize gratuit', text: 'Déclinez un design en Story, Post, Affiche ou 16:9 sans dépenser un point.' },
+    { icon: FileText, title: 'PNG HD & PDF', text: 'Exportez un slide ou tout le carrousel, qualité maximale pour l’impression et le web.' },
+    { icon: Palette, title: 'Brand Kit intégré', text: 'Logo, nom, @handle et couleur d’accent appliqués automatiquement à chaque design.' },
+    { icon: Smartphone, title: 'Installable comme une app', text: 'Aura Design s’installe sur votre téléphone — crénez où que vous soyez, même hors ligne.' },
+  ];
+
+  return (
+    <div className="relative min-h-screen w-full overflow-x-hidden font-sans text-gray-900 antialiased">
+      <div className="aurora fixed" aria-hidden="true">
+        <span className="blob blob-a" />
+        <span className="blob blob-b" />
+        <span className="blob blob-c" />
+        <span className="blob blob-d" />
+      </div>
+
+      <div className="relative z-10">
+        {/* --- Header --- */}
+        <header className="sticky top-0 z-30 backdrop-blur-md bg-white/60 border-b border-orange-200/40">
+          <div className="max-w-6xl mx-auto px-4 sm:px-6 h-14 flex items-center justify-between">
+            <div className="flex items-center gap-2.5">
+              <div className="w-8 h-8 rounded-full bg-gradient-to-br from-amber-400 via-amber-500 to-orange-500 flex items-center justify-center shadow-sm">
+                <Sparkles className="w-4 h-4 text-white stroke-[2.5]" />
+              </div>
+              <div className="flex items-center gap-1.5">
+                <span className="font-semibold text-gray-900 text-lg tracking-tight">Aura</span>
+                <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-gray-200/80 text-gray-700">Design</span>
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={onPricing}
+                className="px-3.5 py-1.5 rounded-full text-xs font-bold text-gray-700 hover:bg-white/80 transition-colors cursor-pointer"
+              >
+                Tarifs
+              </button>
+              <button
+                type="button"
+                onClick={onEnter}
+                className="px-4 py-1.5 rounded-full bg-gray-900 hover:bg-black text-white text-xs font-bold transition-colors cursor-pointer shadow-sm"
+              >
+                Ouvrir l'atelier
+              </button>
+            </div>
+          </div>
+        </header>
+
+        {/* --- Hero --- */}
+        <section className="max-w-6xl mx-auto px-4 sm:px-6 pt-14 pb-10 text-center space-y-6">
+          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/80 border border-amber-200/70 text-[11px] font-bold text-amber-700 shadow-xs">
+            <Zap className="w-3 h-3" />
+            NOUVEAU · 20 POINTS OFFERTS À L'INSCRIPTION
+          </span>
+          <h1 className="text-3xl sm:text-5xl font-semibold tracking-tight leading-[1.08] max-w-3xl mx-auto">
+            Des designs qui <span className="text-transparent bg-clip-text bg-gradient-to-r from-amber-500 to-orange-500">vendent</span>,
+            <br className="hidden sm:block" /> générés en seconde.
+          </h1>
+          <p className="text-sm sm:text-base text-gray-600 max-w-xl mx-auto leading-relaxed">
+            Posts, stories, carrousels, affiches et fiches produit pour vos réseaux sociaux.
+            Décrivez votre idée — l'IA s'occupe du reste, avec votre logo et vos couleurs.
+          </p>
+          <div className="flex flex-wrap items-center justify-center gap-3">
+            <button
+              type="button"
+              onClick={onEnter}
+              className="px-6 py-3 rounded-full bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-white text-sm font-bold shadow-lg shadow-amber-200/70 transition-all cursor-pointer"
+            >
+              Commencer gratuitement
+            </button>
+            <button
+              type="button"
+              onClick={onPricing}
+              className="px-6 py-3 rounded-full bg-white border border-gray-200 hover:border-amber-300 text-gray-800 text-sm font-bold transition-all cursor-pointer"
+            >
+              Voir les packs
+            </button>
+          </div>
+          <div className="flex flex-wrap items-center justify-center gap-x-5 gap-y-1.5 text-[11px] font-semibold text-gray-500">
+            <span className="flex items-center gap-1.5">
+              <Check className="w-3.5 h-3.5 text-emerald-500" /> Sans carte bancaire
+            </span>
+            <span className="flex items-center gap-1.5">
+              <Check className="w-3.5 h-3.5 text-emerald-500" /> Prêt en 10 secondes
+            </span>
+            <span className="flex items-center gap-1.5">
+              <Check className="w-3.5 h-3.5 text-emerald-500" /> {credits > 0 ? `${credits} points sur votre compte` : '20 points de bienvenue'}
+            </span>
+          </div>
+
+          {/* --- Aperçu des designs (mockups CSS dans le style de l'atelier) --- */}
+          <div className="relative max-w-3xl mx-auto mt-12">
+            <div className="flex items-end justify-center gap-4 sm:gap-6">
+              {/* Story 4:5 */}
+              <div className="hidden sm:block w-52 rotate-[-4deg] translate-y-2 hover:rotate-[-2deg] transition-transform duration-300">
+                <div className="rounded-2xl bg-zinc-900 border border-zinc-800 shadow-xl p-4 aspect-[4/5] flex flex-col justify-between text-left overflow-hidden">
+                  <div className="flex items-center gap-1.5">
+                    <div className="w-4 h-4 rounded bg-amber-500 flex items-center justify-center text-[7px] font-bold text-black">A</div>
+                    <span className="text-[8px] font-bold tracking-wider text-white uppercase">Aura Studio</span>
+                  </div>
+                  <div className="space-y-1.5">
+                    <span className="text-[8px] font-bold uppercase tracking-wider text-amber-400">Lancement</span>
+                    <h3 className="text-sm font-semibold text-white leading-snug">Votre marque mérite d'être vue.</h3>
+                    <p className="text-[9px] text-zinc-400 leading-relaxed">Des visuels pro, générés par l'IA en quelques secondes.</p>
+                  </div>
+                  <div className="flex items-center justify-between text-[8px] text-zinc-500 border-t border-zinc-800 pt-2">
+                    <span className="text-white font-semibold">@aura.design</span>
+                    <span className="text-amber-400 font-bold">Découvrir ➔</span>
+                  </div>
+                </div>
+              </div>
+              {/* Carré 1:1 (central) */}
+              <div className="w-60 sm:w-72 hover:-translate-y-1 transition-transform duration-300">
+                <div className="rounded-2xl bg-zinc-900 border border-zinc-800 shadow-2xl p-5 aspect-square flex flex-col justify-between text-left overflow-hidden relative">
+                  <div className="absolute -top-8 -right-8 w-28 h-28 rounded-full bg-amber-500/20 blur-2xl" />
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-1.5">
+                      <div className="w-5 h-5 rounded bg-amber-500 flex items-center justify-center text-[9px] font-bold text-black">A</div>
+                      <span className="text-[9px] font-bold tracking-wider text-white uppercase">Aura Studio</span>
+                    </div>
+                    <span className="text-[8px] font-bold text-amber-400 bg-amber-500/10 border border-amber-500/20 px-1.5 py-0.5 rounded-full">01 / 05</span>
+                  </div>
+                  <div className="space-y-2">
+                    <span className="text-[9px] font-bold uppercase tracking-wider text-amber-400">Conseil #1</span>
+                    <h3 className="text-lg font-semibold text-white leading-snug">Publiez tous les jours sans y passer vos soirées.</h3>
+                    <div className="space-y-1 pt-1">
+                      {['Un visuel par jour, généré en 10s', 'Votre logo et vos couleurs', 'Export direct vers Canva'].map((b) => (
+                        <div key={b} className="flex items-center gap-1.5 text-[9px] text-zinc-300">
+                          <span className="w-3 h-3 rounded-full bg-amber-500/20 text-amber-400 flex items-center justify-center text-[7px]">✓</span>
+                          {b}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                  <div className="flex items-center justify-between text-[9px] text-zinc-500 border-t border-zinc-800 pt-2.5">
+                    <span className="text-white font-semibold">@aura.design</span>
+                    <span className="text-amber-400 font-bold bg-amber-500/10 px-2 py-0.5 rounded-md border border-amber-500/20">Enregistrer ➔</span>
+                  </div>
+                </div>
+              </div>
+              {/* Affiche 2:3 */}
+              <div className="hidden sm:block w-48 rotate-[4deg] translate-y-2 hover:rotate-[2deg] transition-transform duration-300">
+                <div className="rounded-2xl bg-zinc-900 border border-zinc-800 shadow-xl p-4 aspect-[2/3] flex flex-col justify-between text-left overflow-hidden">
+                  <div className="flex items-center gap-1.5">
+                    <div className="w-4 h-4 rounded bg-amber-500 flex items-center justify-center text-[7px] font-bold text-black">A</div>
+                    <span className="text-[8px] font-bold tracking-wider text-white uppercase">Aura Studio</span>
+                  </div>
+                  <div className="space-y-1.5">
+                    <span className="text-[8px] font-bold uppercase tracking-wider text-amber-400">Événement</span>
+                    <h3 className="text-sm font-semibold text-white leading-snug">Vente flash ce week-end.</h3>
+                    <div className="text-xl font-bold text-amber-400">-30%</div>
+                    <p className="text-[9px] text-zinc-400">Sur toute la boutique, samedi & dimanche seulement.</p>
+                  </div>
+                  <div className="text-center text-[8px] font-bold text-black bg-amber-400 rounded-full py-1.5">Réserver ma place ➔</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* --- Comment ça marche --- */}
+        <section className="max-w-6xl mx-auto px-4 sm:px-6 py-12">
+          <h2 className="text-xl sm:text-2xl font-semibold text-center tracking-tight">Comment ça marche ?</h2>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-7">
+            {steps.map((st) => (
+              <div key={st.n} className="rounded-3xl border border-gray-200 bg-white/80 backdrop-blur p-5 space-y-2">
+                <div className="w-9 h-9 rounded-full bg-gradient-to-br from-amber-400 to-orange-500 text-white font-bold text-sm flex items-center justify-center shadow-sm">
+                  {st.n}
+                </div>
+                <h3 className="font-semibold text-gray-900 text-sm">{st.title}</h3>
+                <p className="text-xs text-gray-500 leading-relaxed">{st.text}</p>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        {/* --- Fonctionnalités --- */}
+        <section className="max-w-6xl mx-auto px-4 sm:px-6 py-12">
+          <h2 className="text-xl sm:text-2xl font-semibold text-center tracking-tight">
+            Tout ce qu'il faut pour <span className="text-transparent bg-clip-text bg-gradient-to-r from-amber-500 to-orange-500">briller</span> sur les réseaux
+          </h2>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mt-7">
+            {features.map((f) => (
+              <div key={f.title} className="rounded-3xl border border-gray-200 bg-white/80 backdrop-blur p-5 space-y-2 hover:border-amber-300/70 hover:shadow-md transition-all">
+                <div className="w-9 h-9 rounded-2xl bg-amber-100 text-amber-600 flex items-center justify-center">
+                  <f.icon className="w-[18px] h-[18px]" />
+                </div>
+                <h3 className="font-semibold text-gray-900 text-sm">{f.title}</h3>
+                <p className="text-xs text-gray-500 leading-relaxed">{f.text}</p>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        {/* --- Parrainage --- */}
+        <section className="max-w-6xl mx-auto px-4 sm:px-6 py-12">
+          <div className="rounded-3xl border border-amber-200/80 bg-gradient-to-br from-amber-50 via-orange-50/60 to-white p-6 sm:p-8 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-5">
+            <div className="space-y-1.5">
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-white border border-amber-200 text-[10px] font-bold text-amber-700">
+                <Gift className="w-3 h-3" />
+                PARRAINAGE
+              </span>
+              <h2 className="text-lg sm:text-xl font-semibold tracking-tight text-gray-900">
+                Gagnez <span className="text-transparent bg-clip-text bg-gradient-to-r from-amber-500 to-orange-500">50 points</span> quand votre pote souscrit un pack
+              </h2>
+              <p className="text-xs text-gray-600 max-w-lg leading-relaxed">
+                Partagez votre lien d'invitation : votre ami démarre avec 20 points de bienvenue, et vous recevez
+                50 points dès qu'il active son premier pack payant.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={onReferral}
+              className="shrink-0 px-5 py-2.5 rounded-full bg-gray-900 hover:bg-black text-white text-xs font-bold transition-colors cursor-pointer shadow-md"
+            >
+              Obtenir mon lien d'invitation
+            </button>
+          </div>
+        </section>
+
+        {/* --- CTA final --- */}
+        <section className="max-w-6xl mx-auto px-4 sm:px-6 py-14 text-center space-y-4">
+          <h2 className="text-xl sm:text-2xl font-semibold tracking-tight">Prêt à créer votre premier design ?</h2>
+          <p className="text-sm text-gray-500">20 points offerts — de quoi générer vos 4 premiers visuels, sans payer.</p>
+          <button
+            type="button"
+            onClick={onEnter}
+            className="px-7 py-3 rounded-full bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-white text-sm font-bold shadow-lg shadow-amber-200/70 transition-all cursor-pointer"
+          >
+            Commencer gratuitement
+          </button>
+        </section>
+
+        {/* --- Footer --- */}
+        <footer className="border-t border-orange-200/40 bg-white/50 backdrop-blur">
+          <div className="max-w-6xl mx-auto px-4 sm:px-6 py-6 flex flex-col sm:flex-row items-center justify-between gap-3 text-[11px] text-gray-500">
+            <span>© 2026 Aura Design — Créé en Algérie 🇩🇿</span>
+            <div className="flex items-center gap-4 font-semibold">
+              <button type="button" onClick={onEnter} className="hover:text-gray-900 cursor-pointer transition-colors">Atelier</button>
+              <button type="button" onClick={onPricing} className="hover:text-gray-900 cursor-pointer transition-colors">Tarifs & Packs</button>
+              <button type="button" onClick={onReferral} className="hover:text-gray-900 cursor-pointer transition-colors">Parrainage</button>
+            </div>
+          </div>
+        </footer>
+      </div>
+    </div>
+  );
+}
+
 export default function App() {
   // Sidebar state
   const [sidebarOpen, setSidebarOpen] = useState(true);
@@ -855,6 +1139,7 @@ export default function App() {
   const [isFormatDropdownOpen, setIsFormatDropdownOpen] = useState(false);
   const [isComposerModelOpen, setIsComposerModelOpen] = useState(false);
   const [resizeOpenId, setResizeOpenId] = useState<string | null>(null);
+  const [referralOpen, setReferralOpen] = useState(false);
   const [carouselSlidesCount, setCarouselSlidesCount] = useState<number>(4);
   const [isSlidesDropdownOpen, setIsSlidesDropdownOpen] = useState(false);
   const [attachedImages, setAttachedImages] = useState<string[]>([]);
@@ -929,6 +1214,17 @@ export default function App() {
     if (toastTimer.current) clearTimeout(toastTimer.current);
     toastTimer.current = setTimeout(() => setToastMessage(null), 2800);
   };
+  // Détection d'un lien de parrainage (?ref=CODE)
+  useEffect(() => {
+    try {
+      const ref = new URLSearchParams(window.location.search).get('ref');
+      if (ref) {
+        localStorage.setItem('aura_ref_applied', ref);
+        showToast(`Code d'invitation ${ref} détecté — vos 20 points de bienvenue vous attendent !`);
+      }
+    } catch {}
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
     setSessionMessagesMap((prev) => (prev[activeSessionId] === messages ? prev : { ...prev, [activeSessionId]: messages }));
@@ -1514,6 +1810,24 @@ export default function App() {
     </div>
   ) : null;
 
+  // ===== PAGE /home — LANDING PUBLIQUE =====
+  if (route === '/' || route === '/home') {
+    return (
+      <div dir={lang === 'ar' ? 'rtl' : 'ltr'}>
+        <LandingPage
+          credits={credits}
+          onEnter={() => navigate('/app')}
+          onPricing={() => navigate('/pricing')}
+          onReferral={() => {
+            navigate('/app');
+            setReferralOpen(true);
+          }}
+        />
+        {toastEl}
+      </div>
+    );
+  }
+
   // ===== PAGE /pricing DÉDIÉE =====
   if (route === '/pricing') {
     return (
@@ -1664,6 +1978,18 @@ export default function App() {
               {credits} pts
             </span>
           </button>
+
+          {/* Parrainage */}
+          <button
+            onClick={() => setReferralOpen(true)}
+            className="w-full flex items-center gap-3 px-4 py-2 rounded-full hover:bg-gray-200/60 text-gray-600 hover:text-gray-900 text-sm font-medium transition-colors"
+          >
+            <Gift className="w-4 h-4 text-orange-500" />
+            <span>Parrainer un ami</span>
+            <span className="ml-auto text-[10px] font-bold text-emerald-700 bg-emerald-100/80 px-1.5 py-0.5 rounded-full">
+              +50 pts
+            </span>
+          </button>
         </div>
 
         {/* Section "Récents" (Historique avec pills arrondis) */}
@@ -1749,6 +2075,7 @@ export default function App() {
                 </div>
               ))}
               {[
+                { key: 'referral', Icon: Gift, label: 'Parrainer un ami', action: () => setReferralOpen(true) },
                 { key: 'help', Icon: CircleHelp, label: t('help'), action: () => setModal('help') },
                 { key: 'about', Icon: Info, label: t('learnMore'), action: () => setModal('about') },
                 { key: 'upgrade', Icon: Zap, label: t('upgrade'), action: () => navigate('/pricing') },
@@ -2989,6 +3316,91 @@ export default function App() {
                   {canvaConnected ? 'Mettre à jour le jeton' : 'Connecter Canva'}
                 </button>
               </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* ========================================================= */}
+      {/* MODAL PARRAINAGE */}
+      {/* ========================================================= */}
+      <AnimatePresence>
+        {referralOpen && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            onMouseDown={(e) => e.target === e.currentTarget && setReferralOpen(false)}
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-2xs p-4"
+          >
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 10 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 10 }}
+              transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
+              className="bg-white rounded-3xl border border-gray-200 shadow-2xl w-full max-w-md p-6 space-y-5"
+            >
+              <div className="flex items-center justify-between pb-3 border-b border-gray-100">
+                <div className="flex items-center gap-2">
+                  <Gift className="w-5 h-5 text-orange-500" />
+                  <h3 className="font-semibold text-gray-900 text-base">Parrainez vos amis</h3>
+                </div>
+                <button onClick={() => setReferralOpen(false)} className="p-1 rounded-full hover:bg-gray-100 text-gray-400 hover:text-gray-700 transition-colors cursor-pointer">
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+
+              <div className="grid grid-cols-3 gap-2 text-center">
+                {[
+                  { n: '1', txt: 'Partagez votre lien' },
+                  { n: '2', txt: 'Votre pote reçoit 20 pts' },
+                  { n: '3', txt: 'Il paye un pack → vous gagnez 50 pts' },
+                ].map((st) => (
+                  <div key={st.n} className="rounded-2xl border border-gray-200 bg-gray-50 p-2.5 space-y-1">
+                    <div className="w-6 h-6 mx-auto rounded-full bg-gradient-to-br from-amber-400 to-orange-500 text-white text-[10px] font-bold flex items-center justify-center">
+                      {st.n}
+                    </div>
+                    <p className="text-[10px] font-semibold text-gray-600 leading-tight">{st.txt}</p>
+                  </div>
+                ))}
+              </div>
+
+              <div>
+                <label className="text-xs font-semibold text-gray-700 block mb-1.5">Votre code d'invitation</label>
+                <div className="flex items-center gap-2">
+                  <div className="flex-1 rounded-xl border border-dashed border-amber-300 bg-amber-50/60 px-3 py-2 text-sm font-bold tracking-wider text-amber-800 text-center">
+                    {getReferralCode()}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      const ok = await copyText(`https://${window.location.host}/?ref=${getReferralCode()}`);
+                      showToast(ok ? 'Lien de parrainage copié !' : 'Copie impossible.');
+                    }}
+                    className="px-3.5 py-2 rounded-xl bg-gray-900 hover:bg-black text-white text-xs font-bold transition-colors cursor-pointer shrink-0"
+                  >
+                    Copier le lien
+                  </button>
+                </div>
+              </div>
+
+              <a
+                href={`https://wa.me/?text=${encodeURIComponent(
+                  `Crée des designs de fou avec l'IA sur Aura Design 🎨 — 20 points offerts avec mon lien : https://${window.location.host}/?ref=${getReferralCode()}`
+                )}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-full bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-bold transition-colors cursor-pointer"
+              >
+                <Gift className="w-3.5 h-3.5" />
+                Partager sur WhatsApp
+              </a>
+
+              <p className="text-[10px] text-gray-400 text-center leading-relaxed">
+                Les 50 points sont crédités automatiquement sur votre solde dès que votre filleul active son premier pack payant.
+                Pas de limite : 3 filleuls = 150 points !
+              </p>
             </motion.div>
           </motion.div>
         )}
