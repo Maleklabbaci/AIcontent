@@ -53,6 +53,10 @@ import {
   PencilRuler,
   RefreshCw
 } from 'lucide-react';
+
+// Sync des sessions via Supabase (si configuré) — sinon localStorage seul
+import { isSupabaseConfigured } from './lib/supabase';
+import { deleteRemoteSession, loadRemoteSessions, saveRemoteSession } from './utils/remoteStorage';
 import { createEditableCanvaPptx } from './utils/canvaExport';
 import { createPdfFromJpegs, pxToPt } from './utils/pdfExport';
 import imgAbstract from './assets/images/social_abstract_accent_1790812839231.jpg';
@@ -1993,6 +1997,25 @@ export default function App() {
     } catch {}
   }, [useTpl]);
 
+  // Sessions distantes (Supabase) : fusion dans la liste locale si configuré
+  useEffect(() => {
+    if (!isSupabaseConfigured) return;
+    loadRemoteSessions()
+      .then((remote) => {
+        if (remote.length === 0) return;
+        setRecentSessions((prev) => {
+          const ids = new Set(remote.map((r) => r.id));
+          const mapped = remote.map((r) => ({
+            id: r.id,
+            title: r.title,
+            format: (FORMAT_ORDER.includes(r.format as FormatType) ? r.format : 'post') as FormatType,
+          }));
+          return [...mapped, ...prev.filter((x) => !ids.has(x.id))].slice(0, 50);
+        });
+      })
+      .catch(() => {});
+  }, []);
+
   // Salutation dynamique Gemini
   const greetingSalutation = t('greeting');
 
@@ -2575,6 +2598,16 @@ export default function App() {
           () => showToast(t('pointsSpent').replace('{n}', String(debited)).replace('{c}', String(Math.max(0, credits - debited)))),
           500
         );
+      }
+      if (isSupabaseConfigured) {
+        void saveRemoteSession({
+          id: sessionId,
+          title: promptText.slice(0, 60),
+          format: activeFmt,
+          previewText: aiMsgText.slice(0, 140),
+          lastUpdated: new Date().toISOString(),
+          messages: [userMsg, aiMsg],
+        }).catch(() => {});
       }
       setIsGenerating(false);
     };
@@ -4587,6 +4620,9 @@ export default function App() {
                     <button
                       type="button"
                       onClick={() => {
+                        if (isSupabaseConfigured) {
+                          for (const rs of recentSessions) void deleteRemoteSession(rs.id).catch(() => {});
+                        }
                         setRecentSessions([]);
                         setSessionMessagesMap({});
                         setMessages([]);
