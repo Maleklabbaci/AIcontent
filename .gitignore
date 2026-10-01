@@ -1,8 +1,12 @@
 node_modules/
 dist/
-package-lock.json
+coverage/
 image-search/
-.env.local
+
+# Keep the example template; never commit local or production environment files.
 .env
+.env.*
+!.env.example
+
 *.log
 .DS_Store
