@@ -25,8 +25,9 @@ Générateur de designs IA : posts, stories, carrousels, affiches et fiches prod
 
 ## Authentification
 
-- Pages `/login` et `/signup` : carte sombre pleine page (illustration réseau de
-  neurones doré), formulaire en 2 colonnes (`/signup` en miroir, illustration à gauche).
+- Pages `/login` et `/signup` : interface claire assortie à la landing et à l'atelier
+  (fond aurora crème/orange, cartes blanches, bouton de retour à l'accueil), avec
+  formulaire et panneau de présentation en deux colonnes sur grand écran.
 - `signUp` envoie `first_name` / `last_name` dans les metadata ; si la confirmation
   d'email est désactivée dans Supabase, l'utilisateur entre directement.
 - Mot de passe oublié : `supabase.auth.resetPasswordForEmail`.
@@ -34,6 +35,7 @@ Générateur de designs IA : posts, stories, carrousels, affiches et fiches prod
   création du client Supabase — décoché, la session vit dans `sessionStorage` et
   disparaît à la fermeture de l'onglet.
 - Erreurs traduites FR / EN / AR (identifiants, email déjà pris, mot de passe court, rate limit).
+- Dépannage : une réponse HTTP `422` vient d'une validation/refus de Supabase (adresse, mot de passe ou fournisseur Email désactivé) ; `ERR_CONNECTION_CLOSED` indique que le navigateur ne parvient pas à joindre le projet. Vérifier l'URL et la clé publique Supabase ainsi que le fournisseur Email dans Auth.
 
 ## Moteur IA (`functions/api/generate.ts`)
 

@@ -22,8 +22,8 @@ Chaque sous-dossier correspond à une route API :
 | Modèle plateforme | Modèle Google | Coût API | Points déduits / image |
 | :--- | :--- | :--- | :--- |
 | Aura Flash | `gemini-2.5-flash-image` (Nano Banana 1) | ~0,039 $ | **5 pts** |
-| Aura Studio | `gemini-3.1-flash-image-preview` (Nano Banana 2) | ~0,067 $ | **10 pts** |
-| Aura Pro Max | `gemini-3-pro-image-preview` (Nano Banana Pro) | ~0,134 $ | **20 pts** |
+| Aura Studio | `gemini-3.1-flash-image` (Nano Banana 2) | ~0,067 $ | **10 pts** |
+| Aura Pro Max | `gemini-3-pro-image` (Nano Banana Pro) | ~0,134 $ | **20 pts** |
 
 Facturation : **1 image IA générée = points du modèle** (un carrousel de N slides avec 1 image par slide = N × points).
 En dev local (`npm run dev`), un stub Vite répond `{ configured: false }` pour `/api/*` : l'app bascule alors
