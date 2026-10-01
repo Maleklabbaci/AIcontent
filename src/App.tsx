@@ -578,63 +578,75 @@ export default function App() {
 
       {/* ── Ambient background blobs (behind everything) ── */}
       <div className="fixed inset-0 pointer-events-none overflow-hidden">
-        {/* Large deep-blue ambient base blob */}
+        {/* Grand diffuseur orange doux — haut gauche */}
         <div
-          className="bg-ambient-blob animate-blob-1"
+          className="bg-ambient-blob animate-blob-a"
           style={{
-            width: '650px',
-            height: '650px',
-            top: '-10%',
-            left: '-8%',
-            background: 'radial-gradient(circle, rgba(59,130,246,0.20) 0%, rgba(30,58,86,0.08) 50%, transparent 70%)',
+            width: '700px',
+            height: '700px',
+            top: '-15%',
+            left: '-12%',
+            background: 'radial-gradient(circle, rgba(245,158,11,0.22) 0%, rgba(234,88,12,0.10) 40%, transparent 72%)',
           }}
         />
-        {/* Warm amber accent blob (right side) */}
+        {/* Blob jaune ambré — centre droit */}
         <div
-          className="bg-ambient-blob animate-blob-2"
+          className="bg-ambient-blob animate-blob-b"
           style={{
-            width: '500px',
-            height: '500px',
-            bottom: '5%',
-            right: '-5%',
-            background: 'radial-gradient(circle, rgba(245,158,11,0.13) 0%, rgba(234,88,12,0.05) 40%, transparent 70%)',
+            width: '550px',
+            height: '550px',
+            top: '35%',
+            right: '10%',
+            background: 'radial-gradient(circle, rgba(250,204,21,0.20) 0%, rgba(245,158,11,0.09) 45%, transparent 72%)',
           }}
         />
-        {/* Soft sky-blue mid-tone blob (center-right) */}
+        {/* Diffuseur orange profond — bas droite */}
         <div
-          className="bg-ambient-blob animate-blob-3"
+          className="bg-ambient-blob animate-blob-c"
           style={{
-            width: '450px',
-            height: '450px',
-            top: '40%',
-            right: '20%',
-            background: 'radial-gradient(circle, rgba(14,165,233,0.12) 0%, rgba(30,58,86,0.05) 45%, transparent 70%)',
+            width: '600px',
+            height: '600px',
+            bottom: '0%',
+            right: '-8%',
+            background: 'radial-gradient(circle, rgba(249,115,22,0.18) 0%, rgba(245,158,11,0.08) 40%, transparent 72%)',
           }}
         />
-        {/* Subtle warm rose/mauve blob (bottom-left) */}
+        {/* Petit pic de jaune vif — haut droit */}
+        <div
+          className="bg-ambient-blob animate-blob-d"
+          style={{
+            width: '320px',
+            height: '320px',
+            top: '8%',
+            right: '25%',
+            background: 'radial-gradient(circle, rgba(250,204,21,0.25) 0%, rgba(245,158,11,0.10) 35%, transparent 68%)',
+            opacity: 0.75,
+          }}
+        />
+        {/* Diffuseur orange doux — bas gauche */}
         <div
           className="bg-ambient-blob animate-blob-pulse"
           style={{
-            width: '350px',
-            height: '350px',
-            bottom: '15%',
-            left: '10%',
-            background: 'radial-gradient(circle, rgba(244,63,94,0.08) 0%, rgba(15,23,42,0.03) 50%, transparent 70%)',
+            width: '400px',
+            height: '400px',
+            bottom: '12%',
+            left: '5%',
+            background: 'radial-gradient(circle, rgba(245,158,11,0.15) 0%, rgba(234,88,12,0.05) 45%, transparent 70%)',
             opacity: 0.6,
           }}
         />
-        {/* Diffuse ambient glow behind main chat area (center) */}
+        {/* Grand glow central très diffus (warm amber) */}
         <div
           className="bg-ambient-blob animate-blob-pulse"
           style={{
-            width: '900px',
-            height: '700px',
+            width: '1000px',
+            height: '800px',
             top: '50%',
             left: '50%',
             transform: 'translate(-50%, -50%)',
-            background: 'radial-gradient(ellipse, rgba(59,130,246,0.06) 0%, transparent 65%)',
-            filter: 'blur(120px)',
-            opacity: 0.8,
+            background: 'radial-gradient(ellipse, rgba(245,158,11,0.07) 0%, rgba(250,204,21,0.03) 35%, transparent 68%)',
+            filter: 'blur(140px)',
+            opacity: 0.75,
           }}
         />
       </div>
