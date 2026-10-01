@@ -61,6 +61,11 @@ const BODY_FONTS = [
   'IBM Plex Sans Arabic', 'Scheherazade New',
 ];
 const VALID_FONT_NAMES = new Set([...TITLE_FONTS, ...BODY_FONTS]);
+
+// Le client met les photos produit dans `references` quand il en attache (fidélité 100 %)
+function hasProductInput(body: Record<string, unknown>): boolean {
+  return Array.isArray(body.productImages) && body.productImages.length > 0;
+}
 const VALID_LANGS = new Set(['fr', 'en', 'ar']);
 
 const LANG_NAMES: Record<string, string> = {
@@ -132,12 +137,17 @@ async function handleCopy(apiKey: string, body: Record<string, unknown>): Promis
     return json({ error: 'invalid_payload' }, 400);
   }
 
+  const prof = body.profile as Record<string, unknown> | undefined;
+  const productType = asStr(prof?.productType, 1, 120);
+  const theme = asStr(prof?.theme, 1, 120);
+  const profileLine = productType || theme ? `\n- Contexte marque : ${productType ? `type de produit = ${productType}` : ''}${productType && theme ? ' ; ' : ''}${theme ? `thème visuel = ${theme}` : ''} — tout le copywriting doit coller à cet univers` : '';
+
   const textPrompt = `Tu es le directeur de création d'Aura Design, studio de contenu social media de niveau agence. Tu écris le copywriting d'un visuel qui doit arrêter le scroll.
 
 BRIEF
 - Sujet utilisateur : "${prompt}"
 - Format : ${format} — ${slidesCount} slide(s) — thème ${style === 'light' ? 'CLAIR (fond blanc, textes foncés)' : 'SOMBRE (fond sombre, contraste premium)'}
-- Langue obligatoire : ${LANG_NAMES[lang] ?? 'français'}.
+- Langue obligatoire : ${LANG_NAMES[lang] ?? 'français'}${profileLine}.
 
 RÈGLES D'ÉCRITURE (niveau expert)
 - Slide 1 = HOOK : max 8 mots, curiosity gap ou promesse concrète. Jamais de généralité creuse.
@@ -256,7 +266,7 @@ const SCENE_TREATMENTS = [
   },
 ];
 
-function buildImagePrompt(body: Record<string, unknown>, lang: string, hasRefs: boolean): string | null {
+function buildImagePrompt(body: Record<string, unknown>, lang: string, hasRefs: boolean, hasProduct: boolean): string | null {
   const slide = body.slide as Record<string, unknown> | undefined;
   const style = body.style === 'light' ? 'light' : 'dark';
   const format = typeof body.format === 'string' ? body.format : '';
@@ -279,6 +289,12 @@ function buildImagePrompt(body: Record<string, unknown>, lang: string, hasRefs: 
     '',
     // ---- SUJET (inspiration, pas illustration littérale) ----
     `Subject inspiration (evoke, do not illustrate literally): ${tag ? `${tag} — ` : ''}${title}${subtitle ? `. Context: ${subtitle}` : ''}`,
+    ...(() => {
+      const prof = body.profile as Record<string, unknown> | undefined;
+      const pt = asStr(prof?.productType, 1, 120);
+      const th = asStr(prof?.theme, 1, 120);
+      return pt || th ? [`Brand universe: ${pt ? `product type ${pt}` : ''}${pt && th ? ', ' : ''}${th ? `${th} aesthetic` : ''} — stay perfectly consistent with this identity.`] : [];
+    })(),
     '',
     // ---- TRAITEMENT PHOTO ROTATIONNÉ (anti-répétition) ----
     `Photographic treatment for this frame: ${tr.scene}`,
@@ -308,7 +324,15 @@ function buildImagePrompt(body: Record<string, unknown>, lang: string, hasRefs: 
     `Weave the accent color ${brandColor} into ONE small detail only (a reflection, an object, a subtle light tint) — never as a dominant color.`,
     '',
     // ---- INTERDITS ABSOLUS ----
-    ...(hasRefs
+    ...(hasProduct
+      ? [
+          'PRODUCT FIDELITY CONTRACT — the FIRST attached image(s) show a REAL product from the user\'s shop:',
+          '- Show THIS EXACT product in your scene. Preserve it 100%: exact shape, exact proportions, exact colors, exact label text and logo placement, exact materials and finish.',
+          '- Do NOT redraw, redesign, restyle, warp, blur, recolor or reinterpret the product in any way. No invented packaging details, no distorted text on the label.',
+          '- Integrate it as the hero of the composition with a soft realistic contact shadow and correct scale — professional commercial product photography.',
+        ]
+      : []),
+    ...(hasRefs && !hasProduct
       ? [
           'Reference images are attached: match their photographic style, lighting mood, color palette and material feel.',
           'The references are STYLE GUIDANCE ONLY — never copy any text, logo, face or exact layout from them. Your output must still contain zero text.',
@@ -329,14 +353,20 @@ async function handleImage(apiKey: string, body: Record<string, unknown>): Promi
     return json({ error: 'invalid_payload' }, 400);
   }
 
-  // Images de référence (photos uploadées + bibliothèque de modèles du client)
-  const refs = Array.isArray(body.references)
+  // Photos PRODUIT (fidélité 100 %) séparées des références de style
+  const products = Array.isArray(body.productImages)
+    ? (body.productImages as unknown[])
+        .filter((r): r is string => typeof r === 'string' && r.startsWith('data:image/') && r.length <= 300_000)
+        .slice(0, 2)
+    : [];
+  const styleRefs = Array.isArray(body.references)
     ? (body.references as unknown[])
         .filter((r): r is string => typeof r === 'string' && r.startsWith('data:image/') && r.length <= 300_000)
         .slice(0, 3)
     : [];
+  const refs = hasProductInput(body) ? products : styleRefs;
 
-  const imagePrompt = buildImagePrompt(body, lang, refs.length > 0);
+  const imagePrompt = buildImagePrompt(body, lang, styleRefs.length > 0, products.length > 0);
   if (!imagePrompt) return json({ error: 'invalid_payload' }, 400);
 
   const aspect = FORMAT_ASPECT[format];
@@ -356,7 +386,8 @@ async function handleImage(apiKey: string, body: Record<string, unknown>): Promi
         body: JSON.stringify({
           model,
           input: [
-            ...refs.map((r) => ({ type: 'image', mime_type: 'image/jpeg', data: r.slice(r.indexOf(',') + 1) })),
+            ...products.map((r) => ({ type: 'image', mime_type: 'image/jpeg', data: r.slice(r.indexOf(',') + 1) })),
+            ...(products.length > 0 ? styleRefs.slice(0, 2) : []).map((r) => ({ type: 'image', mime_type: 'image/jpeg', data: r.slice(r.indexOf(',') + 1) })),
             { type: 'text', text: imagePrompt },
           ],
           response_format: { type: 'image', mime_type: 'image/png', aspect_ratio: aspect, image_size: size },
